@@ -91,7 +91,7 @@ def aggregate_content_in_parent_metadata(
                 # Collect summaries from parent children
                 collected_content.append(child.metadata[key])
 
-        # If we collected any content, process it and store in 
+        # If we collected any content, process it and store in
         # metadata
         if collected_content:
             joined_content = "\n\n".join(collected_content)
@@ -375,7 +375,7 @@ def collect_textblocks(
     blocks: list[Block] = []
     for d in dicts:
         if 'metadata' in d:
-            blocks.append(MetadataBlock._from_dict(d['metadata']))
+            blocks.append(MetadataBlock._from_dict(d['metadata']))  # type: ignore
         blocks.append(TextBlock(content=d['content']))
     return blocks
 
