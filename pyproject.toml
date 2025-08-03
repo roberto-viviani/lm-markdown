@@ -1,0 +1,22 @@
+[project]
+name = "lmmarkdown"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Roberto Viviani Safpsy113",email = "roberto.viviani@uibk.ac.at"}
+]
+readme = "README.md"
+requires-python = ">=3.11.0 <=3.13.3"
+dependencies = [
+    "pydantic (>=2.11.7,<3.0.0)",
+    "pyyaml (>=6.0.2,<7.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+mkdocs = "^1.6.1"
+
