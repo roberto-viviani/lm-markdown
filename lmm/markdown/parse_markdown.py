@@ -63,12 +63,14 @@ from . import parse_yaml as pya
 from .parse_yaml import MetadataDict, ConformantYaml
 import yaml
 
+
 # We define a discriminated union for the block types, in functional
 # style, but we also add centralized handling of common functions,
 # OOP-style.
 # _from_tokens() is a factory used by the parser
 class MetadataBlock(BaseModel):
     """Parsed markdown block containing metadata"""
+
     content: MetadataDict
     comment: str = ""
     _private: list[dict[Any, Any]] = []
@@ -201,6 +203,7 @@ class MetadataBlock(BaseModel):
 
 class HeaderBlock(MetadataBlock):
     """Parsed markdown header block"""
+
     type: Literal['header'] = 'header'  # type: ignore
 
     def get_info(self) -> str:
@@ -244,6 +247,7 @@ class HeaderBlock(MetadataBlock):
 
 class HeadingBlock(BaseModel):
     """Parsed markdown heading"""
+
     level: int
     content: str
     attributes: str = ""
@@ -328,6 +332,7 @@ class HeadingBlock(BaseModel):
 
 class TextBlock(BaseModel):
     """Parsed markdown block containing text"""
+
     content: str
     type: Literal['text'] = 'text'
 
@@ -378,6 +383,7 @@ class TextBlock(BaseModel):
 
 class ErrorBlock(BaseModel):
     """Parsed markdown block with parse errors"""
+
     content: str = ""
     errormsg: str = ""
     origin: str = ""
@@ -692,19 +698,19 @@ def blocklist_haserrors(blocks: list[Block]) -> bool:
     return False
 
 
-def blocklist_get_info(blocks: list[Block]) -> str:
-    """Collect info on all blocks in the list"""
-    return "\n".join([x.get_info() for x in blocks])
-
-
 def blocklist_map(
     blocks: list[Block],
     map_func: Callable[[Block], Block],
     filter_func: Callable[[Block], bool] = lambda _: True,
 ) -> list[Block]:
-    """Apply map_func to all blocks that satisfy the predicate 
+    """Apply map_func to all blocks that satisfy the predicate
     filter_func"""
     return [map_func(b.deep_copy()) for b in blocks if filter_func(b)]
+
+
+def blocklist_get_info(blocks: list[Block]) -> str:
+    """Collect info on all blocks in the list"""
+    return "\n".join([x.get_info() for x in blocks])
 
 
 # utilities-----------------------------------------------------
@@ -731,6 +737,11 @@ def load_blocks(source: str | Path) -> list[Block]:
 
     # Parse it
     blocks = parse_markdown_text(content)
+
+    # Check for errors in the block list and log them to console
+    from .ioutils import report_error_blocks
+
+    report_error_blocks(blocks)
 
     # Returns all blocks, also error blocks
     return blocks

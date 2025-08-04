@@ -18,6 +18,9 @@ Note: the tree is a blocklist in a different representation, and is
     used to operate on the markdown data through side effects.
 """
 
+# using protected members
+# pyright: reportPrivateUsage=false
+
 from abc import ABC, abstractmethod
 from typing import Callable, TypeVar, Self
 from pathlib import Path
@@ -521,8 +524,9 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         case HeaderBlock():
             header_block = blocks[0]
         case MetadataBlock() as bl:
-            header_block = \
-                HeaderBlock._from_metadata_block(bl)  # type: ignore
+            header_block = HeaderBlock._from_metadata_block(
+                bl
+            )  # type: ignore
         case HeadingBlock() as bl:
             if bl.get_content():
                 header_block = HeaderBlock(

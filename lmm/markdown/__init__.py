@@ -2,7 +2,6 @@
 parsing markdown files, creating a tree representation, and modifying
 them."""
 
-
 from .parse_markdown import (  # noqa: F401
     # block types
     MetadataBlock as MetadataBlock,
@@ -21,7 +20,6 @@ from .parse_markdown import (  # noqa: F401
     blocklist_map as blocklist_map,
     load_blocks as load_blocks,
 )
-
 
 from .blocks import (  # noqa: F401
     clear_metadata as clear_metadata,
