@@ -27,6 +27,9 @@ Select nodes: select nodes from tree
 
 """
 
+# protected members of Block used
+# pyright: reportPrivateUsage=false
+
 from typing import Any, Callable, cast, TypeVar
 
 from .tree import (
@@ -375,7 +378,7 @@ def collect_textblocks(
     blocks: list[Block] = []
     for d in dicts:
         if 'metadata' in d:
-            blocks.append(MetadataBlock._from_dict(d['metadata']))  # type: ignore
+            blocks.append(MetadataBlock._from_dict(d['metadata']))
         blocks.append(TextBlock(content=d['content']))
     return blocks
 
@@ -533,3 +536,42 @@ def get_headingnodes(
     """
 
     return get_nodes(root, opts, HeadingNode, filter_func)
+
+# utilities -------------------------------------------------------
+def print_tree_info(node: MarkdownNode, indent: int = 0) -> None:
+    """
+    Print information about a node and its descendants, including its
+    type, content, and metadata.
+
+    Args:
+        node: The node to print information for
+        indent: The indentation level for pretty printing
+    """
+    indent_str = "  " * indent
+
+    # Print node type and content
+    if isinstance(node, HeadingNode):
+        print(
+            f"{indent_str}Heading (Level {node.heading_level()}): "
+            + f"{node.get_content()}"
+        )
+    elif isinstance(node, TextNode):
+        content = node.get_content()
+        if len(content) > 50:
+            content = content[:47] + "..."
+        print(f"{indent_str}Text: {content}")
+    else:
+        print(f"{indent_str}Other: {type(node.block)}")
+
+    # Print metadata
+    if node.metadata:
+        print(f"{indent_str}  Metadata: {node.metadata}")
+
+    # Print title_ from effective metadata (if it exists)
+    title_path = node.fetch_metadata_for_key('title')
+    if title_path:
+        print(f"{indent_str}  Effective title path: {title_path}")
+
+    # Print children recursively
+    for child in node.children:
+        print_tree_info(child, indent + 1)
