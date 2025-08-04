@@ -74,7 +74,7 @@ class ConsoleLogger(ILogger):
         self.logger.setLevel(logging.INFO)
 
         # Ensure we have a console handler if none exists
-        if not self.logger.handlers:
+        if not self.logger.hasHandlers():
             handler = logging.StreamHandler(sys.stdout)
             formatter = logging.Formatter(
                 '%(levelname)s - %(message)s'
