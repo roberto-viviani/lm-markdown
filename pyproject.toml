@@ -6,7 +6,7 @@ authors = [
     {name = "Roberto Viviani Safpsy113",email = "roberto.viviani@uibk.ac.at"}
 ]
 readme = "README.md"
-requires-python = ">=3.11.0 <=3.13.3"
+requires-python = ">=3.11.0 <=3.13.99"
 dependencies = [
     "pydantic (>=2.11.7,<3.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)"
