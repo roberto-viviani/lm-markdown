@@ -93,6 +93,7 @@ def aggregate_content_in_parent_metadata(
             elif child.is_parent_node() and key in child.metadata:
                 # Collect summaries from parent children
                 collected_content.append(str(child.metadata[key]))
+                collected_content.append(str(child.metadata[key]))
 
         # If we collected any content, process it and store in
         # metadata
@@ -196,6 +197,9 @@ def extract_property(
                         TextBlock(
                             content=str(node.metadata.pop(key))
                         ),
+                        TextBlock(
+                            content=str(node.metadata.pop(key))
+                        ),
                         parent=node,
                     )
                     if add_type:
@@ -213,6 +217,9 @@ def extract_property(
             else:
                 if key in node.metadata:
                     text = TextNode(
+                        TextBlock(
+                            content=str(node.metadata.pop(key))
+                        ),
                         TextBlock(
                             content=str(node.metadata.pop(key))
                         ),
