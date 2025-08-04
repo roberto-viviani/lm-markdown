@@ -128,9 +128,8 @@ def report_error_blocks(
             errinfo = "Errors when parsing markdown file"
             if b.errormsg:
                 errinfo += ":\n" + b.errormsg
-            if str(b.content).strip():
-                errinfo += "\n\n Offending content:\n" + str(
-                    b.content
-                )
+            if str(b.origin).strip():
+                errinfo += "\n\n Offending content:\n------------\n" \
+                    + str(b.origin) + "\n------------"
             logger.warning(errinfo)
         return [b for b in blocks if not isinstance(b, ErrorBlock)]

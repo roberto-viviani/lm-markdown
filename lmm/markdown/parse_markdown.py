@@ -35,6 +35,9 @@ with the following exceptions:
 # note: unknown types introduced from pyyaml; private use ok
 #   here as it is within a protected family
 
+# TODO: fix this
+# pyright: reportUnnecessaryIsInstance=false
+
 # Definition of the grammar (informal). The lexemes are here entire
 #     lines, not words
 # document -> block [blank]+ block
@@ -50,16 +53,15 @@ with the following exceptions:
 
 
 from pathlib import Path
-from typing import Tuple, Any
+from typing import Tuple, Any, Callable
 from pydantic import BaseModel
 from typing_extensions import Literal
 
 import re
 
 from . import parse_yaml as pya
-from parse_yaml import MetadataDict, ConformantYaml
+from .parse_yaml import MetadataDict, ConformantYaml
 import yaml
-
 
 # We define a discriminated union for the block types, in functional
 # style, but we also add centralized handling of common functions,
@@ -695,6 +697,16 @@ def blocklist_get_info(blocks: list[Block]) -> str:
     return "\n".join([x.get_info() for x in blocks])
 
 
+def blocklist_map(
+    blocks: list[Block],
+    map_func: Callable[[Block], Block],
+    filter_func: Callable[[Block], bool] = lambda _: True,
+) -> list[Block]:
+    """Apply map_func to all blocks that satisfy the predicate 
+    filter_func"""
+    return [map_func(b.deep_copy()) for b in blocks if filter_func(b)]
+
+
 # utilities-----------------------------------------------------
 
 
@@ -719,11 +731,6 @@ def load_blocks(source: str | Path) -> list[Block]:
 
     # Parse it
     blocks = parse_markdown_text(content)
-
-    # Check for errors in the block list and log them to console
-    from .ioutils import report_error_blocks
-
-    report_error_blocks(blocks)
 
     # Returns all blocks, also error blocks
     return blocks

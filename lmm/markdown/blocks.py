@@ -42,18 +42,6 @@ def compose(*funcs: BlockFunc) -> BlockFunc:
 
     return reduce(_compose_two, funcs)
 
-# map-------------------------------------------------------------
-
-
-def blocks_map(
-    blocks: list[Block],
-    map_func: Callable[[Block], Block],
-    filter_func: Callable[[Block], bool] = lambda _: True,
-) -> list[Block]:
-    """Apply map_func to all blocks that satisfy the predicate 
-    filter_func"""
-    return [map_func(b.deep_copy()) for b in blocks if filter_func(b)]
-
 # edit ----------------------------------------------------------
 
 def clear_metadata(blocks: list[Block]) -> list[Block]:

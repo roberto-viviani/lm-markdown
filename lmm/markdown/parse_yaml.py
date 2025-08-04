@@ -9,8 +9,12 @@ The target is to isolate an object that is represented in python as
 a dictionary with string keys. This dictionary will be used to
 exchange messages with the language model.
 
+The YAML object contained in a metadata block is decomposed into two,
+'part', and 'whole'. The 'part' component is the one that may be used
+in the rest of the application.
+
 This means:
-- YAML objects consisting of literals will return a None part
+- YAML objects consisting of literals only will return a None part
 - YAML objects consisting of a list will be required list jasonable
     objects, with the first being used for the interaction
 - the jsonale objects will be objects with strings as keys, otherwise
@@ -28,26 +32,23 @@ from typing import Any
 import yaml
 import re
 
-from lmm.scan.scan_keys import QUERY_KEY, MESSAGE_KEY, EDIT_KEY
+# TODO: move function using these to scan
+# from lmm.scan.scan_keys import QUERY_KEY, MESSAGE_KEY, EDIT_KEY
 
 # Conformant input
-ConformantMetadataValue = str | int | bool | float  
-MetadataDict = dict[str, ConformantMetadataValue | 'MetadataDict']
-ConformantYaml = dict[str, Any] | list[dict]
+MetadataValue = str | int | bool | float  
+MetadataDict = dict[str, MetadataValue]
+ConformantYaml = MetadataDict | list[MetadataDict]
 ParsedYaml = tuple[MetadataDict, list[dict]]
 
 
 def _validate_dict(values: dict[str, Any]) -> MetadataDict:
     """Eliminate all values in yaml header that are not in
-    the conformat value set"""
+    the conformant value set"""
     newdict = {}
     for v in values.keys():
-        if isinstance(values[v], ConformantMetadataValue):
+        if isinstance(values[v], MetadataValue):
             newdict[v] = values[v]
-        elif isinstance(values[v], dict):
-            nesteddict = _validate_dict(values[v])
-            if nesteddict:
-                newdict[v] = nesteddict        
     return newdict
 
 
@@ -129,18 +130,18 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
             # non-dictionary or None: leave empty
             pass
 
-    # replace shortcuts for language model interactions
-    if isinstance(part, dict):
-        keys = [k for k in part.keys()]  # copy
-        for key in keys:
-            if key == "?":
-                part[QUERY_KEY] = part.pop(key)
-            elif key == "+":
-                part[MESSAGE_KEY] = part.pop(key)
-            elif key == "=":
-                part[EDIT_KEY] = part.pop(key)
-            else:
-                pass
+    # # replace shortcuts for language model interactions
+    # if isinstance(part, dict):
+    #     keys = [k for k in part.keys()]  # copy
+    #     for key in keys:
+    #         if key == "?":
+    #             part[QUERY_KEY] = part.pop(key)
+    #         elif key == "+":
+    #             part[MESSAGE_KEY] = part.pop(key)
+    #         elif key == "=":
+    #             part[EDIT_KEY] = part.pop(key)
+    #         else:
+    #             pass
 
     return part, whole
 

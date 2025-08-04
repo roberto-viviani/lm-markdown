@@ -14,14 +14,15 @@ heading, and text types, a tree only has heading and text nodes. The
 root node is a heading from the title property of the header metadata
 block.
 
-Note: the tree is a blocklist in a different representation; no
-    assumption about lack of side effects should be made.
+Note: the tree is a blocklist in a different representation, and is
+    used to operate on the markdown data through side effects.
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable, TypeVar, Any, Self
+from typing import Callable, TypeVar, Self
 from pathlib import Path
 
+from .parse_yaml import MetadataDict, MetadataValue
 from .parse_markdown import (
     Block,
     MetadataBlock,
@@ -32,6 +33,7 @@ from .parse_markdown import (
 )
 from .parse_markdown import serialize_blocks, load_blocks
 from .ioutils import report_error_blocks
+
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -61,7 +63,7 @@ class MarkdownNode(ABC):
         self.block: Block = block  # Original block
         self.parent: 'HeadingNode | None' = parent  # Parent node
         self.children: list['MarkdownNode'] = []  # Child nodes
-        self.metadata: dict[str, Any] = {}  # Associated metadata
+        self.metadata: MetadataDict = {}  # Associated metadata
         # Original metadata block. This is a private immutable data
         # member that is used at serialization to reconstitute the
         # original markdown. Changes in self.metadata will be
@@ -130,7 +132,7 @@ class MarkdownNode(ABC):
     def get_content(self) -> str:
         return str(self.block.content)
 
-    def get_metadata(self, key: str | None = None) -> dict[str, Any]:
+    def get_metadata(self, key: str | None = None) -> MetadataDict:
         """
         Get the metadata of the current node. For the root node, the
         header is the metadata.
@@ -144,7 +146,7 @@ class MarkdownNode(ABC):
 
     def get_metadata_for_key(
         self, key: str, default: str = ""
-    ) -> str:
+    ) -> MetadataValue:
         """
         Get the key value in the metadata of the current node. For the
         root node, the header value for that key is returned.
@@ -157,7 +159,7 @@ class MarkdownNode(ABC):
 
     def fetch_metadata(
         self, key: str | None = None, include_header: bool = True
-    ) -> dict[str, Any]:
+    ) -> MetadataDict:
         """
         Returns the effective metadata for this node by traversing up
         the tree if necessary to find inherited metadata. The metadata
@@ -184,7 +186,7 @@ class MarkdownNode(ABC):
 
     def fetch_metadata_for_key(
         self, key: str, include_header: bool = True, default: str = ""
-    ) -> str:
+    ) -> MetadataValue:
         """
         Returns the value for a specific metadata key by traversing up
         the tree if necessary to find inherited metadata. If
@@ -209,8 +211,7 @@ class MarkdownNode(ABC):
         if self.metadata and key in self.metadata:
             if not include_header and self.is_header_node():
                 return default
-            value = self.metadata[key]
-            return value.copy() if "copy" in dir(value) else value
+            return self.metadata[key]
         elif self.parent:
             return self.parent.fetch_metadata_for_key(
                 key, include_header
@@ -549,7 +550,7 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
     root_node.metadata_block = header_block
 
     current_node = root_node
-    current_metadata: dict[str, Any] | None = None
+    current_metadata: MetadataDict | None = None
 
     # Process remaining blocks
     current_metadata_block: MetadataBlock | None = None
@@ -962,9 +963,6 @@ def load_tree(source: str | Path) -> MarkdownTree:
     blocks = load_blocks(source)
     if not blocks:
         return None
-
-    # Log error blocks to console
-    report_error_blocks(blocks)
 
     # Enforce contraint on first block
     if not isinstance(blocks[0], HeaderBlock):
