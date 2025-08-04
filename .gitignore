@@ -1,2 +1,3 @@
 site/ 
 .vs/
+__pycache__/
