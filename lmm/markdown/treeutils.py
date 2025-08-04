@@ -197,9 +197,6 @@ def extract_property(
                         TextBlock(
                             content=str(node.metadata.pop(key))
                         ),
-                        TextBlock(
-                            content=str(node.metadata.pop(key))
-                        ),
                         parent=node,
                     )
                     if add_type:
@@ -217,9 +214,6 @@ def extract_property(
             else:
                 if key in node.metadata:
                     text = TextNode(
-                        TextBlock(
-                            content=str(node.metadata.pop(key))
-                        ),
                         TextBlock(
                             content=str(node.metadata.pop(key))
                         ),
