@@ -129,7 +129,7 @@ class MetadataBlock(BaseModel):
         except yaml.YAMLError as e:
             offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
-                content="\nYAML parse error in " + "metadata block",
+                content="\nYAML parse error in metadata block",
                 errormsg=str(e),
                 origin=offending_meta,
             )
@@ -137,17 +137,15 @@ class MetadataBlock(BaseModel):
         # this returns the part of the yaml block that we want to
         # use here in 'part', the block itself in 'whole'.
         # See parse_yaml.py for explanation.
-        part, whole = pya.split_yaml_parse(yamldata)
-
-        if any([not isinstance(d, dict) for d in whole]):
+        try:
+            part, whole = pya.split_yaml_parse(yamldata)
+        except ValueError as e:
+            offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
-                content="Metadata contains a list with an element "
-                + "that is not acceptable in LM markdown:\n"
-                + [str(d) for d in whole if not isinstance(d, dict)][
-                    0
-                ]
-                + "\n",
-                origin='\n'.join([y for (_, y) in stack]),
+                content="\nInvalid LM markdown in metadata block\n"
+                + str(e),
+                errormsg=str(e),
+                origin=offending_meta,
             )
 
         if not part:

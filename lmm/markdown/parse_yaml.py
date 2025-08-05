@@ -72,10 +72,14 @@ def _is_metadata_dict(data: object) -> bool:
     if not _is_string_dict(data):
         return False
     # data is now of type dict[str, ...]
-    return all(_is_metadata_type(value) for value in data.values())  # type: ignore
+    return all(
+        [_is_metadata_type(value) for value in data.values()]  # type: ignore
+    )
 
 
-def _split_metadata_dict(values: dict[str, Any]) -> tuple[MetadataDict, list]:
+def _split_metadata_dict(
+    values: dict[str, Any],
+) -> tuple[MetadataDict, list]:
     """Eliminate all values in yaml header that are not in
     the conformant value set"""
     newdict = {}
@@ -153,7 +157,9 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
             whole = [value]
         case _:
             # non-dictionary
-            raise ValueError("Invalid YAML object for markdown header")
+            raise ValueError(
+                "Invalid YAML object for markdown header"
+            )
 
     # # replace shortcuts for language model interactions
     # if isinstance(part, dict):
