@@ -1,8 +1,12 @@
 """Unit tests for parse_markdown_text function from lmm.markdown.parse_markdown module."""
 
+# black: noqa
+# flake8: noqa
+
 import unittest
 from lmm.markdown.parse_markdown import (
     parse_markdown_text,
+    serialize_blocks,
     HeaderBlock,
     MetadataBlock,
     HeadingBlock,
@@ -34,6 +38,7 @@ class TestParseMarkdownText(unittest.TestCase):
         self.assertEqual(
             result[0].content, "This is a simple text block."
         )
+        self.assertEqual(content, serialize_blocks(result))
 
     def test_multiple_text_blocks(self):
         """Test parsing multiple text blocks separated by blank lines."""
@@ -50,6 +55,7 @@ Third paragraph."""
         self.assertEqual(result[0].content, "First paragraph.")
         self.assertEqual(result[1].content, "Second paragraph.")
         self.assertEqual(result[2].content, "Third paragraph.")
+        self.assertEqual(content, serialize_blocks(result))
 
     def test_simple_heading(self):
         """Test parsing simple heading blocks."""
@@ -61,6 +67,7 @@ Third paragraph."""
         if isinstance(result[0], HeadingBlock):
             self.assertEqual(result[0].level, 1)
             self.assertEqual(result[0].content, "First level heading")
+        self.assertEqual(content, serialize_blocks(result).strip())
 
     def test_multiple_heading_levels(self):
         """Test parsing headings at different levels."""
@@ -78,6 +85,9 @@ Third paragraph."""
             if isinstance(block, HeadingBlock):
                 self.assertEqual(block.level, i + 1)
                 self.assertEqual(block.content, f"Level {i + 1}")
+        self.assertEqual(content, 
+                         serialize_blocks(result).replace("\n\n", 
+                                                          "\n").strip())
 
     def test_heading_with_attributes(self):
         """Test parsing heading with attributes."""
@@ -92,6 +102,7 @@ Third paragraph."""
             result[0].attributes,
             'class = "elicits a warning in scan_rag"',
         )
+        self.assertEqual(content, serialize_blocks(result).strip())
 
     def test_empty_heading_error(self):
         """Test that empty headings generate error blocks."""
@@ -160,6 +171,7 @@ Some text.
         self.assertEqual(
             result[2].comment, 'questions already in original'
         )
+        self.assertEqual(content, serialize_blocks(result).strip())
 
     def test_metadata_block_with_ellipsis_end(self):
         """Test metadata block ending with ellipsis."""
@@ -175,7 +187,9 @@ second:
         self.assertIsInstance(
             result[0], HeaderBlock
         )  # First block becomes header
+        print(result[0].get_info())
         self.assertEqual(result[0].content['first'], 1)
+        self.assertEqual(result[0]._private[0]['second'], content['second'])
 
     def test_unclosed_metadata_block_error(self):
         """Test that unclosed metadata blocks generate errors."""
