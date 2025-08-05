@@ -1,3 +1,4 @@
 site/ 
 .vs/
+.venv/
 __pycache__/

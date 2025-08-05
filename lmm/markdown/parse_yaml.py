@@ -42,17 +42,17 @@ ConformantYaml = MetadataDict | list[MetadataDict]
 ParsedYaml = tuple[MetadataDict, list[dict]]
 
 
-def _validate_dict(values: dict[str, Any]) -> MetadataDict:
+def _validate_dict(values: dict[str, Any]) -> tuple[MetadataDict, list]:
     """Eliminate all values in yaml header that are not in
     the conformant value set"""
     newdict = {}
+    bin = {}
     for v in values.keys():
-        if isinstance(values[v], MetadataValue):
+        if isinstance(v, str) and isinstance(values[v], MetadataValue):
             newdict[v] = values[v]
-    return newdict
-
-
-_PART_ELEMENT = 0
+        else:
+            bin[v] = values[v]
+    return (newdict, [bin]) if bin else (newdict, [])
 
 
 def dump_yaml(x: Any) -> str:
@@ -91,44 +91,51 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
 
     Guarantees: pure function
     """
-    # This eliminates any non-standard element. They just disappear
-    # from the markdown.
-    # if isinstance(yamldata, list):
-    #     # eliminate non-dict's
-    #     yamldata = [x for x in yamldata if isinstance(x, dict)]
 
     part: MetadataDict = {}
     whole: list[dict] = []
     match yamldata:
-        case []:
-            # leave output empty
-            pass
-        case list() if all(
-            [not isinstance(x, dict) for x in yamldata]
-        ):
-            # a list of literals, put in whole
-            whole = yamldata
-        case list() if all(
-            [isinstance(x, str) for x in yamldata[0].keys()]
-        ):
+        # case list() if all(
+        #     [not isinstance(x, dict) for x in yamldata]
+        # ):
+        #     # a list of literal s, put in whole
+        #     whole = yamldata
+        case list() if isinstance(yamldata[0], MetadataDict):
             # set reference to chosen element of the list
-            part = _validate_dict(yamldata[_PART_ELEMENT])
+            part = yamldata[0]
+            if len(yamldata) > 1:
+                whole = yamldata[1:]
+        case list() if isinstance(yamldata[0], dict):
+            if all([isinstance(k, str) for k in yamldata[0].keys()]):
+                # heterogeneous dict
+                part, bin = _validate_dict(yamldata)
+                whole = bin + yamldata[1:] if len(yamldata) > 1 else bin
+            else:
+                whole = yamldata
+        case list():
+            # invalid dictionary in first element or list of non-dict
             whole = yamldata
-        case list():  # TO DO: clarify if this is possible
-            # empty dictionary as part element of list
-            whole = yamldata
-        case dict() if all(
-            [isinstance(x, str) for x in yamldata.keys()]
-        ):
+        case MetadataDict():
             # we keep whole to empty, as there is no list
-            part = _validate_dict(yamldata)
+            part = yamldata
+        case dict() if all([isinstance(k, str) for k in yamldata.keys()]):
+            # heterogeneous dict
+            part, whole = _validate_dict(yamldata)
         case dict():
-            # keep empty dictionary for part element,
-            # set rest as list
+            # invalid dict, keep empty dictionary in part
             whole = [yamldata]
-        case _:
-            # non-dictionary or None: leave empty
+        case MetadataValue() as value:
+            # someone is specifying data as a literal
+            raise ValueError("Data in markdown header must " +
+                             "follow a property.\n" +
+                             "Specify the data like this:\n" +
+                             f"property_name: {value}")
+        case _ if bool(yamldata) == False:
+            # empty
             pass
+        case _: 
+            # non-dictionary (probably literal)
+            raise ValueError("Invalid YAML object for markdown header")
 
     # # replace shortcuts for language model interactions
     # if isinstance(part, dict):
@@ -155,21 +162,25 @@ def desplit_yaml_parse(
     """
     empty_dict: bool = split_parse[0] == {} if split_parse else False
     match split_parse:
-        case (part, []):
+        case (part, [] | [{}]):
             return part
-        case ({}, whole) if (
-            empty_dict
-            and len(whole) == 1
-            and not all([isinstance(x, str) for x in whole[0].keys()])
-        ):
-            # If whole has only one string-keyed dict element and
-            # part is empty, return the single element
+        # case ({}, whole) if (
+        #     empty_dict
+        #     and len(whole) == 1
+        #     and not all([isinstance(x, str) for x in whole[0].keys()])
+        # ):
+        #     # If whole has only one string-keyed dict element and
+        #     # part is empty, return the single element
+        #     return whole[0]
+        # case ({}, whole) if empty_dict:  # empty_dict seems be needed
+        #     return whole
+        case ({}, whole) if len(whole) == 1:
             return whole[0]
-        case ({}, whole) if empty_dict:  # empty_dict seems be needed
+        case ({}, whole):
             return whole
         case (part, whole):
-            # When part is non-empty, replace the element of whole
-            whole[_PART_ELEMENT] = part
-            return whole
+            # When part is non-empty, add it to whole
+            return [part] + whole
         case _:
-            return {}
+            raise RuntimeError("Unreachable code reached due to" + 
+                               " unrecognized part/whole objects")
