@@ -1,0 +1,250 @@
+# pyright: reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+# pyright: reportUnknownParameterType=false
+# pyright: reportMissingTypeArgument=false
+
+
+import unittest
+import yaml  # PyYAML library
+
+
+# Attempt to import the functions to be tested
+from lmm.markdown.parse_yaml import split_yaml_parse
+from lmm.markdown.parse_yaml import desplit_yaml_parse
+from lmm.markdown.parse_yaml import ParsedYaml
+
+def serialize_yaml_parse(data: ParsedYaml | None):
+    return yaml.safe_dump(desplit_yaml_parse(data))
+
+class TestMarkdownMetadata(unittest.TestCase):
+
+    # --- Tests for split_yaml_parse ---
+
+    def test_parse_none_input(self):
+        self.assertEqual(split_yaml_parse(None), ({}, []))
+
+    def test_parse_none_inputlist(self):
+        self.assertEqual(split_yaml_parse([None]), ({}, []))
+
+    def test_parse_empty_list(self):
+        self.assertEqual(split_yaml_parse([]), ({}, []))
+
+    def test_parse_empty_dict(self):
+        self.assertEqual(split_yaml_parse({}), ({}, []))
+
+    def test_parse_empty_listeddict(self):
+        self.assertEqual(split_yaml_parse([{}]), ({}, []))
+
+    def test_parse_conformant_dict(self):
+        data = {"key1": "value1", "key2": 2}
+        self.assertEqual(split_yaml_parse(data), (data, []))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_partially_conformant_dict(self):
+        data = {"key1": "value1", "key2": ["first", "second"]}
+        # expected behaviour: the conformant values are in p1, 
+        # the others in p2
+        expected_p1 = {"key1": "value1"}
+        expected_p2 = [{"key2": ["first", "second"]}]
+        self.assertEqual(split_yaml_parse(data), 
+                         (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)),
+                         [expected_p1] + expected_p2)
+
+    def test_parse_empty_dict_is_conformant(self):
+        data = {}
+        self.assertEqual(split_yaml_parse(data), (data, []))
+
+    def test_parse_non_conformant_dict_int_key(self):
+        data = {1: "value1", "key2": "value2"}
+        self.assertEqual(split_yaml_parse(data), ({}, [data]))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_non_conformant_dict_tuple_key(self):
+        data = {("a", "b"): "value1", "key2": "value2"}
+        self.assertEqual(split_yaml_parse(data), ({}, [data]))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_list_first_conformant(self):
+        data = [{"key1": "val1"}, {"key2": "val2"}, {3: "val3"}]
+        expected_p1 = {"key1": "val1"}
+        expected_p2 = [{"key2": "val2"}, {3: "val3"}]
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_list_first_partially_conformant(self):
+        data = [{"key1": "val1", "key2": ["first", "second"]}, {3: "val3"}]
+        # expected behavior: first dict split between p1 and p2
+        expected_p1 = {"key1": "val1"}
+        expected_p2 = [{"key2": ["first", "second"]}, {3: "val3"}]
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), 
+                         [expected_p1] + expected_p2)
+
+    def test_parse_list_first_non_conformant(self):
+        data = [{1: "val1"}, {"key2": "val2"}]
+        expected_p1 = {}
+        expected_p2 = data 
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        
+    def test_parse_list_single_conformant_item(self):
+        data = [{"key1": "val1"}]
+        # this is not reconstructed differently from {"key1": "val1"}
+        expected_p1 = {"key1": "val1"}
+        expected_p2 = []
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), expected_p1)
+
+    def test_parse_list_single_non_conformant_item(self):
+        data = [{1: "val1"}]
+        expected_p1 = {}
+        expected_p2 = data
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data[0])
+
+    def test_parse_list_with_non_dict_items(self):
+        data = [{"key1": "val1"}, "a string", {"key2": "val2"}, None, {3: "val3"}]
+        # Expected behavior: the rest of the list is taken over in data
+        expected_p1 = {"key1": "val1"}
+        expected_p2 = data[1:]
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_list_with_non_dict_items_first_dict_non_conformant(self):
+        data = ["a string", {1: "non_conf"}, {"key2": "val2"}]
+        # Expected behavior: everything in data
+        expected_p1 = {}
+        expected_p2 = data
+        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_list_only_non_dict_items(self):
+        data = ["a string", 123, None]
+        # Expected behavior: everything in data
+        self.assertEqual(split_yaml_parse(data), ({}, data))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    def test_parse_scalar_string_input(self):
+        data = "Just a string"
+        self.assertRaises(ValueError, split_yaml_parse, data)
+
+    def test_parse_scalar_bytes_input(self):
+        data = bytes("Encoded text", encoding="utf-8")
+        self.assertEqual(split_yaml_parse(data), ({}, [data]))
+        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+
+    # def test_parse_query_prompt(self):
+    #     data = yaml.safe_load("?: Please summarize")
+    #     self.assertEqual(split_yaml_parse(data), ({'query': "Please summarize"}, []))
+
+    # def test_parse_chat_prompt(self):
+    #     data = yaml.safe_load("+: Please summarize")
+    #     self.assertEqual(split_yaml_parse(data), ({'message': "Please summarize"}, []))
+
+    # def test_parse_edit_prompt(self):
+    #     data = yaml.safe_load("=: Please summarize")
+    #     self.assertEqual(split_yaml_parse(data), ({'edit': "Please summarize"}, []))
+
+    # --- Tests for desplit_yaml_parse ---
+    def test_desplit_part_nowhole(self):
+        part = {"This": 1}
+        whole = []
+        data = part, whole
+        self.assertEqual(desplit_yaml_parse(data), part)
+
+    def test_desplit_nopart_complexwhole(self):
+        part = {}
+        whole = [{(0, 1): 1}]
+        data = part, whole
+        self.assertEqual(desplit_yaml_parse(data), whole[0])
+
+    def test_desplit_part_whole(self):
+        part = {"First": 1}
+        whole = [{"This": 0}]
+        data = part, whole
+        outcome = [{"First": 1}, {"This": 0}]
+        self.assertEqual(desplit_yaml_parse(data), outcome)
+
+    #--- Tests for serialize_yaml_parse (and implicit split_yaml_parse) ---
+    def _assert_serialization_logic(self, original_data, expected_reloaded_object):
+        """Helper to test the parse -> serialize -> reload cycle."""
+        parsed_p1, parsed_p2 = split_yaml_parse(original_data)
+        yaml_output = serialize_yaml_parse((parsed_p1, parsed_p2))
+        reloaded_data = yaml.safe_load(yaml_output)
+        self.assertEqual(reloaded_data, expected_reloaded_object)
+
+    def test_serialize_from_none_input(self):
+        # split_yaml_parse(None) -> ({}, [])
+        # serialize_yaml_parse(({}, [])) dumps `{}` (p2)
+        self._assert_serialization_logic(None, {})
+
+    def test_serialize_from_conformant_dict(self):
+        original = {"key1": "value1", "key2": 2}
+        # split_yaml_parse(original) -> (original, [])
+        # serialize_yaml_parse((original, [])) dumps `original` (p1)
+        self._assert_serialization_logic(original, original)
+
+    def test_serialize_from_empty_dict(self):
+        original = {}
+        # split_yaml_parse(original) -> (original, [])
+        # serialize_yaml_parse((original, [])) dumps `original` (p1)
+        self._assert_serialization_logic(original, original)
+
+    def test_serialize_from_non_conformant_dict(self):
+        original = {1: "value1", "key2": "value2"}
+        # split_yaml_parse(original) -> ({}, [original])
+        # serialize_yaml_parse(({}, [original])) dumps `original` (p2)
+        self._assert_serialization_logic(original, original)
+
+    def test_serialize_from_empty_list(self):
+        original = []
+        # split_yaml_parse(original) -> ({}, [])
+        # serialize_yaml_parse(({}, [])) dumps `[]` (p2)
+        self._assert_serialization_logic(original, {})
+
+    def test_serialize_from_list_first_conformant(self):
+        original = [{"k1": "v1"}, {"k2": "v2"}]
+        # split_yaml_parse(original) -> ({"k1":"v1"}, [{"k2":"v2"}])
+        # serialize_yaml_parse(...) dumps `[p1] + p2` which is `original`
+        self._assert_serialization_logic(original, original)
+
+    def test_serialize_from_list_single_conformant_item(self):
+        original = [{"k1": "v1"}]
+        # split_yaml_parse(original) -> ({"k1":"v1"}, [])
+        # serialize_yaml_parse(...) dumps `the input
+        self._assert_serialization_logic(original, original[0])
+
+    def test_serialize_from_list_first_non_conformant(self):
+        original = [{1: "v1"}, {"k2": "v2"}]
+        # split_yaml_parse(original) -> ({}, original)
+        # serialize_yaml_parse(...) dumps `p2` which is `original`
+        self._assert_serialization_logic(original, original)
+        
+    def test_serialize_from_list_single_non_conformant_item(self):
+        original = [{1: "v1"}]
+        # split_yaml_parse(original) -> ({}, original)
+        # serialize_yaml_parse(...) dumps `p2` which is `original[0]`
+        self._assert_serialization_logic(original, original[0])
+
+    def test_serialize_list_with_non_dict_items_filter_out(self):
+        original = [{"key1": "val1"}, "a string", {"key2": "val2"}]
+        # non conformant elements of list, but first is conformant
+        expected_reloaded = original
+        self._assert_serialization_logic(original, expected_reloaded)
+
+    def test_serialize_list_with_non_dict_items_first_dict_non_conformant(self):
+        original = ["str", {1:"non_conf"}, {"k2":"v2"}]
+        # split_yaml_parse puts everything in whole
+        expected_reloaded = ["str", {1:"non_conf"}, {"k2":"v2"}]
+        self._assert_serialization_logic(original, expected_reloaded)
+
+    def test_serialize_list_only_non_dict_items(self):
+        original = ["a string", 123, None]
+        expected_reloaded = original
+        self._assert_serialization_logic(original, expected_reloaded)
+
+
+if __name__ == '__main__':
+    unittest.main(argv=['first-arg-is-ignored'], exit=False) # Using exit=False for environments like notebooks
