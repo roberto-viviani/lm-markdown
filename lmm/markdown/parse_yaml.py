@@ -1,36 +1,36 @@
 """
-Process output of yaml.safe_load.
+Interface to the pyyaml package.
 
-Layer of function to interface with the output of safe_load to handle
+Layer of functions to work with the output of safe_load to handle
 list of dictionaries and cover edge cases. YAML can contain a lot of
 content kinds that are not compatible for use with a vector database,
 and are not relevant in their use to interact with a language model.
-The target is to isolate an object that is represented in python as
+The aim here is to isolate an object that is represented in python as
 a dictionary with string keys. This dictionary will be used to
 exchange messages with the language model.
 
 The YAML object contained in a metadata block is decomposed into two,
 'part', and 'whole'. The 'part' component is the one that may be used
-in the rest of the application.
+in the rest of the application. The whole part is kept aside and 
+recomposed with the part when the whole YAML object is reconstituted.
 
-This means:
-- YAML objects consisting of literals only will return a None part
-- YAML objects consisting of a list will be required list jasonable
-    objects, with the first being used for the interaction
-- the jsonale objects will be objects with strings as keys, otherwise
-    the part will be none.
+Conformant YAML objects consist of dictionaries, or list of 
+dictionaries of type dict[str, elementary_type] where elementary type
+is one of int, float, bool, str. All other objects will be put in
+whole.
+
+YAML objects consisting of literals only will raise an exception, 
+since it is conceivable that the user inteded something different.
+Byte/imaginary literals are put in whole.
 """
 
-# flake8: noqa
+# note: unknown types introduced from pyyaml
 
 # pyright: reportUnknownMemberType=false
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false
 # pyright: reportUnknownParameterType=false
 # pyright: reportMissingTypeArgument=false
-
-
-# note: unknown types introduced from pyyaml
 
 from typing import Any
 import yaml
@@ -56,7 +56,6 @@ def _is_metadata_type(value: object) -> bool:
 
 
 def _is_primitive_type(value: object) -> bool:
-    """A test for common literal types"""
     return isinstance(value, (int, float, str, bool, complex, bytes))
 
 
@@ -73,7 +72,9 @@ def _is_metadata_dict(data: object) -> bool:
         return False
     # data is now of type dict[str, ...]
     return all(
-        [_is_metadata_type(value) for value in data.values()]  # type: ignore
+        [_is_metadata_type(value) 
+         for value 
+         in data.values()]  # type: ignore
     )
 
 
@@ -102,17 +103,10 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
         the output of yaml.safe_load()
 
     Returns:
-        a tuple. In the first member of the tuple a dictionary
-        with strings as keys, or empty if the parsed yaml object
-        is not a dictionary with these properties. When the
-        parsed yaml object is a list, returns the first element
-        of the list in the first tuple element if this element is
-        a dictionary with these characterisics.
-        The second element of the tuple is dictionaries with
-        other keys or the rest of dictionary lists.
-        Non-dictionaries are purged.
-
-    Guarantees: pure function
+        a tuple. In the first member of the tuple a conformant
+        dictionary with strings as keys and values of primitive
+        types. The second member of the tuple is a list of 
+        yaml data.
     """
 
     part: MetadataDict = {}
@@ -181,8 +175,9 @@ def desplit_yaml_parse(
     split_parse: ParsedYaml | None,
 ) -> ConformantYaml:
     """
-    Reconstitute the original object constructed by yaml_parse.
-    Dictionaries that were splitted will remain splitted.
+    Reconstitute the original yaml object from the tuple
+    constructed by yaml_parse. Dictionaries that were splitted
+    as some values were not elementary remain splitted.
     """
     if split_parse is None:
         return {}
