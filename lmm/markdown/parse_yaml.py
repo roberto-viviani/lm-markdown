@@ -11,15 +11,15 @@ exchange messages with the language model.
 
 The YAML object contained in a metadata block is decomposed into two,
 'part', and 'whole'. The 'part' component is the one that may be used
-in the rest of the application. The whole part is kept aside and 
+in the rest of the application. The whole part is kept aside and
 recomposed with the part when the whole YAML object is reconstituted.
 
-Conformant YAML objects consist of dictionaries, or list of 
+Conformant YAML objects consist of dictionaries, or list of
 dictionaries of type dict[str, elementary_type] where elementary type
 is one of int, float, bool, str. All other objects will be put in
 whole.
 
-YAML objects consisting of literals only will raise an exception, 
+YAML objects consisting of literals only will raise an exception,
 since it is conceivable that the user inteded something different.
 Byte/imaginary literals are put in whole.
 """
@@ -32,25 +32,44 @@ Byte/imaginary literals are put in whole.
 # pyright: reportUnknownParameterType=false
 # pyright: reportMissingTypeArgument=false
 
-from typing import Any
+from typing import Any, cast, Mapping
 import yaml
 import re
 
 # TODO: move function using these to scan
 # from lmm.scan.scan_keys import QUERY_KEY, MESSAGE_KEY, EDIT_KEY
 
-# Conformant input
-MetadataValue = str | int | bool | float
+# The parsed yaml object. ParsedYaml is a tuple with the first
+# member being a dictionary with which we can work, and the
+# rest a list of things we cannot. The MetadataValue restricts the
+# values in the dictionary. We allow only one level of recursion in
+# the type definition, because , but defining recursive types is a
+# challenge with Pydantic and python versions
+MetadataValue = (
+    str
+    | int
+    | bool
+    | float
+    | list[str | int | bool | float]
+    | dict[
+        str, str | int | bool | float | list[str | int | bool | float]
+    ]
+)
 MetadataDict = dict[str, MetadataValue]
-ConformantYaml = MetadataDict | list[MetadataDict]
-ParsedYaml = tuple[MetadataDict, list[dict]]
+ParsedYaml = tuple[dict[str, MetadataValue], list]
 
 
 def _is_metadata_type(value: object) -> bool:
-    """Alas, required to match on MetadataValue"""
+    """Alas, required to match on MetadataValue. This is completely
+    recursive, unlike the MetadataValue type. Also lists end up
+    being nestable."""
     match value:
         case str() | int() | bool() | float():
             return True
+        case list():
+            return all([_is_metadata_type(x) for x in value])
+        case dict():
+            return _is_metadata_dict(value)
         case _:
             return False
 
@@ -71,11 +90,8 @@ def _is_metadata_dict(data: object) -> bool:
     if not _is_string_dict(data):
         return False
     # data is now of type dict[str, ...]
-    return all(
-        [_is_metadata_type(value) 
-         for value 
-         in data.values()]  # type: ignore
-    )
+    data = cast(dict, data)
+    return all([_is_metadata_type(value) for value in data.values()])
 
 
 def _split_metadata_dict(
@@ -105,7 +121,7 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
     Returns:
         a tuple. In the first member of the tuple a conformant
         dictionary with strings as keys and values of primitive
-        types. The second member of the tuple is a list of 
+        types. The second member of the tuple is a list of
         yaml data.
     """
 
@@ -172,8 +188,8 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
 
 
 def desplit_yaml_parse(
-    split_parse: ParsedYaml | None,
-) -> ConformantYaml:
+    split_parse: tuple[Mapping[str, MetadataValue], list] | None,
+):
     """
     Reconstitute the original yaml object from the tuple
     constructed by yaml_parse. Dictionaries that were splitted

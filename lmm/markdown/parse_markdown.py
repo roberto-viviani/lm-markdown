@@ -60,7 +60,7 @@ from typing_extensions import Literal
 import re
 
 from . import parse_yaml as pya
-from .parse_yaml import MetadataDict, ConformantYaml
+from .parse_yaml import MetadataDict
 import yaml
 
 
@@ -81,7 +81,7 @@ class MetadataBlock(BaseModel):
         if self.comment:
             strrep = strrep + " # " + self.comment
         # reconstitute original yaml block (see parse_yaml.py)
-        content: ConformantYaml = pya.desplit_yaml_parse(
+        content = pya.desplit_yaml_parse(
             (self.content, self._private)
         )
         strrep = strrep + '\n' + pya.dump_yaml(content)
