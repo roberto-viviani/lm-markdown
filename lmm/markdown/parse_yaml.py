@@ -25,12 +25,8 @@ Byte/imaginary literals are put in whole.
 """
 
 # note: unknown types introduced from pyyaml
-
-# pyright: reportUnknownMemberType=false
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false
-# pyright: reportUnknownParameterType=false
-# pyright: reportMissingTypeArgument=false
 
 from typing import Any, cast, Mapping
 import yaml
@@ -56,7 +52,7 @@ MetadataValue = (
     ]
 )
 MetadataDict = dict[str, MetadataValue]
-ParsedYaml = tuple[dict[str, MetadataValue], list]
+ParsedYaml = tuple[dict[str, MetadataValue], list[object]]
 
 
 def _is_metadata_type(value: object) -> bool:
@@ -90,26 +86,26 @@ def _is_metadata_dict(data: object) -> bool:
     if not _is_string_dict(data):
         return False
     # data is now of type dict[str, ...]
-    data = cast(dict, data)
+    data = cast(dict[str, object], data)
     return all([_is_metadata_type(value) for value in data.values()])
 
 
 def _split_metadata_dict(
-    values: dict[str, Any],
-) -> tuple[MetadataDict, list]:
+    values: dict[str, object],
+) -> tuple[MetadataDict, list[object]]:
     """Eliminate all values in yaml header that are not in
     the conformant value set"""
-    newdict = {}
+    newdict: MetadataDict = {}
     bin = {}
     for v in values.keys():
         if _is_metadata_type(values[v]):
-            newdict[v] = values[v]
+            newdict[v] = values[v]  # type: ignore
         else:
             bin[v] = values[v]
     return (newdict, [bin]) if bin else (newdict, [])
 
 
-def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
+def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
     """
     Constrain output of parsed yaml objects to a tuple that
     represents a conformant ParsedYaml type, and the original
@@ -126,7 +122,7 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
     """
 
     part: MetadataDict = {}
-    whole: list[dict] = []
+    whole: list[object] = []
     match yamldata:
         case None | [] | [None]:
             pass
@@ -188,8 +184,10 @@ def split_yaml_parse(yamldata: Any | None) -> ParsedYaml:
 
 
 def desplit_yaml_parse(
-    split_parse: tuple[Mapping[str, MetadataValue], list] | None,
-):
+    split_parse: (
+        tuple[Mapping[str, MetadataValue], list[object]] | None
+    ),
+) -> Any:
     """
     Reconstitute the original yaml object from the tuple
     constructed by yaml_parse. Dictionaries that were splitted
@@ -210,14 +208,17 @@ def desplit_yaml_parse(
 
 
 def dump_yaml(x: Any) -> str:
-    x = yaml.safe_dump(
-        x,
-        default_flow_style=False,
-        width=float("Inf"),
-        encoding="utf-8",
-        allow_unicode=True,
-        indent=1,
+    y: str = (
+        yaml.safe_dump(
+            x,
+            default_flow_style=False,
+            width=float("Inf"),
+            encoding="utf-8",
+            allow_unicode=True,
+            indent=1,
+        )
+        .decode("utf-8")
+        .replace("'''", "'")
+        .replace("__NEWLINE__", "\n")
     )
-    x = x.decode("utf-8")
-    x = x.replace("'''", "'").replace("__NEWLINE__", "\n")
-    return re.sub(r"\n\.\.\.\n$", "", x)
+    return re.sub(r"\n\.\.\.\n$", "", y)

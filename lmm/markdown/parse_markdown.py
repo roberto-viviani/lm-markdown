@@ -27,16 +27,8 @@ with the following exceptions:
 
 """
 
-# pyright: reportUnknownMemberType=false
-# pyright: reportUnknownVariableType=false
-# pyright: reportUnknownArgumentType=false
+# private use as protected
 # pyright: reportPrivateUsage=false
-
-# note: unknown types introduced from pyyaml; private use ok
-#   here as it is within a protected family
-
-# TODO: fix this
-# pyright: reportUnnecessaryIsInstance=false
 
 # Definition of the grammar (informal). The lexemes are here entire
 #     lines, not words
@@ -73,7 +65,7 @@ class MetadataBlock(BaseModel):
 
     content: MetadataDict
     comment: str = ""
-    _private: list[dict[Any, Any]] = []
+    _private: list[object] = []
     type: Literal['metadata'] = 'metadata'
 
     def serialize(self) -> str:
@@ -166,7 +158,7 @@ class MetadataBlock(BaseModel):
                     content="Metadata contains a list of objects, "
                     + "with the first object not being an acceptable "
                     + "dictionary for LM markdown:\n"
-                    + str(whole[0])
+                    + str(whole[0])  # type: ignore
                     + "\n",
                     origin=invalid_meta,
                 )
