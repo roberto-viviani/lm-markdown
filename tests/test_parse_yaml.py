@@ -250,13 +250,13 @@ class TestMarkdownMetadata(unittest.TestCase):
 
     def test_desplit_nopart_complexwhole(self):
         part = {}
-        whole = [{(0, 1): 1}]
+        whole: list[object] = [{(0, 1): 1}]
         data = part, whole
         self.assertEqual(desplit_yaml_parse(data), whole[0])
 
     def test_desplit_part_whole(self):
         part = {"First": 1}
-        whole = [{"This": 0}]
+        whole: list[object] = [{"This": 0}]
         data = part, whole
         outcome = [{"First": 1}, {"This": 0}]
         self.assertEqual(desplit_yaml_parse(data), outcome)
@@ -342,6 +342,20 @@ class TestMarkdownMetadata(unittest.TestCase):
         original = ["a string", 123, None]
         expected_reloaded = original
         self._assert_serialization_logic(original, expected_reloaded)
+
+
+class TestMarkdownMetadataText(unittest.TestCase):
+
+    def test_nonconformant_dict(self):
+        # It turns out safe_load always takes keys to be strings
+        text = "(0, 1): text"
+        yamldata = yaml.safe_load(text)
+        part, whole = split_yaml_parse(yamldata)
+        self.assertTrue(bool(part))
+        self.assertFalse(bool(whole))
+        self.assertEqual(
+            serialize_yaml_parse((part, whole)).strip(), text
+        )
 
 
 if __name__ == '__main__':

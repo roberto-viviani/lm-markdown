@@ -2,8 +2,8 @@
 title: My Document
 author: John Doe
 internal:
-- first: 1
-- second: 2
+  first: 1
+  second: 2
 ---
 
 There is some text after the header without a preceding title.

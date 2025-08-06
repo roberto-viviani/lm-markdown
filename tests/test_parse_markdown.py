@@ -1,8 +1,5 @@
 """Unit tests for parse_markdown_text function from lmm.markdown.parse_markdown module."""
 
-# black: noqa
-# flake8: noqa
-
 import unittest
 from lmm.markdown.parse_markdown import (
     parse_markdown_text,
@@ -85,9 +82,10 @@ Third paragraph."""
             if isinstance(block, HeadingBlock):
                 self.assertEqual(block.level, i + 1)
                 self.assertEqual(block.content, f"Level {i + 1}")
-        self.assertEqual(content, 
-                         serialize_blocks(result).replace("\n\n", 
-                                                          "\n").strip())
+        self.assertEqual(
+            content,
+            serialize_blocks(result).replace("\n\n", "\n").strip(),
+        )
 
     def test_heading_with_attributes(self):
         """Test parsing heading with attributes."""
@@ -111,6 +109,7 @@ Third paragraph."""
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ErrorBlock)
+        print(result[0].get_info())
         self.assertIn("Empty heading content", result[0].content)
 
     def test_heading_with_attributes_but_no_text_error(self):
@@ -187,9 +186,11 @@ second:
         self.assertIsInstance(
             result[0], HeaderBlock
         )  # First block becomes header
-        print(result[0].get_info())
         self.assertEqual(result[0].content['first'], 1)
-        self.assertEqual(result[0]._private[0]['second'], content['second'])
+        self.assertDictEqual(
+            result[0].content['second'],
+            {'word': "my word", 'number': 1},
+        )
 
     def test_unclosed_metadata_block_error(self):
         """Test that unclosed metadata blocks generate errors."""
@@ -215,7 +216,7 @@ invalid: [unclosed list
         self.assertIn("YAML parse error", result[0].content)
 
     def test_non_conformant_dictionary_error(self):
-        """Test non-conformant dictionary generates error."""
+        """Test non-conformant dictionary"""
         content = """--- # non-conformant dictionary
 (0, 1): a tuple
 (1, 2): another tuple
@@ -223,7 +224,9 @@ invalid: [unclosed list
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(result[0], ErrorBlock)
+        self.assertIsInstance(result[0], HeaderBlock)
+        print(result[0].get_info())
+        self.assertEqual(result[0].get_key('title', ""), "Title")
 
     def test_mixed_content_types(self):
         """Test parsing mixed content with headers, metadata, headings, and text."""

@@ -59,7 +59,6 @@ import yaml
 # We define a discriminated union for the block types, in functional
 # style, but we also add centralized handling of common functions,
 # OOP-style.
-# _from_tokens() is a factory used by the parser
 class MetadataBlock(BaseModel):
     """Parsed markdown block containing metadata"""
 
@@ -73,10 +72,10 @@ class MetadataBlock(BaseModel):
         if self.comment:
             strrep = strrep + " # " + self.comment
         # reconstitute original yaml block (see parse_yaml.py)
-        content = pya.desplit_yaml_parse(
+        content: str = pya.serialize_yaml_parse(
             (self.content, self._private)
         )
-        strrep = strrep + '\n' + pya.dump_yaml(content)
+        strrep = strrep + '\n' + content
         return strrep + "---\n"
 
     def get_info(self) -> str:
@@ -86,7 +85,9 @@ class MetadataBlock(BaseModel):
             pya.dump_yaml(self.content) if self.content else "<empty>"
         )
         if self._private:
-            info += "\n\nAdditional data:" + str(self._private)
+            info += "\n\nAdditional data:\n" + pya.dump_yaml(
+                self._private
+            )
         return info
 
     def get_content(self) -> str:
@@ -106,6 +107,12 @@ class MetadataBlock(BaseModel):
     def _from_tokens(
         stack: list[Tuple['Token', str]],
     ) -> 'MetadataBlock | ErrorBlock':
+        if not stack:
+            # this is a programming error
+            raise ValueError(
+                "Invalid call to _from_tokens with empty list."
+            )
+
         # check for comments
         comment_match = stack[0][1].strip().split('#', 1)
         comment = (
@@ -134,61 +141,50 @@ class MetadataBlock(BaseModel):
         except ValueError as e:
             offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
-                content="\nInvalid LM markdown in metadata block\n"
+                content="\nInvalid LM markdown in metadata block:\n"
                 + str(e),
                 errormsg=str(e),
                 origin=offending_meta,
             )
 
-        if not part:
-            invalid_meta = '\n'.join([y for (_, y) in stack])
-            if not whole:  # empty list
-                return ErrorBlock(
-                    content="Invalid or empty metadata block",
-                    origin=invalid_meta,
-                )
-            elif len(whole) == 1:
-                return ErrorBlock(
-                    content="Metadata contains a dictionary that is"
-                    + " not acceptable for use in LM markdown",
-                    origin=invalid_meta,
-                )
-            elif isinstance(whole[0], dict):
-                return ErrorBlock(
-                    content="Metadata contains a list of objects, "
-                    + "with the first object not being an acceptable "
-                    + "dictionary for LM markdown:\n"
-                    + str(whole[0])  # type: ignore
-                    + "\n",
-                    origin=invalid_meta,
-                )
-            else:
-                return ErrorBlock(
-                    content="Metadata contains a list of literals, "
-                    + "such as strings, numbers, or other lists."
-                    + " Put the list in a tag instead.",
-                    origin=invalid_meta,
-                )
+        if not part and not whole:
+            return ErrorBlock(
+                content="Invalid or empty metadata block",
+                origin="",
+            )
+        # We should be able to cope with this now
+        # if not part:
+        #     invalid_meta = '\n'.join([y for (_, y) in stack])
+        #     return ErrorBlock(
+        #         content="Metadata contains a dictionary or a list"
+        #         + "of dictionaries that not acceptable for use in"
+        #         + " LM markdown",
+        #         origin=invalid_meta,
+        #     )
+
         try:
             block = MetadataBlock(
                 content=part, _private=whole, comment=comment
             )
-        except Exception as e:
+        except Exception:
             return ErrorBlock(
                 content="Could not parse metadata:"
-                + " YAML object not supported.",
-                errormsg=str(e),
+                + " YAML object type not supported.",
+                errormsg="",  # this will be a convoluted pydantic message
                 origin='\n'.join([y for (_, y) in stack]),
             )
         return block
 
     @staticmethod
-    def _from_dict(dct: dict[str, Any]) -> 'MetadataBlock|ErrorBlock':
-        if any([not isinstance(k, str) for k in dct.keys()]):
+    def _from_dict(
+        dct: dict[object, object],
+    ) -> 'MetadataBlock|ErrorBlock':
+        if not pya.is_metadata_dict(dct):
             return ErrorBlock(
                 content="Invalid dictionary in metadata"
             )
-        return MetadataBlock(content=dct)
+        # now dct is a metadata dict
+        return MetadataBlock(content=dct)  # type: ignore
 
 
 class HeaderBlock(MetadataBlock):
@@ -203,21 +199,31 @@ class HeaderBlock(MetadataBlock):
             pya.dump_yaml(self.content) if self.content else "<empty>"
         )
         if self._private:
-            info += "\n\nAdditional data:" + str(self._private)
+            info += "\n\nAdditional data:" + pya.dump_yaml(
+                self._private
+            )
         return info
 
     def deep_copy(self) -> 'HeaderBlock':
         return self.model_copy(deep=True)
 
     @staticmethod
-    def _from_metadata_block(block: MetadataBlock) -> 'HeaderBlock':
+    def _from_metadata_block(
+        block: MetadataBlock,
+    ) -> 'HeaderBlock|ErrorBlock':
         if 'title' not in block.content:
             block.content['title'] = "Title"
-        return HeaderBlock(
-            content=block.content,
-            comment=block.comment,
-            _private=block._private,
-        )
+        try:
+            hblock = HeaderBlock(
+                content=block.content,
+                comment=block.comment,
+                _private=block._private,
+            )
+        except Exception as e:
+            return ErrorBlock(
+                content="Could not parse header", errormsg=str(e)
+            )
+        return hblock
 
     @staticmethod
     def _from_tokens(
@@ -618,10 +624,7 @@ def parse_markdown_text(content: str) -> list[Block]:
 
     # preproc
     lines = (
-        content.replace('\r\n', '\n')
-        .replace('\r', '\n')
-        .strip()
-        .split('\n')
+        content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
     )
 
     # proc
