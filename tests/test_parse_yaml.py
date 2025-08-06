@@ -357,6 +357,41 @@ class TestMarkdownMetadataText(unittest.TestCase):
             serialize_yaml_parse((part, whole)).strip(), text
         )
 
+    # mapped keys
+    def test_mapped_key(self):
+        text = "?: Why is the sky blue?\nresp: Rayleigh phenomenon"
+        yamldata = yaml.safe_load(text)
+        part, whole = split_yaml_parse(yamldata, {'?': "query"})
+        self.assertDictEqual(
+            part,
+            {
+                'query': "Why is the sky blue?",
+                'resp': "Rayleigh phenomenon",
+            },
+        )
+        self.assertEqual(
+            serialize_yaml_parse((part, whole)).strip(),
+            "query: Why is the sky blue?\nresp: Rayleigh phenomenon",
+        )
+
+    def test_mapped_keys(self):
+        text = "?: Why is the sky blue?\n+: Rayleigh phenomenon"
+        yamldata = yaml.safe_load(text)
+        part, whole = split_yaml_parse(
+            yamldata, {'?': "query", '+': "resp"}
+        )
+        self.assertDictEqual(
+            part,
+            {
+                'query': "Why is the sky blue?",
+                'resp': "Rayleigh phenomenon",
+            },
+        )
+        self.assertEqual(
+            serialize_yaml_parse((part, whole)).strip(),
+            "query: Why is the sky blue?\nresp: Rayleigh phenomenon",
+        )
+
 
 if __name__ == '__main__':
     unittest.main(

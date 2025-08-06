@@ -105,20 +105,25 @@ def is_metadata_dict(data: object) -> bool:
     return all([_is_metadata_type(value) for value in data.values()])
 
 
-def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
+def split_yaml_parse(
+    yamldata: object | None,
+    mapped_keys: Mapping[str, str] | None = None,
+) -> ParsedYaml:
     """
     Constrain output of parsed yaml objects to a tuple that
     represents a conformant ParsedYaml type, and the original
     object
 
     Args:
-        the output of yaml.safe_load()
+        yamldata: the output of yaml.safe_load()
+        mapped_keys: a dict-type to replace keys in the parsed
+            yaml object
 
     Returns:
         a tuple. In the first member of the tuple a conformant
-        dictionary with strings as keys and values of primitive
-        types. The second member of the tuple is a list of
-        yaml data.
+        dictionary with strings as keys and values of conformant
+        types. The second member of the tuple is a list of yaml
+        data that could not be parsed.
     """
 
     part: MetadataDict = {}
@@ -154,8 +159,7 @@ def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
         case _ as value if _is_metadata_type(value):
             # someone is specifying data as a literal
             raise ValueError(
-                "Data in markdown header must "
-                + "follow a property.\n"
+                "Data in markdown header must follow a property.\n"
                 + "Specify the data like this:\n"
                 + f"property_name: {value}"
             )
@@ -164,21 +168,18 @@ def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
         case _:
             # non-dictionary
             raise ValueError(
-                "Invalid YAML object type for markdown header (not a dict or list)"
+                "Invalid YAML object type for markdown header (not"
+                + " a dict or list)"
             )
 
-    # # replace shortcuts for language model interactions
-    # if isinstance(part, dict):
-    #     keys = [k for k in part.keys()]  # copy
-    #     for key in keys:
-    #         if key == "?":
-    #             part[QUERY_KEY] = part.pop(key)
-    #         elif key == "+":
-    #             part[MESSAGE_KEY] = part.pop(key)
-    #         elif key == "=":
-    #             part[EDIT_KEY] = part.pop(key)
-    #         else:
-    #             pass
+    if mapped_keys is not None and bool(part):
+        # need a copy of the keys
+        keys: list[str] = [k for k in part.keys()]  # type: ignore
+        for key in keys:
+            for new_key in mapped_keys:
+                if key == new_key:
+                    part[mapped_keys[new_key]] = part.pop(key)  # type: ignore
+                    break
 
     return part, whole
 
