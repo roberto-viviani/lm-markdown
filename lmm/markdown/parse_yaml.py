@@ -207,6 +207,19 @@ def desplit_yaml_parse(
         return [part] + whole
 
 
+def serialize_yaml_parse(
+    split_parse: (
+        tuple[Mapping[str, MetadataValue], list[object]] | None
+    ),
+) -> str:
+    """
+    Reconstitute a yaml string from the tuple
+    constructed by yaml_parse. Dictionaries that were splitted
+    as some values were not elementary remain splitted.
+    """
+    return dump_yaml(desplit_yaml_parse(split_parse))
+
+
 def dump_yaml(x: Any) -> str:
     y: str = (
         yaml.safe_dump(
