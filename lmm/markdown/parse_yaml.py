@@ -65,7 +65,7 @@ def _is_metadata_type(value: object) -> bool:
         case list():
             return all([_is_metadata_type(x) for x in value])
         case dict():
-            return _is_metadata_dict(value)
+            return is_metadata_dict(value)
         case _:
             return False
 
@@ -82,14 +82,6 @@ def _is_string_dict(data: object) -> bool:
     return True
 
 
-def _is_metadata_dict(data: object) -> bool:
-    if not _is_string_dict(data):
-        return False
-    # data is now of type dict[str, ...]
-    data = cast(dict[str, object], data)
-    return all([_is_metadata_type(value) for value in data.values()])
-
-
 def _split_metadata_dict(
     values: dict[str, object],
 ) -> tuple[MetadataDict, list[object]]:
@@ -103,6 +95,14 @@ def _split_metadata_dict(
         else:
             bin[v] = values[v]
     return (newdict, [bin]) if bin else (newdict, [])
+
+
+def is_metadata_dict(data: object) -> bool:
+    if not _is_string_dict(data):
+        return False
+    # data is now of type dict[str, ...]
+    data = cast(dict[str, object], data)
+    return all([_is_metadata_type(value) for value in data.values()])
 
 
 def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
@@ -130,7 +130,7 @@ def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
             pass
         case list() as value if value == [[]]:
             pass
-        case list() if _is_metadata_dict(yamldata[0]):
+        case list() if is_metadata_dict(yamldata[0]):
             # set reference to chosen element of the list
             part = yamldata[0]
             if len(yamldata) > 1:
@@ -138,11 +138,11 @@ def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
         case list() if _is_string_dict(yamldata[0]):
             # heterogeneous dict in first position
             part, bin = _split_metadata_dict(yamldata[0])
-            whole = bin + yamldata[1:] if len(yamldata) > 1 else bin
+            whole = (bin + yamldata[1:]) if len(yamldata) > 1 else bin
         case list():
             # invalid dictionary in first element or list of non-dict
             whole = yamldata
-        case dict() if _is_metadata_dict(yamldata):
+        case dict() if is_metadata_dict(yamldata):
             # we keep whole to empty, as there is no list
             part = yamldata
         case dict() if _is_string_dict(yamldata):
@@ -164,7 +164,7 @@ def split_yaml_parse(yamldata: object | None) -> ParsedYaml:
         case _:
             # non-dictionary
             raise ValueError(
-                "Invalid YAML object for markdown header"
+                "Invalid YAML object type for markdown header (not a dict or list)"
             )
 
     # # replace shortcuts for language model interactions
