@@ -178,7 +178,8 @@ def split_yaml_parse(
         for key in keys:
             for new_key in mapped_keys:
                 if key == new_key:
-                    part[mapped_keys[new_key]] = part.pop(key)  # type: ignore
+                    part[mapped_keys[new_key]] = \
+                        part.pop(key)  # type: ignore
                     break
 
     return part, whole
@@ -220,12 +221,14 @@ def serialize_yaml_parse(
     constructed by yaml_parse. Dictionaries that were splitted
     as some values were not elementary remain splitted.
     """
-    return dump_yaml(desplit_yaml_parse(split_parse))
+    yamldata = desplit_yaml_parse(split_parse)
+    return dump_yaml(yamldata)
 
 
 def dump_yaml(x: Any) -> str:
     if x is None:
         return ""
+
     y: str = (
         yaml.safe_dump(
             x,
