@@ -64,7 +64,7 @@ class MetadataBlock(BaseModel):
 
     content: MetadataDict
     comment: str = ""
-    _private: list[object] = []
+    private_: list[object] = []
     type: Literal['metadata'] = 'metadata'
 
     def serialize(self) -> str:
@@ -73,7 +73,7 @@ class MetadataBlock(BaseModel):
             strrep = strrep + " # " + self.comment
         # reconstitute original yaml block (see parse_yaml.py)
         content: str = pya.serialize_yaml_parse(
-            (self.content, self._private)
+            (self.content, self.private_)
         )
         strrep = strrep + '\n' + content
         return strrep + "---\n"
@@ -84,9 +84,9 @@ class MetadataBlock(BaseModel):
         info += (
             pya.dump_yaml(self.content) if self.content else "<empty>"
         )
-        if self._private:
+        if self.private_:
             info += "\n\nAdditional data:\n" + pya.dump_yaml(
-                self._private
+                self.private_
             )
         return info
 
@@ -147,7 +147,7 @@ class MetadataBlock(BaseModel):
                 origin=offending_meta,
             )
 
-        if not part and not whole:
+        if (not part) and (not whole):
             return ErrorBlock(
                 content="Invalid or empty metadata block",
                 origin="",
@@ -164,21 +164,21 @@ class MetadataBlock(BaseModel):
 
         try:
             block = MetadataBlock(
-                content=part, _private=whole, comment=comment
+                content=part, private_=whole, comment=comment
             )
         except Exception:
             # For the errors caught by pydantic
             try:
                 block = MetadataBlock(
                     content={},
-                    _private=[part] + whole,
+                    private_=[part] + whole,
                     comment=comment,
                 )
             except Exception:
                 return ErrorBlock(
                     content="Could not parse metadata:"
                     + " YAML object type not supported.",
-                    errormsg="",  # this will be a convoluted pydantic message
+                    errormsg="",  # a convoluted pydantic message
                     origin='\n'.join([y for (_, y) in stack]),
                 )
         return block
@@ -206,9 +206,9 @@ class HeaderBlock(MetadataBlock):
         info += (
             pya.dump_yaml(self.content) if self.content else "<empty>"
         )
-        if self._private:
+        if self.private_:
             info += "\n\nAdditional data:" + pya.dump_yaml(
-                self._private
+                self.private_
             )
         return info
 
@@ -225,7 +225,7 @@ class HeaderBlock(MetadataBlock):
             hblock = HeaderBlock(
                 content=block.content,
                 comment=block.comment,
-                _private=block._private,
+                private_=block.private_,
             )
         except Exception as e:
             return ErrorBlock(

@@ -1,4 +1,7 @@
-"""Unit tests for parse_markdown_text function from lmm.markdown.parse_markdown module."""
+# flake8: noqa
+
+"""Unit tests for parse_markdown_text function from
+lmm.markdown.parse_markdown module."""
 
 import unittest
 from lmm.markdown.parse_markdown import (
@@ -32,9 +35,7 @@ class TestParseMarkdownText(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], TextBlock)
-        self.assertEqual(
-            result[0].content, "This is a simple text block."
-        )
+        self.assertEqual(result[0].content, "This is a simple text block.")
         self.assertEqual(content, serialize_blocks(result))
 
     def test_multiple_text_blocks(self):
@@ -134,8 +135,8 @@ author: John Doe
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], HeaderBlock)
-        self.assertEqual(result[0].content['title'], "My Document")
-        self.assertEqual(result[0].content['author'], "John Doe")
+        self.assertEqual(result[0].content["title"], "My Document")
+        self.assertEqual(result[0].content["author"], "John Doe")
 
     def test_header_block_with_comment(self):
         """Test header block with comment."""
@@ -148,7 +149,7 @@ author: John Doe
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], HeaderBlock)
         self.assertEqual(result[0].comment, "This is a comment")
-        self.assertEqual(result[0].content['title'], "My Document")
+        self.assertEqual(result[0].content["title"], "My Document")
 
     def test_metadata_block_not_first(self):
         """Test that metadata blocks after the first are MetadataBlock, not HeaderBlock."""
@@ -167,9 +168,7 @@ Some text.
         self.assertIsInstance(result[0], HeaderBlock)
         self.assertIsInstance(result[1], TextBlock)
         self.assertIsInstance(result[2], MetadataBlock)
-        self.assertEqual(
-            result[2].comment, 'questions already in original'
-        )
+        self.assertEqual(result[2].comment, "questions already in original")
         self.assertEqual(content, serialize_blocks(result).strip())
 
     def test_metadata_block_with_ellipsis_end(self):
@@ -183,13 +182,11 @@ second:
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(
-            result[0], HeaderBlock
-        )  # First block becomes header
-        self.assertEqual(result[0].content['first'], 1)
+        self.assertIsInstance(result[0], HeaderBlock)  # First block becomes header
+        self.assertEqual(result[0].content["first"], 1)
         self.assertDictEqual(
-            result[0].content['second'],
-            {'word': "my word", 'number': 1},
+            result[0].content["second"],
+            {"word": "my word", "number": 1},
         )
 
     def test_unclosed_metadata_block_error(self):
@@ -202,6 +199,7 @@ author: Test"""
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ErrorBlock)
         self.assertIn("Unclosed metadata block", result[0].content)
+        self.assertEqual(result[0].origin.strip(), content)
 
     def test_invalid_yaml_in_metadata_error(self):
         """Test that invalid YAML in metadata generates error."""
@@ -214,19 +212,23 @@ invalid: [unclosed list
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ErrorBlock)
         self.assertIn("YAML parse error", result[0].content)
+        self.assertEqual(result[0].origin.strip(), content)
 
     def test_non_conformant_dictionary_error(self):
         """Test non-conformant dictionary"""
-        content = """--- # non-conformant dictionary
-(0, 1): a tuple
-(1, 2): another tuple
+        content = """
+--- # non-conformant dictionary
+1: integer key
+2: another integer
 ---"""
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], HeaderBlock)
-        print(result[0].get_info())
-        self.assertEqual(result[0].get_key('title', ""), "Title")
+        self.assertEqual(result[0].get_key("title", ""), "Title")
+        self.assertDictEqual(
+            result[0].private_[0], {1: "integer key", 2: "another integer"}
+        )
 
     def test_mixed_content_types(self):
         """Test parsing mixed content with headers, metadata, headings, and text."""
@@ -280,7 +282,9 @@ Final text block."""
 
     def test_seven_hash_heading_treated_as_text(self):
         """Test that 7+ hash marks are treated as text, not headings."""
-        content = "####### This is text with 7 '#', should be recognized as simple text."
+        content = (
+            "####### This is text with 7 '#', should be recognized as simple text."
+        )
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
@@ -300,9 +304,11 @@ Final text block."""
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(
-            result[0], HeaderBlock
-        )  # First block becomes header
+        self.assertIsInstance(result[0], HeaderBlock)  # First block becomes header
+        self.assertDictEqual(result[0].content, 
+                             {"start": "the start", 'title': "Title"})
+        self.assertDictEqual(result[0].private_[0], 
+                             {"second": 2, "another": "item"})
 
     def test_metadata_with_multiline_string(self):
         """Test metadata with multiline string using | and > syntax."""
@@ -315,6 +321,7 @@ Final text block."""
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], HeaderBlock)
+        self.assertIn("~summary", result[0].content)
 
     def test_error_block_with_literal_content(self):
         """Test that literal content in metadata generates error."""
@@ -325,6 +332,7 @@ literal string
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ErrorBlock)
+        self.assertEqual(result[0].origin.strip(), content)
 
     def test_error_block_with_multiple_literals(self):
         """Test that multiple literals in metadata generate error."""
@@ -336,6 +344,7 @@ second literal
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ErrorBlock)
+        self.assertEqual(result[0].origin.strip(), content)
 
     def test_carriage_return_normalization(self):
         """Test that different line ending formats are normalized."""
@@ -354,9 +363,7 @@ second literal
 
         for result in [result_crlf, result_cr, result_lf]:
             self.assertIsInstance(result[0], TextBlock)
-            self.assertEqual(
-                result[0].content, "First line\nSecond line"
-            )
+            self.assertEqual(result[0].content, "First line\nSecond line")
 
     def test_blank_lines_handling(self):
         """Test that multiple blank lines are handled correctly."""
@@ -383,9 +390,7 @@ Text immediately after heading."""
         self.assertEqual(len(result), 2)
         self.assertIsInstance(result[0], HeadingBlock)
         self.assertIsInstance(result[1], TextBlock)
-        self.assertEqual(
-            result[1].content, "Text immediately after heading."
-        )
+        self.assertEqual(result[1].content, "Text immediately after heading.")
 
     def test_consecutive_headings(self):
         """Test consecutive headings without blank lines."""
@@ -418,9 +423,7 @@ This is some text immediately following a metadata block."""
     def test_complex_test_markdown_file_structure(self):
         """Test parsing the complex structure from test_markdown.md file."""
         # Read the test markdown file content
-        with open(
-            'tests/test_markdown.md', 'r', encoding='utf-8'
-        ) as f:
+        with open("tests/test_markdown.md", "r", encoding="utf-8") as f:
             content = f.read()
 
         result = parse_markdown_text(content)
@@ -430,19 +433,17 @@ This is some text immediately following a metadata block."""
 
         # First block should be HeaderBlock
         self.assertIsInstance(result[0], HeaderBlock)
-        self.assertEqual(result[0].content['title'], "My Document")
-        self.assertEqual(result[0].content['author'], "John Doe")
+        self.assertEqual(result[0].content["title"], "My Document")
+        self.assertEqual(result[0].content["author"], "John Doe")
 
         # Should contain various block types
         block_types = [type(block).__name__ for block in result]
-        self.assertIn('HeaderBlock', block_types)
-        self.assertIn('MetadataBlock', block_types)
-        self.assertIn('HeadingBlock', block_types)
-        self.assertIn('TextBlock', block_types)
-        self.assertIn(
-            'ErrorBlock', block_types
-        )  # Due to non-conformant content
+        self.assertIn("HeaderBlock", block_types)
+        self.assertIn("MetadataBlock", block_types)
+        self.assertIn("HeadingBlock", block_types)
+        self.assertIn("TextBlock", block_types)
+        self.assertIn("ErrorBlock", block_types)  # Due to non-conformant content
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

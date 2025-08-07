@@ -368,7 +368,7 @@ def collect_textblocks(
     Returns: a block list
 
     Note: the metadata_block members, corresponding to the
-        _private member of MetadataBlocks, are ignored.
+        private_ member of MetadataBlocks, are ignored.
     """
 
     if not root:
