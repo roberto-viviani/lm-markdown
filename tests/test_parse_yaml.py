@@ -273,8 +273,8 @@ class TestMarkdownMetadata(unittest.TestCase):
 
     def test_serialize_from_none_input(self):
         # split_yaml_parse(None) -> ({}, [])
-        # serialize_yaml_parse(({}, [])) dumps `{}` (p2)
-        self._assert_serialization_logic(None, {})
+        # serialize_yaml_parse(({}, [])) dumps `None``
+        self._assert_serialization_logic(None, None)
 
     def test_serialize_from_conformant_dict(self):
         original = {"key1": "value1", "key2": 2}
@@ -285,8 +285,8 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_serialize_from_empty_dict(self):
         original = {}
         # split_yaml_parse(original) -> (original, [])
-        # serialize_yaml_parse((original, [])) dumps `original` (p1)
-        self._assert_serialization_logic(original, original)
+        # serialize_yaml_parse((original, [])) dumps `original` as None
+        self._assert_serialization_logic(original, None)
 
     def test_serialize_from_non_conformant_dict(self):
         original = {1: "value1", "key2": "value2"}
@@ -297,8 +297,8 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_serialize_from_empty_list(self):
         original = []
         # split_yaml_parse(original) -> ({}, [])
-        # serialize_yaml_parse(({}, [])) dumps `[]` (p2)
-        self._assert_serialization_logic(original, {})
+        # serialize_yaml_parse(({}, [])) dumps `[]` as None
+        self._assert_serialization_logic(original, None)
 
     def test_serialize_from_list_first_conformant(self):
         original = [{"k1": "v1"}, {"k2": "v2"}]
@@ -345,6 +345,14 @@ class TestMarkdownMetadata(unittest.TestCase):
 
 
 class TestMarkdownMetadataText(unittest.TestCase):
+
+    def test_empty(self):
+        yamldata = yaml.safe_load("")
+        part, whole = split_yaml_parse(yamldata)
+        self.assertListEqual(whole, [])
+        self.assertDictEqual(part, {})
+        self.assertIsNone(desplit_yaml_parse((part, whole)))
+        self.assertEqual(serialize_yaml_parse((part, whole)), "")
 
     def test_nonconformant_dict(self):
         # It turns out safe_load always takes keys to be strings

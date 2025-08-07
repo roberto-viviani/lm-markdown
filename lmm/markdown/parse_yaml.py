@@ -195,8 +195,10 @@ def desplit_yaml_parse(
     as some values were not elementary remain splitted.
     """
     if split_parse is None:
-        return {}
+        return None
     part, whole = split_parse
+    if part == {} and whole == []:
+        return None
     if whole == []:
         return part
     if part == {}:
@@ -222,6 +224,8 @@ def serialize_yaml_parse(
 
 
 def dump_yaml(x: Any) -> str:
+    if x is None:
+        return ""
     y: str = (
         yaml.safe_dump(
             x,

@@ -167,12 +167,20 @@ class MetadataBlock(BaseModel):
                 content=part, _private=whole, comment=comment
             )
         except Exception:
-            return ErrorBlock(
-                content="Could not parse metadata:"
-                + " YAML object type not supported.",
-                errormsg="",  # this will be a convoluted pydantic message
-                origin='\n'.join([y for (_, y) in stack]),
-            )
+            # For the errors caught by pydantic
+            try:
+                block = MetadataBlock(
+                    content={},
+                    _private=[part] + whole,
+                    comment=comment,
+                )
+            except Exception:
+                return ErrorBlock(
+                    content="Could not parse metadata:"
+                    + " YAML object type not supported.",
+                    errormsg="",  # this will be a convoluted pydantic message
+                    origin='\n'.join([y for (_, y) in stack]),
+                )
         return block
 
     @staticmethod
