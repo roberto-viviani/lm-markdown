@@ -51,7 +51,7 @@ from .tree import (  # noqa: F401
 )
 
 from .treeutils import (  # noqa: F401
-    aggregate_content_in_parent_metadata as aggregate_content_in_parent_metadata,
+    summarize_content as summarize_content,
     inherit_metadata as inherit_metadata,
     extract_property as extract_property,
     collect_text as collect_text,

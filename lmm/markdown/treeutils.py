@@ -43,6 +43,7 @@ from .tree import (
     traverse_tree_nodetype,
     fold_tree,
     propagate_content,
+    extract_content,
 )
 from .parse_markdown import (
     Block,
@@ -54,12 +55,12 @@ from .parse_markdown import (
 # aggregation and inheritance---------------------------------------
 
 
-def aggregate_content_in_parent_metadata(
-    root_node: MarkdownNode,
+def summarize_content(
+    root_node: HeadingNode,
     key: str,
     summarize_func: Callable[[str], str],
     filter_func: Callable[[HeadingNode], bool] = lambda _: True,
-) -> MarkdownNode:
+) -> HeadingNode:
     """
     Collects content from leaf node children and outputs from non-leaf
     children, processes them with a processing function, and stores
@@ -73,45 +74,34 @@ def aggregate_content_in_parent_metadata(
         root_node: The root node of the markdown tree
         key: The metadata key of the heading nodes where to store the
             aggregate content, and read from to compute aggregation
-        summarize_func: Function to process the collected content
+        summarize_func: function to process the collected content
             before storing
         filter_func: a filter function to select the nodes that
             should be processed
     """
 
-    def process_node(node: MarkdownNode) -> None:
-        # Skip leaf nodes (they don't have children to summarize)
-        if not (isinstance(node, HeadingNode) and filter_func(node)):
-            return
+    def process_node(nodes: list[MarkdownNode]) -> str:
+        text: list[str] = []
+        for n in nodes:
+            match n:
+                case HeadingNode():
+                    value: str = str(n.get_metadata_for_key(key, ""))
+                    if value:
+                        text.append(value)
+                case TextNode():
+                    text.append(n.get_content())
+                case _:
+                    # MarkdownNode left, but is abstract
+                    raise RuntimeError(
+                        "Unreachable code reached: "
+                        + "unrecognized node type"
+                    )
+        if text:
+            return summarize_func("\n\n".join(text))
+        else:
+            return ""
 
-        # For parent nodes, collect content from children
-        collected_content: list[str] = []
-
-        for child in node.children:
-            if child.is_text_node():
-                # Collect content from direct TextBlock children
-                collected_content.append(child.get_content())
-            elif child.is_heading_node() and key in child.metadata:
-                # Collect summaries from parent children
-                collected_content.append(str(child.metadata[key]))
-                collected_content.append(str(child.metadata[key]))
-
-        # If we collected any content, process it and store in
-        # metadata
-        if collected_content:
-            joined_content = "\n\n".join(collected_content)
-            summary = summarize_func(joined_content)
-
-            # Initialize metadata dictionary if it doesn't exist
-            if not node.metadata:
-                node.metadata = {}
-
-            # Store the summary in metadata
-            node.metadata[key] = summary
-
-    # ensure children are processed before parents
-    post_order_traversal(root_node, process_node)
-    return root_node
+    return extract_content(root_node, key, process_node, filter_func)
 
 
 def inherit_metadata(
@@ -230,22 +220,43 @@ def extract_property(
 
     return node
 
+
 def propagate_property(
-        node: HeadingNode,
-        key: str,
-        add_key_info: bool = True,
-        select: bool = False
+    node: HeadingNode,
+    key: str,
+    add_key_info: bool = True,
+    select: bool = False,
 ) -> HeadingNode:
+    """Extract a property from the metadata of a heading node and
+    transform it into a child text node with content given by that
+    property.
+
+    Args:
+        node: the root or branch node to work on
+        key: the property to be moved into a text node
+        add_kay_info: if True, the metadata of the added text child
+            node will have a 'type' property with the value of the
+            transferred property.
+        select: if True, replaces all children of the heading node
+            with the new node containing the property of the metadata.
+            If the heading node has no such property, then the text
+            children are not altered.
+
+    Returns: the root node of the modified branch
+
+    NOTE: This function changes the structure of the tree
+    """
 
     def process_node(n: HeadingNode) -> TextNode:
         node: TextNode = TextNode.from_content(
             content=str(n.metadata.pop(key)),
-            metadata={'type': key} if add_key_info else {}
+            metadata={'type': key} if add_key_info else {},
         )
         return node
 
-    return propagate_content(node, process_node, select, 
-                             lambda n: key in n.metadata.keys())
+    return propagate_content(
+        node, process_node, select, lambda n: key in n.metadata.keys()
+    )
 
 
 # traverse ---------------------------------------------------------
