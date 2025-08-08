@@ -35,7 +35,9 @@ class TestParseMarkdownText(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], TextBlock)
-        self.assertEqual(result[0].content, "This is a simple text block.")
+        self.assertEqual(
+            result[0].content, "This is a simple text block."
+        )
         self.assertEqual(content, serialize_blocks(result))
 
     def test_multiple_text_blocks(self):
@@ -168,7 +170,9 @@ Some text.
         self.assertIsInstance(result[0], HeaderBlock)
         self.assertIsInstance(result[1], TextBlock)
         self.assertIsInstance(result[2], MetadataBlock)
-        self.assertEqual(result[2].comment, "questions already in original")
+        self.assertEqual(
+            result[2].comment, "questions already in original"
+        )
         self.assertEqual(content, serialize_blocks(result).strip())
 
     def test_metadata_block_with_ellipsis_end(self):
@@ -182,7 +186,9 @@ second:
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(result[0], HeaderBlock)  # First block becomes header
+        self.assertIsInstance(
+            result[0], HeaderBlock
+        )  # First block becomes header
         self.assertEqual(result[0].content["first"], 1)
         self.assertDictEqual(
             result[0].content["second"],
@@ -227,7 +233,8 @@ invalid: [unclosed list
         self.assertIsInstance(result[0], HeaderBlock)
         self.assertEqual(result[0].get_key("title", ""), "Title")
         self.assertDictEqual(
-            result[0].private_[0], {1: "integer key", 2: "another integer"}
+            result[0].private_[0],
+            {1: "integer key", 2: "another integer"},
         )
 
     def test_mixed_content_types(self):
@@ -265,6 +272,32 @@ Final text block."""
         self.assertIsInstance(result[6], HeadingBlock)
         self.assertIsInstance(result[7], TextBlock)
 
+    def test_mapped_keys(self):
+        """Test mapped keys in metadata."""
+        content = """
+---
+title: Mapped keys
+---
+
+This is some text after the header.
+
+---
+?: test123
+questions: What is this?
+---
+"""
+        result = parse_markdown_text(content, {'?': "query"})
+
+        # Should have: HeaderBlock, TextBlock, HeadingBlock
+        self.assertEqual(len(result), 3)
+        self.assertIsInstance(result[0], HeaderBlock)
+        self.assertIsInstance(result[1], TextBlock)
+        self.assertIsInstance(result[2], MetadataBlock)
+        self.assertEqual(result[2].get_key('query', ""), "test123")
+        self.assertEqual(
+            result[2].get_key('questions', ""), "What is this?"
+        )
+
     def test_heading_not_recognized_after_text_without_blank_line(
         self,
     ):
@@ -282,9 +315,7 @@ Final text block."""
 
     def test_seven_hash_heading_treated_as_text(self):
         """Test that 7+ hash marks are treated as text, not headings."""
-        content = (
-            "####### This is text with 7 '#', should be recognized as simple text."
-        )
+        content = "####### This is text with 7 '#', should be recognized as simple text."
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
@@ -304,11 +335,16 @@ Final text block."""
         result = parse_markdown_text(content)
 
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(result[0], HeaderBlock)  # First block becomes header
-        self.assertDictEqual(result[0].content, 
-                             {"start": "the start", 'title': "Title"})
-        self.assertDictEqual(result[0].private_[0], 
-                             {"second": 2, "another": "item"})
+        self.assertIsInstance(
+            result[0], HeaderBlock
+        )  # First block becomes header
+        self.assertDictEqual(
+            result[0].content,
+            {"start": "the start", 'title': "Title"},
+        )
+        self.assertDictEqual(
+            result[0].private_[0], {"second": 2, "another": "item"}
+        )
 
     def test_metadata_with_multiline_string(self):
         """Test metadata with multiline string using | and > syntax."""
@@ -363,7 +399,9 @@ second literal
 
         for result in [result_crlf, result_cr, result_lf]:
             self.assertIsInstance(result[0], TextBlock)
-            self.assertEqual(result[0].content, "First line\nSecond line")
+            self.assertEqual(
+                result[0].content, "First line\nSecond line"
+            )
 
     def test_blank_lines_handling(self):
         """Test that multiple blank lines are handled correctly."""
@@ -390,7 +428,9 @@ Text immediately after heading."""
         self.assertEqual(len(result), 2)
         self.assertIsInstance(result[0], HeadingBlock)
         self.assertIsInstance(result[1], TextBlock)
-        self.assertEqual(result[1].content, "Text immediately after heading.")
+        self.assertEqual(
+            result[1].content, "Text immediately after heading."
+        )
 
     def test_consecutive_headings(self):
         """Test consecutive headings without blank lines."""
@@ -423,7 +463,9 @@ This is some text immediately following a metadata block."""
     def test_complex_test_markdown_file_structure(self):
         """Test parsing the complex structure from test_markdown.md file."""
         # Read the test markdown file content
-        with open("tests/test_markdown.md", "r", encoding="utf-8") as f:
+        with open(
+            "tests/test_markdown.md", "r", encoding="utf-8"
+        ) as f:
             content = f.read()
 
         result = parse_markdown_text(content)
@@ -442,7 +484,9 @@ This is some text immediately following a metadata block."""
         self.assertIn("MetadataBlock", block_types)
         self.assertIn("HeadingBlock", block_types)
         self.assertIn("TextBlock", block_types)
-        self.assertIn("ErrorBlock", block_types)  # Due to non-conformant content
+        self.assertIn(
+            "ErrorBlock", block_types
+        )  # Due to non-conformant content
 
 
 if __name__ == "__main__":

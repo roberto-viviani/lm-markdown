@@ -45,7 +45,7 @@ with the following exceptions:
 
 
 from pathlib import Path
-from typing import Tuple, Any, Callable
+from typing import Tuple, Any, Callable, Mapping
 from pydantic import BaseModel
 from typing_extensions import Literal
 
@@ -117,6 +117,7 @@ class MetadataBlock(BaseModel):
     @staticmethod
     def _from_tokens(
         stack: list[Tuple['Token', str]],
+        mapped_keys: Mapping[str, str] | None = None,
     ) -> 'MetadataBlock | ErrorBlock':
         if not stack:
             # this is a programming error
@@ -148,7 +149,7 @@ class MetadataBlock(BaseModel):
         # use here in 'part', the rest of the block in 'whole'.
         # See parse_yaml.py for explanation.
         try:
-            part, whole = pya.split_yaml_parse(yamldata)
+            part, whole = pya.split_yaml_parse(yamldata, mapped_keys)
         except ValueError as e:
             # It is not clear if this error can occur.
             offending_meta = '\n'.join([y for (_, y) in stack])
@@ -261,8 +262,9 @@ class HeaderBlock(MetadataBlock):
     @staticmethod
     def _from_tokens(
         stack: list[Tuple['Token', str]],
+        mapped_keys: Mapping[str, str] | None = None,
     ) -> 'HeaderBlock | ErrorBlock':
-        block = MetadataBlock._from_tokens(stack)
+        block = MetadataBlock._from_tokens(stack, mapped_keys)
         if isinstance(block, MetadataBlock):
             return HeaderBlock._from_metadata_block(block)
         return block
@@ -546,7 +548,10 @@ def _tokenizer(lines: list[str]) -> list[Tuple[Token, str]]:
     return tokens
 
 
-def _parser(tokens: list[Tuple[Token, str]]) -> list[Block]:
+def _parser(
+    tokens: list[Tuple[Token, str]],
+    mapped_keys: Mapping[str, str] | None = None,
+) -> list[Block]:
     """Parse a list of tokens into a list of blocks.
 
     This function implements a simple state machine based on the first
@@ -580,6 +585,7 @@ def _parser(tokens: list[Tuple[Token, str]]) -> list[Block]:
     Args:
         tokens: A list of tuples, each containing a Token enum and the
             corresponding line text, as produced by _tokenizer
+        mapped_keys: a dictionary mapping keys to a replacement value
 
     Returns:
         A list of Block objects representing the parsed markdown
@@ -623,7 +629,7 @@ def _parser(tokens: list[Tuple[Token, str]]) -> list[Block]:
                             )
                         else:
                             block = MetadataBlock._from_tokens(
-                                block_stack
+                                block_stack, mapped_keys
                             )
                         document.append(block)
                         block_stack.clear()
@@ -678,11 +684,17 @@ def _parser(tokens: list[Tuple[Token, str]]) -> list[Block]:
     return document
 
 
-def parse_markdown_text(content: str) -> list[Block]:
+def parse_markdown_text(
+    content: str, mapped_keys: Mapping[str, str] | None = None
+) -> list[Block]:
     """Parse a pandoc markdown string into structured blocks.
 
     Args:
         content: a string containing markdown content.
+        mapped_keys: a dictionary mapping keys to a replacement value,
+            used to replace short-form of metadata entries of the
+            user (for example, ?: maps to query: for a mapped key of
+            {'?': "query"}).
 
     Returns:
         List of Block objects (HeaderBlock, MetadataBlock,
@@ -706,7 +718,7 @@ def parse_markdown_text(content: str) -> list[Block]:
 
     # proc
     tokens = _tokenizer(lines)
-    blocks = _parser(tokens)
+    blocks = _parser(tokens, mapped_keys)
 
     return blocks
 
