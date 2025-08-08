@@ -60,14 +60,22 @@ import yaml
 # style, but we also add centralized handling of common functions,
 # OOP-style.
 class MetadataBlock(BaseModel):
-    """Parsed markdown block containing metadata"""
+    """This object represents the data of a metadata block in a
+    markdown document.
 
-    content: MetadataDict
+    Important functions:
+    serialize()     reconstitute a text repreentation of the metadata
+    get_content()   the metadata
+    get_key(key, default) a metadata value indexed by key
+    """
+
+    content: MetadataDict = {}
     comment: str = ""
     private_: list[object] = []
     type: Literal['metadata'] = 'metadata'
 
     def serialize(self) -> str:
+        """A parsable textual representation of the block."""
         strrep = "---"
         if self.comment:
             strrep = strrep + " # " + self.comment
@@ -79,6 +87,7 @@ class MetadataBlock(BaseModel):
         return strrep + "---\n"
 
     def get_info(self) -> str:
+        """Printable block properties and content."""
         info = "\n-------------\nMetadata block"
         info += f" # {self.comment}\n" if self.comment else "\n"
         info += (
@@ -90,10 +99,12 @@ class MetadataBlock(BaseModel):
             )
         return info
 
-    def get_content(self) -> str:
-        return pya.dump_yaml(self.content) if self.content else ""
+    def get_content(self) -> MetadataDict:
+        """Returns a dictionary with the metadata."""
+        return self.content
 
     def get_key(self, key: str, default: str = ""):
+        """Returns the value of a key in the metadata."""
         return (
             self.content[key]
             if key in self.content.keys()
@@ -134,11 +145,12 @@ class MetadataBlock(BaseModel):
             )
 
         # this returns the part of the yaml block that we want to
-        # use here in 'part', the block itself in 'whole'.
+        # use here in 'part', the rest of the block in 'whole'.
         # See parse_yaml.py for explanation.
         try:
             part, whole = pya.split_yaml_parse(yamldata)
         except ValueError as e:
+            # It is not clear if this error can occur.
             offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
                 content="\nUnexpected error when checking metadata.",
@@ -195,11 +207,23 @@ class MetadataBlock(BaseModel):
 
 
 class HeaderBlock(MetadataBlock):
-    """Parsed markdown header block"""
+    """This object represents the header block of a markdown document.
+    It is the first block of the block list obtained from loading a
+    markdown file with load_markdown.
+    The behaviour of functions in this package when a header block is
+    is inserted by code in a position other than the first is
+    undefined.
+
+    Important functions:
+    serialize()     reconstitute a text repreentation of the metadata
+    get_content()   the metadata
+    get_key(key, default) a metadata value indexed by key
+    """
 
     type: Literal['header'] = 'header'  # type: ignore
 
     def get_info(self) -> str:
+        """Printable block properties and content."""
         info = "\n-------------\nHeader block"
         info += f" # {self.comment}\n" if self.comment else "\n"
         info += (
@@ -245,13 +269,21 @@ class HeaderBlock(MetadataBlock):
 
     @staticmethod
     def from_default(source: str = "") -> 'HeaderBlock':
+        """Instantiate a default header block."""
         if not source:
             source = "Title"
         return HeaderBlock(content={'title': source})
 
 
 class HeadingBlock(BaseModel):
-    """Parsed markdown heading"""
+    """This object represents a heading of the markdown document.
+    A heading is a single line starting with one to six '#'
+    characters followed by a space, and the title text.
+
+    Important functions:
+    serialize()     reconstitutes a text repreentation of the heading
+    get_content()   the title given by the heading text
+    """
 
     level: int
     content: str
@@ -259,17 +291,20 @@ class HeadingBlock(BaseModel):
     type: Literal['heading'] = 'heading'
 
     def serialize(self) -> str:
+        """A parsable textual representation of the block."""
         strrep = "#" * self.level + " " + self.content
         if self.attributes:
             strrep = strrep + " {" + self.attributes + "}"
         return strrep + "\n"
 
     def get_info(self) -> str:
+        """Printable block properties and content."""
         info = "\n-------------\nHeading block\n"
         info += str(self.content) if self.content else "<empty>"
         return info
 
     def get_content(self) -> str:
+        """Returns the heading text"""
         return self.content
 
     def deep_copy(self) -> 'HeadingBlock':
@@ -336,15 +371,25 @@ class HeadingBlock(BaseModel):
 
 
 class TextBlock(BaseModel):
-    """Parsed markdown block containing text"""
+    """This object represents a text block from the markdown document.
+    The text block starts after a heading, a metadata block, or a
+    blank line, and ends with a blank line or the end of the document.
+
+    Important functions:
+    serialize()     reconstitutes a text representation of the block
+    get_content()   returns a string with the text content
+    extend()        extends the text with that of another text block
+    """
 
     content: str
     type: Literal['text'] = 'text'
 
     def serialize(self) -> str:
+        """A parsable textual representation of the block."""
         return self.content + "\n"
 
     def get_info(self) -> str:
+        """Printable block properties and content."""
         info = "\n-------------\nText block\n"
         if self.content:
             content = self.content.split()
@@ -356,16 +401,27 @@ class TextBlock(BaseModel):
         return info
 
     def get_word_count(self) -> int:
+        """Get the word count in the text block"""
         return len(self.content.split())
 
     def get_content(self) -> str:
+        """Returns the text of the text block"""
         return self.content
 
     def is_empty(self) -> bool:
         return not self.content
 
-    def extend(self, block: 'TextBlock') -> None:
-        self.content = self.content + "\n\n" + block.get_content()
+    def extend(self, text: 'str | TextBlock') -> None:
+        """Extend the content of the block with new text of with
+        the content of another text block. The new content is
+        added at the end of the block."""
+        value: str
+        match text:
+            case str():
+                value = text
+            case TextBlock() as block:
+                value = block.get_content()
+        self.content = self.content + "\n\n" + value
 
     def deep_copy(self) -> 'TextBlock':
         return self.model_copy(deep=True)
@@ -383,11 +439,19 @@ class TextBlock(BaseModel):
 
     @staticmethod
     def from_text(text: str) -> 'TextBlock':
+        """Instatiate a new text block from text."""
         return TextBlock(content=text)
 
 
 class ErrorBlock(BaseModel):
-    """Parsed markdown block with parse errors"""
+    """This object represents a portion of the markdown document
+    that gave rise to parsing errors.
+
+    Important functions:
+    serialize()     a textual representation of the error
+    get_content()   the string with the error description
+    self.origin     the markdown text that gave rise to the error
+    """
 
     content: str = ""
     errormsg: str = ""
@@ -395,6 +459,8 @@ class ErrorBlock(BaseModel):
     type: Literal['error'] = 'error'
 
     def serialize(self) -> str:
+        """A textual representation of the error. When parsed, it will
+        reconstitute the markdown text taht gave rise to the error."""
         content = "** ERROR: " + self.content + "**\n"
         if self.errormsg:
             content += self.errormsg + "\n"
@@ -403,12 +469,14 @@ class ErrorBlock(BaseModel):
         return content
 
     def get_info(self) -> str:
+        """Printable block properties and content."""
         info = "\n-------------\nError block\n"
         info += self.content
         info = info if info else "empty error block"
         return info
 
     def get_content(self) -> str:
+        """Returns the error message"""
         return self.content
 
     def deep_copy(self) -> 'ErrorBlock':
