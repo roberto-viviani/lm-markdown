@@ -2,6 +2,12 @@
 parsing markdown files, creating a tree representation, and modifying
 them."""
 
+from .parse_yaml import (  # noqa: F401
+    MetadataValue as MetadataValue,
+    MetadataDict as MetadataDict,
+    is_metadata_dict as is_metadata_dict,
+)
+
 from .parse_markdown import (  # noqa: F401
     # block types
     MetadataBlock as MetadataBlock,
