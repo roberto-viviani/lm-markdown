@@ -112,7 +112,6 @@ Third paragraph."""
 
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], ErrorBlock)
-        print(result[0].get_info())
         self.assertIn("Empty heading content", result[0].content)
 
     def test_heading_with_attributes_but_no_text_error(self):
@@ -277,6 +276,7 @@ Final text block."""
         content = """
 ---
 title: Mapped keys
+?: test
 ---
 
 This is some text after the header.
@@ -291,8 +291,14 @@ questions: What is this?
         # Should have: HeaderBlock, TextBlock, HeadingBlock
         self.assertEqual(len(result), 3)
         self.assertIsInstance(result[0], HeaderBlock)
+        # mapped key ignored for header
+        self.assertEqual(
+            result[0].get_key('title', ""), "Mapped keys"
+        )
+        self.assertEqual(result[0].get_key('?', ""), "test")
         self.assertIsInstance(result[1], TextBlock)
         self.assertIsInstance(result[2], MetadataBlock)
+        # mapped key replaced in metadata block
         self.assertEqual(result[2].get_key('query', ""), "test123")
         self.assertEqual(
             result[2].get_key('questions', ""), "What is this?"

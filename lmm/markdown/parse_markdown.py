@@ -56,9 +56,8 @@ from .parse_yaml import MetadataDict
 import yaml
 
 
-# We define a discriminated union for the block types, in functional
-# style, but we also add centralized handling of common functions,
-# OOP-style.
+# We define a union type for the block types, in functional style, but
+# we also add centralized handling of common functions, OOP-style.
 class MetadataBlock(BaseModel):
     """This object represents the data of a metadata block in a
     markdown document.
@@ -625,7 +624,7 @@ def _parser(
                     else:  # reduce
                         if 0 == len(document):
                             block = HeaderBlock._from_tokens(
-                                block_stack
+                                block_stack, None
                             )
                         else:
                             block = MetadataBlock._from_tokens(
@@ -687,14 +686,14 @@ def _parser(
 def parse_markdown_text(
     content: str, mapped_keys: Mapping[str, str] | None = None
 ) -> list[Block]:
-    """Parse a pandoc markdown string into structured blocks.
+    """Parse a pandoc markdown text into structured blocks.
 
     Args:
-        content: a string containing markdown content.
+        content: a string containing markdown document.
         mapped_keys: a dictionary mapping keys to a replacement value,
             used to replace short-form of metadata entries of the
             user (for example, ?: maps to query: for a mapped key of
-            {'?': "query"}).
+            {'?': "query"}). Does not affect keys in the header block.
 
     Returns:
         List of Block objects (HeaderBlock, MetadataBlock,
