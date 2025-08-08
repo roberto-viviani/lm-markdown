@@ -398,11 +398,17 @@ class TextNode(MarkdownNode):
 
     @staticmethod
     def from_content(
-        content: str, parent: HeadingNode | None
+        content: str, 
+        metadata: MetadataDict = {},
+        parent: HeadingNode | None = None
     ) -> 'TextNode':
-        return TextNode(
-            block=TextBlock(content=content), parent=parent
+        newnode = TextNode(
+            block=TextBlock(content=content), 
+            parent=parent
         )
+        if metadata:
+            newnode.metadata = metadata
+        return newnode
 
     # Copy
     def naked_copy(self) -> 'TextNode':
@@ -999,19 +1005,28 @@ def extract_content(
 
 def propagate_content(
     root_node: HeadingNode,
-    collect_func: Callable[[MetadataDict], str],
+    collect_func: Callable[[HeadingNode], str | TextNode],
     select: bool,
     filter_func: Callable[[HeadingNode], bool] = lambda _: True,
 ) -> HeadingNode:
-    """Use information from metadata of parent nodes to develop or
-    replace children text nodes. The function traverses the tree
-    top-down in pre-order.
+    """Use information from parent nodes to develop or replace
+    children text nodes. The function traverses the tree top-down
+    in pre-order.
 
     Args:
         root_node: the heading node from which the traversal starts
-        collect_fun: a function that creates text from metadata.
-            Args: the metadata dictionary of the parent node.
-            Returns: a string.
+        collect_fun: a function that creates text from a parent node,
+            such as from the metadata of the parent node.
+            Args: the parent node.
+            Returns: a string or a text node. If a string, a text
+                node will be created with the string as content. If
+                a text node, it will be given the heading node as
+                parent. Return a text node if you need to store
+                information in the metadata of the text node. Return
+                a simple string in all other cases. Example of 
+                returning a text node:
+                    return TextNode.from_content("new content", 
+                                                 {'key': "value"})
         select: whether to replace all text children with a new
             text node child containing the text, or add the text
             node to the existing children.
@@ -1026,26 +1041,35 @@ def propagate_content(
         pre_order_traversal directly.
 
     See also: extract_content: propagate information from children
-        to parents.
+        to parents; propagate_property (treeutils): example of use
     """
 
     def process_node(node: MarkdownNode) -> None:
-        if not node.is_heading_node():
-            return
-        # it's a heading node now
-        elif not filter_func(node):  # type: ignore
+        heading_node: HeadingNode
+        match node:
+            case HeadingNode():
+                heading_node = node
+            case _:
+                return
+
+        if not filter_func(heading_node):
             return
 
-        value: str = collect_func(node.get_metadata())
-        new_node: TextNode = TextNode.from_content(value, node)  # type: ignore
+        value: str | TextNode = collect_func(heading_node)
+        if isinstance(value, TextNode):
+            new_node = value
+            new_node.parent = heading_node
+        else:
+            new_node: TextNode = \
+                TextNode.from_content(value, {}, heading_node)
         if select:
             new_children: list[MarkdownNode] = [new_node]
             for child in node.children:
                 if child.is_heading_node():
                     new_children.append(child)
-            node.children = new_children
+            heading_node.children = new_children
         else:
-            node.children.insert(0, new_node)
+            heading_node.children.insert(0, new_node)
 
     pre_order_traversal(root_node, process_node)
     return root_node

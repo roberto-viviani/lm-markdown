@@ -30,7 +30,7 @@ Select nodes: select nodes from tree
 # protected members of Block used
 # pyright: reportPrivateUsage=false
 
-from typing import Any, Callable, cast, TypeVar
+from typing import Any, Callable, TypeVar, cast
 
 from .tree import (
     MarkdownNode,
@@ -42,6 +42,7 @@ from .tree import (
     traverse_tree,
     traverse_tree_nodetype,
     fold_tree,
+    propagate_content,
 )
 from .parse_markdown import (
     Block,
@@ -90,7 +91,7 @@ def aggregate_content_in_parent_metadata(
             if child.is_text_node():
                 # Collect content from direct TextBlock children
                 collected_content.append(child.get_content())
-            elif child.is_parent_node() and key in child.metadata:
+            elif child.is_heading_node() and key in child.metadata:
                 # Collect summaries from parent children
                 collected_content.append(str(child.metadata[key]))
                 collected_content.append(str(child.metadata[key]))
@@ -228,6 +229,23 @@ def extract_property(
     post_order_traversal(node, _extract_property)
 
     return node
+
+def propagate_property(
+        node: HeadingNode,
+        key: str,
+        add_key_info: bool = True,
+        select: bool = False
+) -> HeadingNode:
+
+    def process_node(n: HeadingNode) -> TextNode:
+        node: TextNode = TextNode.from_content(
+            content=str(n.metadata.pop(key)),
+            metadata={'type': key} if add_key_info else {}
+        )
+        return node
+
+    return propagate_content(node, process_node, select, 
+                             lambda n: key in n.metadata.keys())
 
 
 # traverse ---------------------------------------------------------
