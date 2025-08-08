@@ -131,9 +131,10 @@ class MarkdownNode(ABC):
         pass
 
     # Content and metadata
+    @abstractmethod
     def get_content(self) -> str:
         """Returns text of headings or of text nodes"""
-        return str(self.block.get_content())
+        pass
 
     def get_metadata(self, key: str | None = None) -> MetadataDict:
         """
@@ -321,6 +322,14 @@ class HeadingNode(MarkdownNode):
             return self.block.level
         return 0  # Root level for HeaderBlock
 
+    def get_content(self) -> str:
+        """Returns the title of the heading represented by the node"""
+        match self.block:
+            case HeadingBlock():
+                return self.block.get_content()
+            case HeaderBlock():
+                return str(self.block.get_key('title', ""))
+
     def get_info(self, indent: int = 0) -> str:
         """
         Reports information about a node, including its type, content,
@@ -334,20 +343,16 @@ class HeadingNode(MarkdownNode):
         indent_str = "  " * indent
 
         # Collect block type and content
-        info: str = ""
+        info: str
         match self.block:
             case HeaderBlock():
-                info = f"{indent_str}Header: {self.block.content}"
+                info = "Heading node with header\n"
+                info += f"{indent_str}Header: {self.block.content}"
             case HeadingBlock():
-                info = (
+                info = "Heading node\n"
+                info += (
                     f"{indent_str}Heading (Level {self.block.level}):"
                     + f" {self.block.content}"
-                )
-            case _:
-                raise RuntimeError(
-                    "Unreachable code reached: block data"
-                    + " member of HeadingNode initialized"
-                    + " with inappropriate block type"
                 )
 
         # Info on children
@@ -398,13 +403,12 @@ class TextNode(MarkdownNode):
 
     @staticmethod
     def from_content(
-        content: str, 
+        content: str,
         metadata: MetadataDict = {},
-        parent: HeadingNode | None = None
+        parent: HeadingNode | None = None,
     ) -> 'TextNode':
         newnode = TextNode(
-            block=TextBlock(content=content), 
-            parent=parent
+            block=TextBlock.from_text(content), parent=parent
         )
         if metadata:
             newnode.metadata = metadata
@@ -454,6 +458,11 @@ class TextNode(MarkdownNode):
     def heading_level(self) -> None:
         return None  # Text nodes don't have levels
 
+    def get_content(self) -> str:
+        """Returns the content of the markdown text represented by
+        the node."""
+        return self.block.get_content()
+
     def get_info(self, indent: int = 0) -> str:
         """
         Reports information about a node, including its type, content,
@@ -467,7 +476,7 @@ class TextNode(MarkdownNode):
         indent_str = "  " * indent
 
         # Collect block type and content
-        info = ""
+        info = "Text node\n"
         content = self.get_content()
         if len(content) > 50:
             content = content[:47] + "..."
@@ -475,9 +484,6 @@ class TextNode(MarkdownNode):
             info = f"{indent_str}Text: {content}"
         else:
             info = "Placeholder text block for metadata"
-
-        # Info on children
-        info += "\nLeaf node"
 
         # Collect metadata
         if self.metadata:
@@ -1023,9 +1029,9 @@ def propagate_content(
                 a text node, it will be given the heading node as
                 parent. Return a text node if you need to store
                 information in the metadata of the text node. Return
-                a simple string in all other cases. Example of 
+                a simple string in all other cases. Example of
                 returning a text node:
-                    return TextNode.from_content("new content", 
+                    return TextNode.from_content("new content",
                                                  {'key': "value"})
         select: whether to replace all text children with a new
             text node child containing the text, or add the text
@@ -1060,8 +1066,9 @@ def propagate_content(
             new_node = value
             new_node.parent = heading_node
         else:
-            new_node: TextNode = \
-                TextNode.from_content(value, {}, heading_node)
+            new_node: TextNode = TextNode.from_content(
+                value, {}, heading_node
+            )
         if select:
             new_children: list[MarkdownNode] = [new_node]
             for child in node.children:
