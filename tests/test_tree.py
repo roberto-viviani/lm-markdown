@@ -211,7 +211,7 @@ class TestTreeCopy(unittest.TestCase):
             # metadata_block.content is deeply copied and independent
             # Note: Changes to node.metadata don't affect metadata_block.content
             # since they are separate objects
-            self.assertNotEqual(
+            self.assertEqual(
                 original.metadata_block.content,
                 copy.metadata_block.content,
             )
@@ -245,8 +245,8 @@ class TestTreeCopy(unittest.TestCase):
         text_child1 = TextNode(self.text_block1)
         text_child2 = TextNode(self.text_block2)
 
-        original._add_child(text_child1)
-        original._add_child(text_child2)
+        original.add_child(text_child1)
+        original.add_child(text_child2)
 
         # Copy the tree
         copy = original.tree_copy()
@@ -280,7 +280,7 @@ class TestTreeCopy(unittest.TestCase):
         root = HeadingNode(self.heading_block1)  # Level 1
         child_heading = HeadingNode(self.heading_block2)  # Level 2
 
-        root._add_child(child_heading)
+        root.add_child(child_heading)
 
         # Copy the tree
         copy = root.tree_copy()
@@ -313,9 +313,9 @@ class TestTreeCopy(unittest.TestCase):
         text_child1 = TextNode(self.text_block1)
         text_child2 = TextNode(self.text_block2)
 
-        root._add_child(text_child1)
-        root._add_child(heading_child)
-        root._add_child(text_child2)
+        root.add_child(text_child1)
+        root.add_child(heading_child)
+        root.add_child(text_child2)
 
         # Copy the tree
         copy = root.tree_copy()
@@ -339,9 +339,9 @@ class TestTreeCopy(unittest.TestCase):
         level3 = HeadingNode(HeadingBlock(level=3, content="Level 3"))
         text_leaf = TextNode(TextBlock(content="Deep text"))
 
-        level1._add_child(level2)
-        level2._add_child(level3)
-        level3._add_child(text_leaf)
+        level1.add_child(level2)
+        level2.add_child(level3)
+        level3.add_child(text_leaf)
 
         # Copy the tree
         copy = level1.tree_copy()
@@ -377,7 +377,7 @@ class TestTreeCopy(unittest.TestCase):
 
         text_child = TextNode(self.text_block1)
         text_child.metadata = {"child_meta": "value"}
-        original._add_child(text_child)
+        original.add_child(text_child)
 
         # Copy the tree
         copy = original.tree_copy()
@@ -406,7 +406,7 @@ class TestTreeCopy(unittest.TestCase):
         # Create tree
         original = HeadingNode(self.heading_block1)
         text_child = TextNode(self.text_block1)
-        original._add_child(text_child)
+        original.add_child(text_child)
 
         # Copy the tree
         copy = original.tree_copy()
