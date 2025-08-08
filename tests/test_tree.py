@@ -1,4 +1,5 @@
-""" Test tree """
+"""Test tree"""
+
 # flake8: noqa
 
 import unittest
@@ -12,6 +13,7 @@ from lmm.markdown import (
     MetadataBlock,
 )
 from lmm.markdown.tree import *
+
 
 class TestTreeConstruction(unittest.TestCase):
 
