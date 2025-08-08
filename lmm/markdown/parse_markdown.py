@@ -128,7 +128,7 @@ class MetadataBlock(BaseModel):
         except yaml.YAMLError as e:
             offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
-                content="\nYAML parse error in metadata block",
+                content="\nYAML parse error in metadata block.",
                 errormsg=str(e),
                 origin=offending_meta,
             )
@@ -141,15 +141,14 @@ class MetadataBlock(BaseModel):
         except ValueError as e:
             offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
-                content="\nInvalid LM markdown in metadata block:\n"
-                + str(e),
+                content="\nUnexpected error when checking metadata.",
                 errormsg=str(e),
                 origin=offending_meta,
             )
 
         if (not part) and (not whole):
             return ErrorBlock(
-                content="Invalid or empty metadata block",
+                content="Invalid or empty metadata block.",
                 origin="",
             )
         # We should be able to cope with this now
@@ -189,7 +188,7 @@ class MetadataBlock(BaseModel):
     ) -> 'MetadataBlock|ErrorBlock':
         if not pya.is_metadata_dict(dct):
             return ErrorBlock(
-                content="Invalid dictionary in metadata"
+                content="Invalid dictionary to form metadata."
             )
         # now dct is a metadata dict
         return MetadataBlock(content=dct)  # type: ignore
@@ -229,7 +228,9 @@ class HeaderBlock(MetadataBlock):
             )
         except Exception as e:
             return ErrorBlock(
-                content="Could not parse header", errormsg=str(e)
+                content="Could not parse metadata:"
+                + " YAML object type not supported.",
+                errormsg=str(e),
             )
         return hblock
 
