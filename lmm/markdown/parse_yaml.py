@@ -9,15 +9,19 @@ The aim here is to isolate an object that is represented in python as
 a dictionary with string keys. This dictionary will be used to
 exchange messages with the language model.
 
-The YAML object contained in a metadata block is decomposed into two,
-'part', and 'whole'. The 'part' component is the one that may be used
-in the rest of the application. The whole part is kept aside and
-recomposed with the part when the whole YAML object is reconstituted.
-
 Conformant YAML objects consist of dictionaries, or list of
 dictionaries of type dict[str, elementary_type] where elementary type
-is one of int, float, bool, str. All other objects will be put in
-whole.
+is one of int, float, bool, str.
+
+This module defines types MetadataDict and MetadataValue, which are
+union types defining the set of dictionaries and dictionary values
+that deemed conformant with the use of LM markdown.
+
+The YAML object contained in a metadata block is decomposed into two,
+'part', and 'whole'. The 'part' component is the one that may be used
+in the rest of the application, containing a conformant dictionary.
+The whole part is kept aside and recomposed with the part when the
+whole YAML object is reconstituted.
 
 YAML objects consisting of literals only will raise an exception,
 since it is conceivable that the user inteded something different.
@@ -156,15 +160,15 @@ def split_yaml_parse(
         case dict():
             # invalid dict, keep empty dictionary in part
             whole = [yamldata]
-        case _ as value if _is_metadata_type(value):
+        case _ as lit if _is_metadata_type(lit):
             # someone is specifying data as a literal
             raise ValueError(
                 "Data in markdown header must follow a property.\n"
                 + "Specify the data like this:\n"
-                + f"property_name: {value}"
+                + f"property_name: {lit}"
             )
-        case _ as value if _is_primitive_type(value):
-            whole = [value]
+        case _ as prim if _is_primitive_type(prim):
+            whole = [prim]
         case _:
             # non-dictionary
             raise ValueError(
@@ -178,8 +182,13 @@ def split_yaml_parse(
         for key in keys:
             for new_key in mapped_keys:
                 if key == new_key:
-                    part[mapped_keys[new_key]] = \
-                        part.pop(key)  # type: ignore
+                    # since part is a MetadataDict, its values are
+                    # MetadataValue's. pyright does not agree,
+                    # however. It is difficult to see how this could
+                    # fail, given that we use the same value as before
+                    # but with a new key.
+                    val: MetadataValue = part.pop()  # type: ignore
+                    part[mapped_keys[new_key]] = val
                     break
 
     return part, whole
