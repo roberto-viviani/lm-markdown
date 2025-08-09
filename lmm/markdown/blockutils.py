@@ -42,7 +42,9 @@ def compose(*funcs: BlockFunc) -> BlockFunc:
 
     return reduce(_compose_two, funcs)
 
+
 # edit ----------------------------------------------------------
+
 
 def clear_metadata(blocks: list[Block]) -> list[Block]:
     """
@@ -81,7 +83,7 @@ def merge_textblocks(blocks: list[Block]) -> list[Block]:
     return blocklist
 
 
-def pool_textblocks_if(
+def merge_textblocks_if(
     blocks: list[Block], test_func: Callable[[TextBlock], bool]
 ) -> list[Block]:
     """Pool text blocks together that are separated by blocks
@@ -130,7 +132,7 @@ def pool_textblocks_if(
     return blocklist
 
 
-def pool_code_blocks(
+def merge_code_blocks(
     blocks: list[Block], linecount: int = 12
 ) -> list[Block]:
     """Pool text blocks together that are separated by
@@ -147,10 +149,10 @@ def pool_code_blocks(
             is not None
         ) and (content.count('\n') <= (linecount + 1))
 
-    return pool_textblocks_if(blocks, _is_code_block)
+    return merge_textblocks_if(blocks, _is_code_block)
 
 
-def pool_equation_blocks(blocks: list[Block]) -> list[Block]:
+def merge_equation_blocks(blocks: list[Block]) -> list[Block]:
     """
     Pools text blocks together that are separated by equations
     """
@@ -161,7 +163,7 @@ def pool_equation_blocks(blocks: list[Block]) -> list[Block]:
             is not None
         )
 
-    return pool_textblocks_if(blocks, _is_eq_block)
+    return merge_textblocks_if(blocks, _is_eq_block)
 
 
 def _find_largest_divisor(number: int, threshold: int):  # type:ignore
@@ -192,17 +194,17 @@ def _find_largest_divisor(number: int, threshold: int):  # type:ignore
         if number / d <= threshold:
             return d
 
-    # This part should theoretically not be reached if 
-    # threshold < number and number >= 1, because 'number' itself is 
-    # always a divisor and 'number / number' = 1, which will always 
+    # This part should theoretically not be reached if
+    # threshold < number and number >= 1, because 'number' itself is
+    # always a divisor and 'number / number' = 1, which will always
     # be <= threshold if threshold >= 1.
     # If number is 0, this function would need special handling.
     # Assuming positive integers.
-    return 1  # Fallback, though should be covered by the loop 
+    return 1  # Fallback, though should be covered by the loop
     # returning a divisor
 
 
-def pool_short_textblocks(
+def merge_short_textblocks(
     blocks: list[Block], wordthresh: int = 120
 ) -> list[Block]:
     """

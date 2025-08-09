@@ -27,13 +27,13 @@ from .parse_markdown import (  # noqa: F401
     load_blocks as load_blocks,
 )
 
-from .blocks import (  # noqa: F401
+from .blockutils import (  # noqa: F401
     clear_metadata as clear_metadata,
     merge_textblocks as merge_textblocks,
-    pool_textblocks_if as pool_textblocks_if,
-    pool_short_textblocks as pool_short_textblocks,
-    pool_code_blocks as pool_code_blocks,
-    pool_equation_blocks as pool_equation_blocks,
+    merge_textblocks_if as merge_textblocks_if,
+    merge_short_textblocks as merge_short_textblocks,
+    merge_code_blocks as merge_code_blocks,
+    merge_equation_blocks as merge_equation_blocks,
 )
 
 from .tree import (  # noqa: F401
