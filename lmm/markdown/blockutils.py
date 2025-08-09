@@ -4,8 +4,8 @@ Note: call blocklist_copy before using these functions
     to maintain referential transparency.
 """
 
-from functools import reduce
 from typing import Callable
+from functools import reduce
 import re
 
 from .parse_markdown import (
@@ -48,14 +48,24 @@ def compose(*funcs: BlockFunc) -> BlockFunc:
 
 def clear_metadata(blocks: list[Block]) -> list[Block]:
     """
-    Remove metadata blocks from the block list, except the header
+    Remove metadata blocks from the block list, except the header.
     """
     return [b for b in blocks if b.type != "metadata"]
 
 
 def merge_textblocks(blocks: list[Block]) -> list[Block]:
     """
-    Merge contiguous text blocks into larger blocks
+    Merge contiguous text blocks into larger blocks.
+
+    Example:
+        # three blocks
+        blocks = [
+            HeadingBlock(content = "Title")
+            TextBlock(content = "Text 1")
+            TextBlock(content = "Text 2")
+        ]
+        # creates two blocks, heading and text
+        newblocks = merge_textblocks(blocks)
     """
     blocklist: list[Block] = []
     text_stack: list[Block] = []
@@ -86,8 +96,30 @@ def merge_textblocks(blocks: list[Block]) -> list[Block]:
 def merge_textblocks_if(
     blocks: list[Block], test_func: Callable[[TextBlock], bool]
 ) -> list[Block]:
-    """Pool text blocks together that are separated by blocks
-    for which test_func(block) is true"""
+    """Merge text blocks together that are separated by blocks
+    for which test_func(block) is true.
+
+    Example:
+        blocks = [
+            TextBlock(content = "Text 1")
+            TextBlock(content = "Lext 2")
+            TextBlock(content = "Text 3")
+        ]
+        # This creates one single block
+        newblocks = merge_textblocks_if(blocks,
+            lambda x: x.get_content().startswith("Lext"))
+
+        # These will also be one single block
+        newblocks = merge_textblocks_if(blocks[0:1],
+            lambda x: x.get_content().startswith("Lext"))
+        newblocks = merge_textblocks_if(blocks[1:2],
+            lambda x: x.get_content().startswith("Lext"))
+
+        # This leaves blocks unchanged
+        newblocks = merge_textblocks_if(blocks,
+            lambda x: x.get_content().startswith("Q"))
+
+    """
 
     if not blocks:
         return []
@@ -97,7 +129,7 @@ def merge_textblocks_if(
     )
 
     blocklist: list[Block] = []
-    curblock: Block = blocks[0]
+    curblock: Block = blocks[0].deep_copy()
     lastappend: TextBlock | None = None
     if isinstance(curblock, TextBlock) and test_func(curblock):
         lastappend = curblock
@@ -110,7 +142,7 @@ def merge_textblocks_if(
                 else:
                     # reduce
                     blocklist.append(curblock)
-                    curblock = bl
+                    curblock = bl.deep_copy()
                     lastappend = bl
             case TextBlock() as bl:
                 if isinstance(
@@ -121,7 +153,7 @@ def merge_textblocks_if(
                 else:
                     # reduce
                     blocklist.append(curblock)
-                    curblock = bl
+                    curblock = bl.deep_copy()
                     lastappend = None
             case _ as bl:  # reduce
                 blocklist.append(curblock)
@@ -135,14 +167,14 @@ def merge_textblocks_if(
 def merge_code_blocks(
     blocks: list[Block], linecount: int = 12
 ) -> list[Block]:
-    """Pool text blocks together that are separated by
-    code of size less or equal linecount"""
+    """Merge text blocks together that are separated by
+    code of size less or equal linecount."""
 
     def _is_code_block(b: TextBlock) -> bool:
         content: str = b.get_content()
         return (
             re.match(
-                r"^```(\{[^\n]*\}|[^\n]*)?\n(.*?)\n```$",
+                r"^```(\{[^\n]*\}|(\w+))?\n(.*?)\n```$",
                 content,
                 re.DOTALL,
             )
@@ -154,7 +186,7 @@ def merge_code_blocks(
 
 def merge_equation_blocks(blocks: list[Block]) -> list[Block]:
     """
-    Pools text blocks together that are separated by equations
+    Merge text blocks together that are separated by equations
     """
 
     def _is_eq_block(block: TextBlock) -> bool:
@@ -208,7 +240,8 @@ def merge_short_textblocks(
     blocks: list[Block], wordthresh: int = 120
 ) -> list[Block]:
     """
-    Merges short text blocks together
+    Merges short text blocks together, defined by a word count
+    threshold.
     """
 
     if not blocks:
@@ -223,7 +256,7 @@ def merge_short_textblocks(
         return count
 
     blocklist: list[Block] = []
-    curblock: Block = blocks[0]  # assume a header
+    curblock: Block = blocks[0].deep_copy()
     for b in blocks[1:]:
         match b:
             case TextBlock() as bl:
@@ -236,7 +269,7 @@ def merge_short_textblocks(
                 else:
                     # reduce
                     blocklist.append(curblock)
-                    curblock = bl
+                    curblock = bl.deep_copy()
             case _ as bl:  # reduce
                 blocklist.append(curblock)
                 curblock = bl
