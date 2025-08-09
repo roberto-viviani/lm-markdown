@@ -105,14 +105,6 @@ class MarkdownNode(ABC):
         return self.parent is None
 
     @abstractmethod
-    def is_heading_node(self) -> bool:
-        pass
-
-    @abstractmethod
-    def is_text_node(self) -> bool:
-        pass
-
-    @abstractmethod
     def get_text_children(self) -> list['TextNode']:
         pass
 
@@ -303,12 +295,6 @@ class HeadingNode(MarkdownNode):
         return new_node
 
     # Utility functions to retrieve basic properties
-    def is_heading_node(self) -> bool:
-        return True
-
-    def is_text_node(self) -> bool:
-        return False
-
     def get_text_children(self) -> list['TextNode']:
         return [n for n in self.children if isinstance(n, TextNode)]
 
@@ -443,12 +429,6 @@ class TextNode(MarkdownNode):
         return self.naked_copy()
 
     # Utility functions to retrieve basic properties
-    def is_heading_node(self) -> bool:
-        return False
-
-    def is_text_node(self) -> bool:
-        return True
-
     def get_text_children(self) -> list['TextNode']:
         return []  # Text nodes have no children
 
@@ -994,7 +974,7 @@ def extract_content(
     """
 
     def process_node(node: MarkdownNode) -> None:
-        if node.is_text_node():
+        if isinstance(node, TextNode):
             return
         # it is a heading node
         elif not filter_func(node):  # type: ignore
@@ -1072,7 +1052,7 @@ def propagate_content(
         if select:
             new_children: list[MarkdownNode] = [new_node]
             for child in node.children:
-                if child.is_heading_node():
+                if isinstance(child, HeadingNode):
                     new_children.append(child)
             heading_node.children = new_children
         else:
