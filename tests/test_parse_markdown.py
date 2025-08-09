@@ -7,12 +7,197 @@ import unittest
 from lmm.markdown.parse_markdown import (
     parse_markdown_text,
     serialize_blocks,
+    blocklist_haserrors,
+    blocklist_errors,
+    blocklist_copy,
+    blocklist_map,
     HeaderBlock,
     MetadataBlock,
     HeadingBlock,
     TextBlock,
     ErrorBlock,
 )
+
+
+class TestMardownBlocks(unittest.TestCase):
+
+    def test_construction_text_empty(self):
+        text = ""
+        block = TextBlock(content=text)
+        self.assertEqual(block.get_content(), text)
+        self.assertEqual(block.get_word_count(), 0)
+        self.assertTrue(block.is_empty())
+        parse = block.serialize()
+        self.assertEqual(
+            text,
+            serialize_blocks(parse_markdown_text(parse)),
+        )
+        block.extend("Part of new")
+        self.assertEqual(block.get_content(), "Part of new")
+
+    def test_construction_text_regular(self):
+        text = "Content of text block\non two lines"
+        block = TextBlock(content=text)
+        self.assertEqual(block.get_content(), text)
+        self.assertEqual(block.get_word_count(), len(text.split()))
+        self.assertFalse(block.is_empty())
+        parse = block.serialize()
+        self.assertEqual(
+            text,
+            serialize_blocks(parse_markdown_text(parse)),
+        )
+        block.extend("Part of new")
+        self.assertEqual(
+            block.get_content(), "\n\n".join([text, "Part of new"])
+        )
+
+    def test_construction_heading(self):
+        text = "A heading"
+        block = HeadingBlock(content=text, level=2)
+        self.assertEqual(block.get_content(), text)
+        parse = block.serialize()
+        self.assertEqual(
+            "## " + text + "\n",
+            serialize_blocks(parse_markdown_text(parse)),
+        )
+
+    def test_construction_heading_empty(self):
+        text = ""
+        block = HeadingBlock(content=text, level=2)
+        self.assertEqual(block.get_content(), text)
+        parse = block.serialize()
+        self.assertEqual(
+            "## " + text + "\n",
+            parse,
+        )
+        self.assertIsInstance(
+            parse_markdown_text(parse)[0], ErrorBlock
+        )
+
+    def test_construction_metadata(self):
+        data = {'title': "Title"}
+        block = MetadataBlock(content=data)
+        self.assertEqual(block.get_key('title'), "Title")
+        self.assertEqual(block.get_key('titles'), "")
+        self.assertDictEqual(block.get_content(), data)
+        parse = block.serialize()
+        self.assertEqual(
+            parse,
+            serialize_blocks(parse_markdown_text(parse)),
+        )
+
+    def test_construction_metadata_empty(self):
+        data = {}
+        block = MetadataBlock(content=data)
+        self.assertDictEqual(block.get_content(), data)
+        parse = block.serialize()
+        self.assertEqual(parse, "---\n---\n")
+        self.assertIsInstance(
+            parse_markdown_text(parse)[0], ErrorBlock
+        )
+
+    def test_construction_header_invalid(self):
+        text = "---\n1: first line\n---"
+        # expected behaviour: invalid dict is set to private_,
+        # default dict created for header
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 1)
+        block = blocks[0]
+        self.assertIsInstance(block, HeaderBlock)
+        self.assertDictEqual(block.get_content(), {'title': "Title"})
+        self.assertDictEqual(block.private_[0], {1: "first line"})
+
+    def test_construction_metadata_invalid(self):
+        text = "---\n1: first block\n---\n\n---\n2: second block\n---"
+        # expected behaviour: invalid dict is set to private,
+        # empty dict in metadata
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 2)
+        block = blocks[1]
+        self.assertIsInstance(block, MetadataBlock)
+        self.assertDictEqual(block.get_content(), {})
+        self.assertDictEqual(block.private_[0], {2: "second block"})
+
+
+class TestBlocklist(unittest.TestCase):
+
+    def test_construction_error(self):
+        text = "---\na simple literal\n---"
+        # expected behaviour: metadata of literal not allowed by
+        # LM markdown parser, even if legal for yaml
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 1)
+        block = blocks[0]
+        self.assertIsInstance(block, ErrorBlock)
+        self.assertTrue(block.serialize().startswith("** ERROR:"))
+        newtext = serialize_blocks(blocks).replace(
+            "a simple literal", "lit: a simple literal"
+        )
+        # expected behaviour: after correction, error message removed
+        # when parsing, correct object created
+        newblocks = parse_markdown_text(newtext)
+        self.assertIsInstance(newblocks[0], HeaderBlock)
+        self.assertEqual(
+            newblocks[0].get_key('lit'), "a simple literal"
+        )
+
+    def test_blocklist_error(self):
+        text = "---\na simple literal\n---"
+        # expected behaviour: metadata of literal not allowed by
+        # LM markdown parser, even if legal for yaml
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 1)
+        # reports errors
+        self.assertTrue(blocklist_haserrors(blocks))
+        self.assertEqual(len(blocklist_errors(blocks)), 1)
+
+    def test_blocklist_copy(self):
+        text = "---\ntitle: Title\n---\nsome text."
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 2)
+        self.assertIsInstance(blocks[0], HeaderBlock)
+        self.assertIsInstance(blocks[1], TextBlock)
+        blockscopy = blocklist_copy(blocks)
+        blockscopy[1].content = "new content"
+        self.assertNotEqual(
+            blocks[1].get_content(), blockscopy[1].get_content()
+        )
+
+    def test_blocklist_map(self):
+        text = "---\ntitle: Title\n---\nsome text"
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 2)
+        self.assertIsInstance(blocks[0], HeaderBlock)
+        self.assertIsInstance(blocks[1], TextBlock)
+        newblocks = blocklist_map(
+            blocks,
+            lambda x: TextBlock.from_text(
+                x.get_content() + ", really!"
+            ),
+            lambda x: isinstance(x, TextBlock),
+        )
+        self.assertEqual(len(blocks), len(newblocks))
+        self.assertEqual(
+            newblocks[1].get_content(), "some text, really!"
+        )
+        self.assertNotEqual(
+            blocks[1].get_content(), newblocks[1].get_content()
+        )
+
+    def test_blocklist_map_example(self):
+        blocks = [
+            MetadataBlock._from_dict({'title': "Title"}),
+            TextBlock.from_text("A text block"),
+        ]
+        newblocks = blocklist_map(
+            blocks,
+            lambda x: TextBlock.from_text(
+                x.get_content() + ", really!"
+            ),
+            lambda x: isinstance(x, TextBlock),
+        )
+        text = serialize_blocks(newblocks)
+        self.assertNotEqual(text, serialize_blocks(blocks))
 
 
 class TestParseMarkdownText(unittest.TestCase):

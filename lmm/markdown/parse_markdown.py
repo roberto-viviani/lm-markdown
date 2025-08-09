@@ -6,9 +6,26 @@ types: HeaderBlock, MetadataBlock, HeadingBlock, TextBlock, and
 ErrorBlock. Everything that is not parsed as a HeaderBlock,
 MetadataBlock or HeadingBlock becomes a TextBlock.
 
+Example:
+
+    text = \"""
+    ---
+    title: Title
+    ---
+
+    Some text after the header.
+
+    # A heading.
+
+    Text after heading.
+    \"""
+
+    blocks = parse_markdown_text(text)
+
+
 The supported markdown is the same as in the pandoc specification
 with the following exceptions:
-- when used in the resto of the library, the document should start
+- when used in the rest of the library, the document should start
     with a metadata block, which is parsed as a header
 - title blocks marked by '%' are not supported (will be parsed as
     text blocks)
@@ -412,17 +429,23 @@ class TextBlock(BaseModel):
     def is_empty(self) -> bool:
         return not self.content
 
-    def extend(self, text: 'str | TextBlock') -> None:
+    def extend(self, text: 'str | TextBlock') -> 'TextBlock':
         """Extend the content of the block with new text of with
         the content of another text block. The new content is
-        added at the end of the block."""
+        added at the end of the block.
+        Returns: a (reference to) the modified block."""
         value: str
         match text:
             case str():
                 value = text
             case TextBlock() as block:
                 value = block.get_content()
-        self.content = self.content + "\n\n" + value
+        if self.is_empty():
+            self.content = value
+        else:
+            self.content = self.content + "\n\n" + value
+
+        return self
 
     def deep_copy(self) -> 'TextBlock':
         return self.model_copy(deep=True)
@@ -733,7 +756,7 @@ def serialize_blocks(blocks: list[Block]) -> str:
         blocks: List of Block objects to convert
 
     Returns:
-        A string containing the markdown representation of the blocks
+        A string containing the markdown representation of the blocks.
     """
     if not blocks:
         return ""
@@ -785,8 +808,27 @@ def blocklist_map(
     filter_func: Callable[[Block], bool] = lambda _: True,
 ) -> list[Block]:
     """Apply map_func to all blocks that satisfy the predicate
-    filter_func"""
-    return [map_func(b.deep_copy()) for b in blocks if filter_func(b)]
+    filter_func.
+
+    Example:
+        blocks = [
+            MetadataBlock._from_dict({'title': "Title"}),
+            TextBlock.from_text("A text block"),
+        ]
+        newblocks = blocklist_map(
+            blocks,
+            lambda x: TextBlock.from_text(
+                x.get_content() + ", with addition."
+            ),
+            lambda x: isinstance(x, TextBlock),
+        )
+        print(serialize_blocks(blocks))
+        print(serialize_blocks(newblocks))
+    """
+    return [
+        map_func(b.deep_copy()) if filter_func(b) else b
+        for b in blocks
+    ]
 
 
 def blocklist_get_info(blocks: list[Block]) -> str:
@@ -798,7 +840,8 @@ def blocklist_get_info(blocks: list[Block]) -> str:
 
 
 def load_blocks(source: str | Path) -> list[Block]:
-    """Load a pandoc markdown file into structured blocks.
+    """Load a pandoc markdown file into structured blocks. Used in
+    development.
 
     Args:
         source: Path to a markdown file.
@@ -829,7 +872,8 @@ def load_blocks(source: str | Path) -> list[Block]:
 
 
 def save_blocks(file_name: str | Path, blocks: list[Block]) -> None:
-    """Write a list of Block objects to a markdown file.
+    """Write a list of Block objects to a markdown file. Used in
+    development.
 
     Args:
         file_name: Path to the output file (string or Path object)
@@ -845,7 +889,8 @@ def save_blocks_debug(
     file_name: str | Path, blocks: list[Block], sep: str = ""
 ) -> None:
     """A debug version of save_blocks, with a separator string
-    added to make clear where the block boundaries are"""
+    added to make clear where the block boundaries are. Used in
+    development."""
 
     from .ioutils import save_markdown
 
