@@ -58,6 +58,7 @@ def merge_textblocks(blocks: list[Block]) -> list[Block]:
     Merge contiguous text blocks into larger blocks.
 
     Example:
+        ```python
         # three blocks
         blocks = [
             HeadingBlock(content = "Title")
@@ -66,6 +67,7 @@ def merge_textblocks(blocks: list[Block]) -> list[Block]:
         ]
         # creates two blocks, heading and text
         newblocks = merge_textblocks(blocks)
+        ```
     """
     blocklist: list[Block] = []
     text_stack: list[Block] = []
@@ -100,6 +102,7 @@ def merge_textblocks_if(
     for which test_func(block) is true.
 
     Example:
+        ```python
         blocks = [
             TextBlock(content = "Text 1")
             TextBlock(content = "Lext 2")
@@ -118,7 +121,7 @@ def merge_textblocks_if(
         # This leaves blocks unchanged
         newblocks = merge_textblocks_if(blocks,
             lambda x: x.get_content().startswith("Q"))
-
+        ```
     """
 
     if not blocks:

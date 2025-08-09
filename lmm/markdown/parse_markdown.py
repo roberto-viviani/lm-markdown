@@ -7,7 +7,7 @@ ErrorBlock. Everything that is not parsed as a HeaderBlock,
 MetadataBlock or HeadingBlock becomes a TextBlock.
 
 Example:
-
+    ```python
     text = \"""
     ---
     title: Title
@@ -21,6 +21,7 @@ Example:
     \"""
 
     blocks = parse_markdown_text(text)
+    ```
 
 
 The supported markdown is the same as in the pandoc specification
@@ -811,6 +812,7 @@ def blocklist_map(
     filter_func.
 
     Example:
+        ```python
         blocks = [
             MetadataBlock._from_dict({'title': "Title"}),
             TextBlock.from_text("A text block"),
@@ -824,6 +826,7 @@ def blocklist_map(
         )
         print(serialize_blocks(blocks))
         print(serialize_blocks(newblocks))
+        ```
     """
     return [
         map_func(b.deep_copy()) if filter_func(b) else b
