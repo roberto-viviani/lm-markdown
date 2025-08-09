@@ -527,11 +527,6 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         case TextBlock() | ErrorBlock():
             header_block = HeaderBlock.from_default()
             blocks = [header_block] + blocks
-        case _:
-            raise RuntimeError(
-                "Unreachable code reached due to "
-                + "invalid block type"
-            )
 
     # Create root node as containing a HeadingBlock with the
     # document title as content.
@@ -617,12 +612,6 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
 
                 # Add to current node
                 current_node.add_child(text_node)
-
-            case _:
-                raise RuntimeError(
-                    "Unreachable code reached "
-                    + "by unexpected block type"
-                )
 
     # Handle any remaining metadata
     if current_metadata:
@@ -710,8 +699,7 @@ def tree_to_blocks(
                 blocks.append(node.block)
             case _:
                 raise RuntimeError(
-                    "Unreachable code reached: "
-                    + "unrecognized block type"
+                    "Unreachable code reached: unrecognized node type"
                 )
 
     # Perform pre-order traversal
