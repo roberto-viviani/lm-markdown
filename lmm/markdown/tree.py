@@ -1,20 +1,58 @@
 """
-This module provides functionality to represent a Markdown document,
-previously parsed as a block list with three types of blocks (header,
-metadata, heading, and text) with a tree.
+This module provides functionality to represent a Markdown document
+as a tree. The headings constitute the nodes of the tree
+(`HeadingNode`) and the text blocks constitute the leafs (`TextNode`).
+Metadata in the markdown document are converted to metdata properties
+of nodes. The metadata blocks are interpreted as annotations for the
+metadata of the block that follows, be it a heading or a text block.
+
+In general, trees will be not constructed manually but will be
+constructed from blocks of parsed markdown:
+
+```python
+blocks = load_markdown("my_markdown.md")
+root = blocks_to_tree(blocks)
+```
+
+After working on the markdown, it may be retransformed into a block
+list:
+
+```python
+blocks = tree_to_blocks(root)
+save_markdown("my_markdown.md", blocks)
+```
 
 The first block in the list must be a header or a metadata block, from
-which the root node of the tree is built. Other parent nodes are built
-from the heading blocks, and the leaf nodes from the text blocks.
-Except for the first block, metadata blocks are used annotate the
-nodes with properties.
+which the root node of the tree is built. If no header block is present
+at the beginning of the list, one is created with default values.
+Other parent nodes are built from the heading blocks, and the leaf
+nodes from the text blocks. Except for the first block, metadata blocks
+are used annotate the nodes with properties saved as metadata.
+
+```markdown
+---  # This will become the metadata of the root node
+title: The document  # This will also be the content of the root node
+description: header
+---
+
+---  # This metadata block will annotate the heading that follows
+summary: introductory words
+---
+
+# Introduction
+
+This is the text of the introduction. The property 'summary' will by
+default be applied to this text too, since it is a descendant of the
+heading for which the metadata were defined.
+```
 
 Importantly, while in a blocklist there are blocks of header/metadata,
 heading, and text types, a tree only has heading and text nodes. The
 root node is a heading from the title property of the header metadata
 block.
 
-Note: the tree is a blocklist in a different representation, and is
+Note:
+    the tree is a blocklist in a different representation, and is
     used to operate on the markdown data through side effects.
 """
 
@@ -78,30 +116,32 @@ class MarkdownNode(ABC):
     # Copy
     @abstractmethod
     def naked_copy(self) -> Self:
-        """Make a deep copy of this node and take it off the tree"""
+        """Make a deep copy of this node and take it off the tree."""
         pass
 
     @abstractmethod
     def node_copy(self) -> Self:
         """Make a copy of this node, but keep links to parent
-        and children"""
+        and children. This makes modifications of metadata and other
+        dictionary values in the nodes independent from their origin
+        in a block list."""
         pass
 
     @abstractmethod
     def tree_copy(self) -> Self:
         """Make a deep copy of this node and its children
-        (copy subtree)"""
+        (copy subtree)."""
         pass
 
     # Utility functions to retrieve basic properties
     def is_header_node(self) -> bool:
-        """A node initialized from a header block"""
+        """A node initialized from a header block."""
         return self.metadata_block is not None and isinstance(
             self.metadata_block, HeaderBlock
         )
 
     def is_root_node(self) -> bool:
-        """A node w/o parents, not necessarily a header"""
+        """A node w/o parents, not necessarily a header."""
         return self.parent is None
 
     @abstractmethod
@@ -125,14 +165,16 @@ class MarkdownNode(ABC):
     # Content and metadata
     @abstractmethod
     def get_content(self) -> str:
-        """Returns text of headings or of text nodes"""
+        """Returns text of headings or of text nodes."""
         pass
 
     def get_metadata(self, key: str | None = None) -> MetadataDict:
         """
         Get the metadata of the current node. For the header node,
         the document header is the metadata.
-        Returns: a conformant dictionary
+
+        Returns:
+            a conformant dictionary.
         """
         if not key:
             return copy.deepcopy(self.metadata)
@@ -146,8 +188,14 @@ class MarkdownNode(ABC):
         """
         Get the key value in the metadata of the current node. For the
         root node, the header value for that key is returned.
-        Returns: the key value, or a default value if the key is not
-        found.
+
+        Args:
+            key: the key for which the metadata is searched
+            default: a default value if the key is absent
+
+        Returns:
+            the key value, or a default value if the key is not
+                found.
         """
         if key in self.metadata:
             return self.metadata[key]
@@ -159,8 +207,14 @@ class MarkdownNode(ABC):
         """
         Returns the effective metadata for this node by traversing up
         the tree if necessary to find inherited metadata. The metadata
-        are those of the first node with metadata. If include_header
-        is False, the header node is not considered.
+        are those of the first node with metadata. If a key is given,
+        only a dictionary with that key will be returned. If
+        include_header is False, the header node is not considered.
+
+        Args:
+            key: the key for which the metadata is searched
+            include_header: if the header metadata should be included
+                in the search
 
         Returns:
             A dictionary giving the effective metadata for this node
@@ -195,6 +249,7 @@ class MarkdownNode(ABC):
         Args:
             key: The specific metadata key to look for
             include_header: If to include the header in the search
+            default: the value to return if the key is not found
 
         Returns:
             The value for the specified key, or None if not found in
@@ -259,7 +314,7 @@ class HeadingNode(MarkdownNode):
         super().__init__(block, parent)
 
     # Copy
-    def naked_copy(self) -> "HeadingNode":
+    def naked_copy(self) -> 'HeadingNode':
         """Make a deep copy of this node and take it off the tree"""
         block_copy: HeadingBlock | HeaderBlock = (
             self.block.model_copy(deep=True)
@@ -274,7 +329,14 @@ class HeadingNode(MarkdownNode):
         return new_node
 
     def node_copy(self) -> 'HeadingNode':
-        """Make a deep copy of this node, maintaining links"""
+        """Make a deep copy of this node, maintaining links.
+        To make a new branch root with reference to all children,
+        but detached from the upper tree, do this:
+        ```python
+        branch_root = node_copy(node)
+        branch_root.parent = None
+        ```
+        """
 
         newnode = self.naked_copy()
         newnode.children = self.children
@@ -393,6 +455,7 @@ class TextNode(MarkdownNode):
         metadata: MetadataDict = {},
         parent: HeadingNode | None = None,
     ) -> 'TextNode':
+        """Create a text node from content and metadata."""
         newnode = TextNode(
             block=TextBlock.from_text(content), parent=parent
         )
@@ -416,7 +479,7 @@ class TextNode(MarkdownNode):
         return new_node
 
     def node_copy(self) -> 'TextNode':
-        """Make a deep copy of this node, keeping links to parent"""
+        """Make a deep copy of this node, keeping links to parent."""
 
         new_node = self.naked_copy()
         new_node.parent = self.parent
@@ -430,12 +493,15 @@ class TextNode(MarkdownNode):
 
     # Utility functions to retrieve basic properties
     def get_text_children(self) -> list['TextNode']:
+        """Always returns an empty list for text nodes."""
         return []  # Text nodes have no children
 
     def get_heading_children(self) -> list['HeadingNode']:
+        """Always returns an empty list for text nodes."""
         return []  # Text nodes have no children
 
     def heading_level(self) -> None:
+        """Return None for the level of text nodes."""
         return None  # Text nodes don't have levels
 
     def get_content(self) -> str:
@@ -488,18 +554,22 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         blocks: The list of blocks parsed from a markdown file
 
     Returns:
-        A root node that can be None for an empty tree
+        A root node, or None for an empty block list.
 
-    Note: conversion to tree of a non-empty block list adds a
+    Note:
+        conversion to tree of a non-empty block list adds a
         metadata blocks in front, if missing, and an empty text
         block after metadatata blocks without following text or
-        heading block, to the underlying list of markdown blocks.
+        heading block, to the original list of markdown blocks.
         If the block list startes with a heading, adds a header
         with the content of the heading.
 
-    Note: the nodes contain references to blocks. To avoid side
+    Note:
+        the nodes contain references to blocks. To avoid side
         effects, copy the blocks first:
-            blocks_to_tree(blocklist_copy(blocks))
+        ```
+        root = blocks_to_tree(blocklist_copy(blocks))
+        ```
     """
     if not blocks:
         return None
@@ -637,9 +707,12 @@ def tree_to_blocks(
     Returns:
         The reconstituted list of blocks.
 
-    Note: the blocks contain references to node components. To
+    Note:
+        the blocks contain references to node components. To
         avoid side effects, copy the tree first:
+        ```python
         tree_to_blocks(tree_copy(root_node))
+        ```
     """
     if not root_node:
         return []
@@ -714,7 +787,8 @@ def tree_to_blocks(
 
 def tree_copy(root: MarkdownNode) -> MarkdownNode:
     """Make a deep copy of a non-empty tree or subtree.
-    Returns: a root node with a copy of the tree.
+    Returns:
+        a root node with a copy of the tree.
     """
     return root.tree_copy()
 
@@ -736,10 +810,11 @@ def pre_order_map(
         A new tree with the same structure, but transformed by
             map_func
 
-    Note: Make a deep copy of the root node prior to calling this
+    Note:
+        Make a deep copy of the root node prior to calling this
         function to prevent side effects:
-        pre_order_map(node.tree_copy()), or call node.node_copy()
-        within map_func
+        `pre_order_map(node.tree_copy())`, or call `node.node_copy()`
+        within `map_func`.
     """
 
     mapped_node = map_func(node)
@@ -766,10 +841,11 @@ def post_order_map(
         A new tree with the same structure, but transformed by
             map_func
 
-    Note: Make a deep copy of the root node prior to calling this
+    Note:
+        Make a deep copy of the root node prior to calling this
         function to prevent side effects:
-        post_order_map(node.tree_copy()), or call node.node_copy()
-        within map_func
+        `post_order_map(node.tree_copy())`, or call `node.node_copy()`
+        within `map_func`.
     """
     node.children = [
         post_order_map(child, map_func) for child in node.children
@@ -789,7 +865,8 @@ def pre_order_traversal(
         node: The root node of the tree or subtree
         visit_func: The function to apply to each node
 
-    Note: this function may be used with side-effects on the tree
+    Note:
+        this function may be used with side-effects on the tree
     """
     visit_func(node)
     for child in node.children:
@@ -807,7 +884,8 @@ def post_order_traversal(
         node: The root node of the tree or subtree
         visit_func: The function to apply to each node
 
-    Note: this function may be used with side-effects on the tree
+    Note:
+        this function may be used with side-effects on the tree
     """
     for child in node.children:
         post_order_traversal(child, visit_func)
@@ -953,11 +1031,13 @@ def extract_content(
     Returns:
         the root node where the traversal was started.
 
-    Note: this is a convenience function to process information in
+    Note:
+        this is a convenience function to process information in
         the tree, conceptually equivalent to the extraction of
         information from neighbours of a graph.
 
-    See also: propagate_content: extract information from parents to
+    See also:
+        `propagate_content`: extract information from parents to
         children.
     """
 
@@ -989,7 +1069,7 @@ def propagate_content(
 
     Args:
         root_node: the heading node from which the traversal starts
-        collect_fun: a function that creates text from a parent node,
+        collect_func: a function that creates text from a parent node,
             such as from the metadata of the parent node.
             Args: the parent node.
             Returns: a string or a text node. If a string, a text
@@ -1007,15 +1087,18 @@ def propagate_content(
         filter_func: A predicate function selecting heading nodes
             that will be processed.
 
-    Returns: the root node where the traversal was started.
+    Returns:
+        the root node where the traversal was started.
 
-    Note: This function changes the structure of the children of the
+    Note:
+        This function changes the structure of the children of the
         tree, but does not change the structure of the parent nodes.
         For more general operations on the tree structure, call
         pre_order_traversal directly.
 
-    See also: extract_content: propagate information from children
-        to parents; propagate_property (treeutils): example of use
+    See also:
+        `extract_content`: propagate information from children
+        to parents; `propagate_property` (treeutils): example of use
     """
 
     def process_node(node: MarkdownNode) -> None:

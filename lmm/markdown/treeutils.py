@@ -3,27 +3,30 @@ Utility functions to extract information from markdown trees.
 
 The functions may be divided in the following categories.
 
-Aggregate: exchange information between child and parent nodes. These
-functions revise the tree and have side effects on the tree.
-    aggregate_content_in_parent_metadata
-    inherit_metadata
-    extract_property
+Aggregate:
+    exchange information between child and parent nodes. These
+    functions revise the tree and have side effects on the tree.
+    `summarize_content`
+    `inherit_metadata`
+    `extract_property`
 
-Traversal: traverse the tree and extract information, allowing
-inheritance of metadata directly of through a function. No side
-effects.
-    collect_text
-    collect_headings
-    collect_dictionaries
-    collect_table_of_contents
-    collect_textblocks
+Traversal:
+    traverse the tree and extract information, allowing
+    inheritance of metadata directly or through a function. No side
+    effects.
+    `collect_text`
+    `collect_headings`
+    `collect_dictionaries`
+    `collect_table_of_contents`
+    `collect_textblocks`
 
-Fold: no side effects
-    count_words
+Fold:
+    `count_words`
 
-Select nodes: select nodes from tree
-    get_nodes, get_text_nodes, get_heading_nodes
-    get_nodes_with_metadata
+Select nodes:
+    select nodes from tree
+    `get_nodes`, `get_text_nodes`, `get_heading_nodes`
+    `get_nodes_with_metadata`
 
 """
 
@@ -127,7 +130,8 @@ def inherit_metadata(
     Returns:
         the modified branch
 
-    Note: when inherit is true, the inherit search stops at the first
+    Note:
+        when inherit is true, the inherit search stops at the first
         parent heading that has any metadata.
     """
 
@@ -175,9 +179,11 @@ def extract_property(
             If the heading node has no such property, then all text
             children of the heading node are removed.
 
-    Returns: the root node of the modified branch
+    Returns:
+        the root node of the modified branch
 
-    NOTE: This function changes the structure of the tree
+    Note:
+        This function changes the structure of the tree
     """
 
     def _extract_property(node: MarkdownNode):
@@ -234,7 +240,7 @@ def propagate_property(
     Args:
         node: the root or branch node to work on
         key: the property to be moved into a text node
-        add_kay_info: if True, the metadata of the added text child
+        add_key_info: if True, the metadata of the added text child
             node will have a 'type' property with the value of the
             transferred property.
         select: if True, replaces all children of the heading node
@@ -242,9 +248,11 @@ def propagate_property(
             If the heading node has no such property, then the text
             children are not altered.
 
-    Returns: the root node of the modified branch
+    Returns:
+        the root node of the modified branch
 
-    NOTE: This function changes the structure of the tree
+    Note:
+        This function changes the structure of the tree
     """
 
     def process_node(n: HeadingNode) -> TextNode:
@@ -342,7 +350,8 @@ def collect_dictionaries(
     Returns: a list of dictionaries with key 'content' (the text) and
         'metadata', or with the keys specified by map_func
 
-    Note: Use map_func to collect information from the parents of
+    Note:
+        Use `map_func` to collect information from the parents of
         the node hierarchically.
     """
     if not root:
@@ -394,10 +403,12 @@ def collect_textblocks(
         filter_func: a predicate to filter text nodes to include
             in the final block list.
 
-    Returns: a block list
+    Returns:
+        a block list
 
-    Note: the metadata_block members, corresponding to the
-        private_ member of MetadataBlocks, are ignored.
+    Note:
+        the metadata_block members, corresponding to the
+        `private_` member of MetadataBlocks, are ignored.
     """
 
     if not root:
@@ -478,8 +489,9 @@ def get_nodes(
         A list of the text nodes, or of those where filter_func is
         true
 
-    See also: get_text_nodes, get_heading_nodes,
-        get_nodes_with_metadata for examples of uses
+    See also:
+        `get_text_nodes`, `get_heading_nodes`,
+        `get_nodes_with_metadata` for examples of uses
     """
     f: Callable[[MN], MN]
     match opts:
