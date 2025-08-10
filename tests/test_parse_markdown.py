@@ -379,6 +379,40 @@ second:
             {"word": "my word", "number": 1},
         )
 
+    def test_metadata_block_with_recursive_type(self):
+        """Test metadata block ending with ellipsis."""
+        content = """---
+first: 1
+second:
+  word: my word
+  number: 1
+  nested:
+    first_nested: some text
+    second_nested: [1, 2, 3]
+..."""
+        result = parse_markdown_text(content)
+
+        # expected result: pydantic exception for recursive
+        # dictionary.
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(
+            result[0], HeaderBlock
+        )  # First block becomes header
+        self.assertTrue(bool(result[0].content))
+        self.assertEqual(result[0].content['title'], "Title")
+        self.assertEqual(result[0].private_[0]["first"], 1)
+        self.assertDictEqual(
+            result[0].private_[0]["second"],
+            {
+                "word": "my word",
+                "number": 1,
+                "nested": {
+                    "first_nested": "some text",
+                    "second_nested": [1, 2, 3],
+                },
+            },
+        )
+
     def test_unclosed_metadata_block_error(self):
         """Test that unclosed metadata blocks generate errors."""
         content = """---

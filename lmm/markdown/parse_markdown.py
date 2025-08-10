@@ -196,12 +196,14 @@ class MetadataBlock(BaseModel):
                 content=part, private_=whole, comment=comment
             )
         except Exception:
-            # For the errors caught by pydantic
+            # For the errors caught by pydantic. This ensues for
+            # recursive dictionaries.
             try:
                 block = MetadataBlock(
                     content={},
                     private_=[part] + whole,
-                    comment=comment,
+                    comment="Invalid (too deeply nested?) metadata,"
+                    + " ignored by model.",
                 )
             except Exception:
                 return ErrorBlock(
