@@ -91,6 +91,27 @@ class MetadataBlock(BaseModel):
     private_: list[object] = []
     type: Literal['metadata'] = 'metadata'
 
+    def __eq__(self, obj: object) -> bool:
+        if not isinstance(obj, MetadataBlock | HeaderBlock):
+            return False
+        if not (
+            self.content == obj.content
+            and self.comment == obj.comment
+        ):
+            return False
+        if len(self.private_) != len(obj.private_):
+            return False
+        for i, d in enumerate(self.private_):
+            try:
+                if not d == obj.private_[i]:
+                    return False
+            except:  # noqa
+                return False
+        return True
+
+    def __ne__(self, obj: object) -> bool:
+        return not self.__eq__(obj)
+
     def serialize(self) -> str:
         """A parsable textual representation of the block."""
         strrep = "---"
@@ -289,6 +310,17 @@ class HeaderBlock(MetadataBlock):
         return block
 
     @staticmethod
+    def _from_dict(
+        dct: dict[object, object],
+    ) -> 'HeaderBlock|ErrorBlock':
+        block = MetadataBlock._from_dict(dct)
+        match block:
+            case ErrorBlock():
+                return block
+            case MetadataBlock():
+                return HeaderBlock._from_metadata_block(block)
+
+    @staticmethod
     def from_default(source: str = "") -> 'HeaderBlock':
         """Instantiate a default header block."""
         if not source:
@@ -310,6 +342,20 @@ class HeadingBlock(BaseModel):
     content: str
     attributes: str = ""
     type: Literal['heading'] = 'heading'
+
+    def __eq__(self, obj: object) -> bool:
+        if not isinstance(obj, HeadingBlock):
+            return False
+        if not (
+            self.level == obj.level
+            and self.content == obj.content
+            and self.attributes == obj.attributes
+        ):
+            return False
+        return True
+
+    def __ne__(self, obj: object) -> bool:
+        return not self.__eq__(obj)
 
     def serialize(self) -> str:
         """A parsable textual representation of the block."""
@@ -405,6 +451,16 @@ class TextBlock(BaseModel):
     content: str
     type: Literal['text'] = 'text'
 
+    def __eq__(self, obj: object) -> bool:
+        if not isinstance(obj, TextBlock):
+            return False
+        if not self.content == obj.content:
+            return False
+        return True
+
+    def __ne__(self, obj: object) -> bool:
+        return not self.__eq__(obj)
+
     def serialize(self) -> str:
         """A parsable textual representation of the block."""
         return self.content + "\n"
@@ -484,6 +540,12 @@ class ErrorBlock(BaseModel):
     errormsg: str = ""
     origin: str = ""
     type: Literal['error'] = 'error'
+
+    def __eq__(self, obj: object):
+        return self is obj
+
+    def __ne__(self, obj: object) -> bool:
+        return not self.__eq__(obj)
 
     def serialize(self) -> str:
         """A textual representation of the error. When parsed, it will

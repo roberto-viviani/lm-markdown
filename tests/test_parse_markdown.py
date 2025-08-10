@@ -32,8 +32,10 @@ class TestMardownBlocks(unittest.TestCase):
             text,
             serialize_blocks(parse_markdown_text(parse)),
         )
+        self.assertTrue(block == TextBlock(content=text))
         block.extend("Part of new")
         self.assertEqual(block.get_content(), "Part of new")
+        self.assertTrue(block != TextBlock(content=text))
 
     def test_construction_text_regular(self):
         text = "Content of text block\non two lines"
@@ -46,10 +48,12 @@ class TestMardownBlocks(unittest.TestCase):
             text,
             serialize_blocks(parse_markdown_text(parse)),
         )
+        self.assertTrue(block == TextBlock(content=text))
         block.extend("Part of new")
         self.assertEqual(
             block.get_content(), "\n\n".join([text, "Part of new"])
         )
+        self.assertTrue(block != TextBlock(content=text))
 
     def test_construction_heading(self):
         text = "A heading"
@@ -60,6 +64,7 @@ class TestMardownBlocks(unittest.TestCase):
             "## " + text + "\n",
             serialize_blocks(parse_markdown_text(parse)),
         )
+        self.assertTrue(block == HeadingBlock(content=text, level=2))
 
     def test_construction_heading_empty(self):
         text = ""
@@ -85,6 +90,7 @@ class TestMardownBlocks(unittest.TestCase):
             parse,
             serialize_blocks(parse_markdown_text(parse)),
         )
+        self.assertTrue(block == MetadataBlock(content=data))
 
     def test_construction_metadata_empty(self):
         data = {}
@@ -95,6 +101,7 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertIsInstance(
             parse_markdown_text(parse)[0], ErrorBlock
         )
+        self.assertTrue(block == MetadataBlock(content=data))
 
     def test_construction_header_invalid(self):
         text = "---\n1: first line\n---"
@@ -106,6 +113,7 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertIsInstance(block, HeaderBlock)
         self.assertDictEqual(block.get_content(), {'title': "Title"})
         self.assertDictEqual(block.private_[0], {1: "first line"})
+        self.assertTrue(block == parse_markdown_text(text)[0])
 
     def test_construction_metadata_invalid(self):
         text = "---\n1: first block\n---\n\n---\n2: second block\n---"
@@ -117,6 +125,7 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertIsInstance(block, MetadataBlock)
         self.assertDictEqual(block.get_content(), {})
         self.assertDictEqual(block.private_[0], {2: "second block"})
+        self.assertTrue(block == parse_markdown_text(text)[1])
 
 
 class TestBlocklist(unittest.TestCase):
