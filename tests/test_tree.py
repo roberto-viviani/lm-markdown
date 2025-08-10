@@ -15,6 +15,136 @@ from lmm.markdown import (
 from lmm.markdown.tree import *
 
 
+class TestNodeConstruction(unittest.TestCase):
+
+    def test_build_headingnode(self):
+        src = """---
+first: 1
+second: [1, 2, 3]
+---"""
+        data = {'first': 1, 'second': [1, 2, 3]}
+        node = load_tree(src)
+        print(node)
+        self.assertTrue(node.is_header_node())
+        self.assertTrue(node.is_root_node())
+        self.assertEqual(node.count_children(), 0)
+        self.assertEqual(node.heading_level(), 0)
+        self.assertEqual(node.get_content(), "Title")
+        meta = node.get_metadata()
+        titleddata = data.copy()
+        titleddata['title'] = "Title"
+        self.assertDictEqual(meta, titleddata)
+        meta['first'] = 2
+        self.assertDictEqual(node.get_metadata('first'), {'first': 1})
+        self.assertEqual(node.get_metadata_for_key('first'), 1)
+        self.assertDictEqual(node.fetch_metadata(), titleddata)
+        self.assertDictEqual(
+            node.fetch_metadata('first'), {'first': 1}
+        )
+        self.assertEqual(node.fetch_metadata_for_key('first'), 1)
+        nodedict = node.as_dict()
+        self.assertEqual(nodedict['content'], "Title")
+        self.assertEqual(nodedict['metadata'], titleddata)
+        self.assertEqual(node.get_heading_children(), [])
+        self.assertEqual(node.get_text_children(), [])
+
+        heading = HeadingNode(
+            HeadingBlock(level=1, content="Heading")
+        )
+        node.add_child(heading)
+        self.assertEqual(node.count_children(), 1)
+        self.assertIs(node.get_heading_children()[0], heading)
+        self.assertEqual(heading.parent, node)
+        self.assertFalse(heading.is_header_node())
+        self.assertFalse(heading.is_root_node())
+        self.assertEqual(heading.count_children(), 0)
+        self.assertEqual(heading.heading_level(), 1)
+        self.assertEqual(heading.get_content(), "Heading")
+
+        text = TextNode(TextBlock.from_text("Text"))
+        node.add_child(text)
+        self.assertEqual(node.count_children(), 2)
+        self.assertIs(node.get_text_children()[0], text)
+        self.assertEqual(text.parent, node)
+        self.assertFalse(text.is_header_node())
+        self.assertFalse(text.is_root_node())
+        self.assertEqual(text.count_children(), 0)
+        self.assertIsNone(text.heading_level())
+        self.assertEqual(text.get_content(), "Text")
+
+        nodecopy = node.naked_copy()
+        self.assertTrue(nodecopy.is_header_node())
+        self.assertTrue(nodecopy.is_root_node())
+        self.assertEqual(nodecopy.count_children(), 0)
+        self.assertEqual(nodecopy.heading_level(), 0)
+        self.assertEqual(nodecopy.get_content(), "Title")
+        meta = nodecopy.get_metadata()
+        titleddata = data.copy()
+        titleddata['title'] = "Title"
+        self.assertDictEqual(meta, titleddata)
+        meta['first'] = 2
+        self.assertDictEqual(
+            nodecopy.get_metadata('first'), {'first': 1}
+        )
+        self.assertEqual(nodecopy.get_metadata_for_key('first'), 1)
+        self.assertDictEqual(nodecopy.fetch_metadata(), titleddata)
+        self.assertDictEqual(
+            nodecopy.fetch_metadata('first'), {'first': 1}
+        )
+        self.assertEqual(nodecopy.fetch_metadata_for_key('first'), 1)
+        nodedict = nodecopy.as_dict()
+        self.assertEqual(nodedict['content'], "Title")
+        self.assertEqual(nodedict['metadata'], titleddata)
+        self.assertEqual(nodecopy.get_heading_children(), [])
+        self.assertEqual(nodecopy.get_text_children(), [])
+
+        nodecopy = node.node_copy()
+        self.assertTrue(nodecopy.is_header_node())
+        self.assertTrue(nodecopy.is_root_node())
+        self.assertEqual(nodecopy.count_children(), 2)
+        self.assertEqual(nodecopy.heading_level(), 0)
+        self.assertEqual(nodecopy.get_content(), "Title")
+        meta = nodecopy.get_metadata()
+        titleddata = data.copy()
+        titleddata['title'] = "Title"
+        self.assertDictEqual(meta, titleddata)
+        meta['first'] = 2
+        self.assertDictEqual(
+            nodecopy.get_metadata('first'), {'first': 1}
+        )
+        self.assertEqual(nodecopy.get_metadata_for_key('first'), 1)
+        self.assertDictEqual(nodecopy.fetch_metadata(), titleddata)
+        self.assertDictEqual(
+            nodecopy.fetch_metadata('first'), {'first': 1}
+        )
+        self.assertEqual(nodecopy.fetch_metadata_for_key('first'), 1)
+        nodedict = nodecopy.as_dict()
+        self.assertEqual(nodedict['content'], "Title")
+        self.assertEqual(nodedict['metadata'], titleddata)
+        self.assertIs(nodecopy.get_heading_children()[0], heading)
+        self.assertIs(nodecopy.get_text_children()[0], text)
+
+        nodecopy.metadata['title'] = "A new title"
+        self.assertEqual(node.get_content(), "Title")
+        self.assertEqual(nodecopy.get_content(), "A new title")
+
+        heading.add_child(text)
+        headingcopy = heading.naked_copy()
+        self.assertFalse(headingcopy.is_header_node())
+        self.assertTrue(headingcopy.is_root_node())
+        self.assertEqual(headingcopy.count_children(), 0)
+        self.assertEqual(headingcopy.heading_level(), 1)
+        self.assertEqual(headingcopy.get_content(), "Heading")
+
+        headingcopy = heading.node_copy()
+        self.assertFalse(headingcopy.is_header_node())
+        self.assertFalse(headingcopy.is_root_node())
+        self.assertIs(headingcopy.parent, node)
+        self.assertEqual(headingcopy.count_children(), 1)
+        self.assertEqual(headingcopy.heading_level(), 1)
+        self.assertEqual(headingcopy.get_content(), "Heading")
+
+
 class TestTreeConstruction(unittest.TestCase):
 
     def test_load_tree(self):

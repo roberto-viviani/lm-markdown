@@ -373,6 +373,8 @@ class HeadingNode(MarkdownNode):
     def get_content(self) -> str:
         """Returns the title of the heading represented by the node"""
         match self.block:
+            case HeadingBlock() if self.is_header_node():
+                return str(self.get_metadata_for_key('title'))
             case HeadingBlock():
                 return self.block.get_content()
             case HeaderBlock():
@@ -394,7 +396,7 @@ class HeadingNode(MarkdownNode):
         info: str
         match self.block:
             case HeaderBlock():
-                info = "Heading node with header\n"
+                info = "Heading node with header block\n"
                 info += f"{indent_str}Header: {self.block.content}"
             case HeadingBlock():
                 info = "Heading node\n"
@@ -408,7 +410,7 @@ class HeadingNode(MarkdownNode):
             info += f"\nHas {self.count_children()} children, of "
             info += (
                 f"which {len(self.get_text_children())} are "
-                + " text children"
+                + "text children"
             )
         else:
             info += "\nEmpty parent node"
