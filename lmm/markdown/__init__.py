@@ -47,8 +47,6 @@ from .tree import (  # noqa: F401
     blocks_to_tree as blocks_to_tree,
     tree_to_blocks as tree_to_blocks,
     tree_copy as tree_copy,
-    pre_order_map as pre_order_map,
-    post_order_map as post_order_map,
     pre_order_traversal as pre_order_traversal,
     post_order_traversal as post_order_traversal,
     traverse_tree as traverse_tree,
