@@ -240,11 +240,17 @@ class MetadataBlock(BaseModel):
         dct: dict[object, object],
     ) -> 'MetadataBlock|ErrorBlock':
         if not pya.is_metadata_dict(dct):
-            return ErrorBlock(
-                content="Invalid dictionary to form metadata."
-            )
+            return ErrorBlock(content="Invalid data for metadata.")
         # now dct is a metadata dict
-        return MetadataBlock(content=dct)  # type: ignore
+        try:
+            block = MetadataBlock(content=dct)  # type: ignore
+        except Exception:
+            # This is a pydantic type error
+            return ErrorBlock(
+                content="Invalid dictionary for metadata "
+                + "(too deep nesting?)."
+            )
+        return block
 
 
 class HeaderBlock(MetadataBlock):
