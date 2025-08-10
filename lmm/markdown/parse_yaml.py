@@ -187,7 +187,7 @@ def split_yaml_parse(
                     # however. It is difficult to see how this could
                     # fail, given that we use the same value as before
                     # but with a new key.
-                    val: MetadataValue = part.pop()  # type: ignore
+                    val: MetadataValue = part.pop(key)  # type: ignore
                     part[mapped_keys[new_key]] = val
                     break
 
