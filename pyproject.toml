@@ -3,7 +3,7 @@ name = "lmm"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Roberto Viviani Safpsy113",email = "roberto.viviani@uibk.ac.at"}
+    {name = "Roberto Viviani",email = "roberto.viviani@uibk.ac.at"}
 ]
 readme = "README.md"
 requires-python = ">=3.11.0"
