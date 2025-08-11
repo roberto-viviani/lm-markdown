@@ -2,3 +2,9 @@ line-length = 70
 
 [lint]
 ignore = ["E731"]
+
+[format]
+quote-style = "preserve"
+
+[lint.per-file-ignores]
+"__init__.py" = ["E402"]
