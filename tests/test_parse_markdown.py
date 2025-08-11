@@ -1,9 +1,14 @@
 # flake8: noqa
+# pyright: basic
+# pyright: reportPrivateUsage=false
+# pyright: reportArgumentType=false
+# pyright: reportAttributeAccessIssue=false
 
 """Unit tests for parse_markdown_text function from
 lmm.markdown.parse_markdown module."""
 
 import unittest
+from typing import cast
 from lmm.markdown.parse_markdown import (
     parse_markdown_text,
     serialize_blocks,
@@ -17,10 +22,10 @@ from lmm.markdown.parse_markdown import (
     TextBlock,
     ErrorBlock,
 )
+from lmm.markdown.parse_yaml import MetadataDict
 
 
 class TestMardownBlocks(unittest.TestCase):
-
     def test_construction_text_empty(self):
         text = ""
         block = TextBlock(content=text)
@@ -93,7 +98,7 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertTrue(block == MetadataBlock(content=data))
 
     def test_construction_metadata_empty(self):
-        data = {}
+        data: MetadataDict = {}
         block = MetadataBlock(content=data)
         self.assertDictEqual(block.get_content(), data)
         parse = block.serialize()
@@ -103,6 +108,16 @@ class TestMardownBlocks(unittest.TestCase):
         )
         self.assertTrue(block == MetadataBlock(content=data))
 
+    def test_construction_metadata_none(self):
+        data = {'first': None}
+        block = MetadataBlock(content=data)
+        self.assertDictEqual(block.get_content(), data)
+        parse = block.serialize()
+        self.assertEqual(parse, "---\nfirst: null\n---\n")
+        self.assertIsInstance(
+            parse_markdown_text(parse)[0], HeaderBlock
+        )
+
     def test_construction_header_invalid(self):
         text = "---\n1: first line\n---"
         # expected behaviour: invalid dict is set to private_,
@@ -111,6 +126,7 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertEqual(len(blocks), 1)
         block = blocks[0]
         self.assertIsInstance(block, HeaderBlock)
+        block = cast(HeaderBlock, block)
         self.assertDictEqual(block.get_content(), {'title': "Title"})
         self.assertDictEqual(block.private_[0], {1: "first line"})
         self.assertTrue(block == parse_markdown_text(text)[0])
@@ -123,6 +139,7 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertEqual(len(blocks), 2)
         block = blocks[1]
         self.assertIsInstance(block, MetadataBlock)
+        block = cast(MetadataBlock, block)
         self.assertDictEqual(block.get_content(), {})
         self.assertDictEqual(block.private_[0], {2: "second block"})
         self.assertTrue(block == parse_markdown_text(text)[1])
@@ -142,11 +159,13 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertEqual(len(blocks), 1)
         block = blocks[0]
         self.assertIsInstance(block, HeaderBlock)
+        block = cast(HeaderBlock, block)
         self.assertListEqual(block.private_, [1, 2, 3])
 
     def test_construction_metadata_from_dict(self):
         data = {'title': "Title"}
         block = MetadataBlock._from_dict(data)
+        block = cast(MetadataBlock, block)
         self.assertEqual(block.get_key('title'), "Title")
         self.assertEqual(block.get_key('titles'), "")
         self.assertDictEqual(block.get_content(), data)
@@ -157,17 +176,28 @@ class TestMardownBlocks(unittest.TestCase):
         )
         self.assertTrue(block == MetadataBlock(content=data))
 
+    def test_construction_header_invalid_nested_dict(self):
+        # At present, None is not used in nested dictionaries
+        # or in lists
+        data = {'title': "Title", 'data': {'token': None}}
+        block = HeaderBlock._from_dict(data)
+        self.assertIsInstance(block, ErrorBlock)
+        block = cast(ErrorBlock, block)
+        self.assertTrue(
+            block.get_content().startswith("Invalid dictionary")
+        )
+
     def test_construction_header_from_nested_dict(self):
         data = {'title': "Title", 'data': {'token': {'nested': 1}}}
         block = HeaderBlock._from_dict(data)
         self.assertIsInstance(block, ErrorBlock)
+        block = cast(ErrorBlock, block)
         self.assertTrue(
             block.get_content().startswith("Invalid dictionary")
         )
 
 
 class TestBlocklist(unittest.TestCase):
-
     def test_construction_error(self):
         text = "---\na simple literal\n---"
         # expected behaviour: metadata of literal not allowed by
@@ -184,9 +214,8 @@ class TestBlocklist(unittest.TestCase):
         # when parsing, correct object created
         newblocks = parse_markdown_text(newtext)
         self.assertIsInstance(newblocks[0], HeaderBlock)
-        self.assertEqual(
-            newblocks[0].get_key('lit'), "a simple literal"
-        )
+        block = cast(HeaderBlock, newblocks[0])
+        self.assertEqual(block.get_key('lit'), "a simple literal")
 
     def test_blocklist_error(self):
         text = "---\na simple literal\n---"
@@ -219,7 +248,7 @@ class TestBlocklist(unittest.TestCase):
         newblocks = blocklist_map(
             blocks,
             lambda x: TextBlock.from_text(
-                x.get_content() + ", really!"
+                x.get_content() + ", really!"  # type: ignore
             ),
             lambda x: isinstance(x, TextBlock),
         )
@@ -239,7 +268,7 @@ class TestBlocklist(unittest.TestCase):
         newblocks = blocklist_map(
             blocks,
             lambda x: TextBlock.from_text(
-                x.get_content() + ", really!"
+                x.get_content() + ", really!"  # type: ignore
             ),
             lambda x: isinstance(x, TextBlock),
         )
@@ -406,6 +435,20 @@ Some text.
         )
         self.assertEqual(content, serialize_blocks(result).strip())
 
+    def test_metadata_block_with_invalid_dict(self):
+        """Test metadata block with None in nested dict"""
+        content = "---\nfirst:\n  nested: null\n---"
+        result = parse_markdown_text(content)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(
+            result[0], HeaderBlock
+        )  # First block becomes header
+        self.assertEqual(result[0].content["title"], "Title")
+        self.assertDictEqual(
+            result[0].private_[0]["first"],  # type: ignore
+            {"nested": None},
+        )
+
     def test_metadata_block_with_ellipsis_end(self):
         """Test metadata block ending with ellipsis."""
         content = """---
@@ -445,11 +488,12 @@ second:
         self.assertIsInstance(
             result[0], HeaderBlock
         )  # First block becomes header
-        self.assertTrue(bool(result[0].content))
-        self.assertEqual(result[0].content['title'], "Title")
-        self.assertEqual(result[0].private_[0]["first"], 1)
+        block = cast(HeaderBlock, result[0])
+        self.assertTrue(bool(block.content))
+        self.assertEqual(block.content['title'], "Title")
+        self.assertEqual(block.private_[0]["first"], 1)  # type: ignore
         self.assertDictEqual(
-            result[0].private_[0]["second"],
+            block.private_[0]["second"],  # type: ignore
             {
                 "word": "my word",
                 "number": 1,

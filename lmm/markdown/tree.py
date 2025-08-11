@@ -60,7 +60,7 @@ Note:
 # pyright: reportPrivateUsage=false
 
 from abc import ABC, abstractmethod
-from typing import Callable, TypeVar, Self
+from typing import Callable, TypeVar, Self, Sequence
 import copy
 from pathlib import Path
 
@@ -79,6 +79,8 @@ from .ioutils import report_error_blocks
 
 # defines the type of the dictionary that can represent a node
 from typing import TypedDict  # fmt: skip
+
+
 class NodeDict(TypedDict):
     """A dictionary representation of a node.
 
@@ -195,7 +197,7 @@ class MarkdownNode(ABC):
         return {}
 
     def get_metadata_for_key(
-        self, key: str, default: str = ""
+        self, key: str, default: MetadataValue = None
     ) -> MetadataValue:
         """
         Get the key value in the metadata of the current node. For the
@@ -247,7 +249,10 @@ class MarkdownNode(ABC):
             return {key: value} if value else {}
 
     def fetch_metadata_for_key(
-        self, key: str, include_header: bool = True, default: str = ""
+        self,
+        key: str,
+        include_header: bool = True,
+        default: MetadataValue = None,
     ) -> MetadataValue:
         """
         Returns the value for a specific metadata key by traversing up
@@ -265,7 +270,7 @@ class MarkdownNode(ABC):
 
         Returns:
             The value for the specified key, or None if not found in
-            the node or any of its ancestors
+            the node or any of its ancestors if no default specified
         """
 
         if not key:
@@ -316,9 +321,9 @@ class HeadingNode(MarkdownNode):
         parent: "HeadingNode | None" = None,
     ):
         # this can only happen if type checks were ignored
-        assert isinstance(
-            block, (HeadingBlock, HeaderBlock)
-        ), f"Invalid block type: {type(block)}"
+        assert isinstance(block, (HeadingBlock, HeaderBlock)), (
+            f"Invalid block type: {type(block)}"
+        )
         # type checker complains here, but it will enforce the
         # type at any subsequent access to the block data member,
         # simulating covariance
@@ -448,9 +453,9 @@ class TextNode(MarkdownNode):
         parent: "HeadingNode | None" = None,
     ):
         # this can only happen if type checks were ignored
-        assert isinstance(
-            block, (TextBlock, ErrorBlock)
-        ), f"Invalid block type: {type(block)}"
+        assert isinstance(block, (TextBlock, ErrorBlock)), (
+            f"Invalid block type: {type(block)}"
+        )
         # type checker complains here, but it will enforce the
         # type at any subsequent access to the block data member,
         # simulating covariance
@@ -896,6 +901,8 @@ def traverse_tree(
 
 
 MN = TypeVar("MN", bound=MarkdownNode)  # fmt: skip
+
+
 def traverse_tree_nodetype(
     node: MarkdownNode,
     map_func: Callable[[MN], T],
@@ -979,7 +986,7 @@ def fold_tree(
 def extract_content(
     root_node: HeadingNode,
     output_key: str,
-    extract_func: Callable[[list[MarkdownNode]], MetadataValue],
+    extract_func: Callable[[Sequence[MarkdownNode]], MetadataValue],
     filter_func: Callable[[HeadingNode], bool] = lambda _: True,
 ) -> HeadingNode:
     """Extracts information from children content, processes it, and
@@ -1010,6 +1017,30 @@ def extract_content(
     See also:
         `propagate_content`: extract information from parents to
         children.
+
+    Example:
+        ```python
+        def count_words(root: MarkdownNode) -> MarkdownNode
+            KEY = "wordscount"
+
+            def proc_sum(data: Sequence[MarkdownNode]) -> str:
+                buff: list[str] = []
+                for d in data:
+                    match d:
+                        case TextNode():
+                            buff.append(d.get_content())
+                        case HeadingNode():
+                            value = str(d.get_metadata_for_key(KEY, ""))
+                            if value:
+                                buff.append(value)
+                        case _:
+                            raise RuntimeError("Unrecognized node")
+
+                count: int = len((" ".join(buff)).split())
+                return f"There are {count} words."
+
+        return extract_content(root, KEY, proc_sum)
+        ```
     """
 
     def process_node(node: MarkdownNode) -> None:

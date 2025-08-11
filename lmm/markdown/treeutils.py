@@ -33,7 +33,7 @@ Select nodes:
 # protected members of Block used
 # pyright: reportPrivateUsage=false
 
-from typing import Callable, TypeVar, cast, Sequence
+from typing import Callable, TypeVar
 from enum import Enum
 
 from .tree import (
@@ -43,150 +43,19 @@ from .tree import (
     MarkdownTree,
     NodeDict,
     pre_order_traversal,
-    post_order_traversal,
     traverse_tree,
     traverse_tree_nodetype,
     fold_tree,
     propagate_content,
-    extract_content,
 )
 from .parse_markdown import (
     Block,
     MetadataBlock,
     TextBlock,
 )
-from .parse_yaml import MetadataValue
 
 
-# aggregation and inheritance---------------------------------------
-
-
-def summarize_content(
-    root_node: HeadingNode,
-    key: str,
-    summarize_func: Callable[
-        [Sequence[MetadataValue]], MetadataValue
-    ],
-    filter_func: Callable[[HeadingNode], bool] = lambda _: True,
-) -> HeadingNode:
-    """
-    Collects content from leaf node children and outputs from non-leaf
-    children, processes them with a processing function, and stores
-    the result in the parent's metadata in key.
-
-    This function uses post-order traversal to ensure that child
-    summaries are computed before parent summaries, enabling
-    progressive accumulation of text content up the tree.
-
-    Args:
-        root_node: The root node of the markdown tree
-        key: The metadata key of the heading nodes where to store the
-            aggregate content, and read from to compute aggregation
-        summarize_func: function to process the collected content
-            before storing
-        filter_func: a filter function to select the nodes that
-            should be processed
-
-    Returns:
-        the heading node the traversal was started from
-
-    Example:
-        ```python
-        # adds a metadata property 'wordcount' to each heading
-        def add_wordcount(root: HeadingNode) -> MarkdownNode:
-
-            def proc_sum(data: Sequence[MetadataValue]) -> int:
-                score: int = 0
-                for d in data:
-                    if isinstance(d, int):
-                        score += d
-                    else:
-                        score += len(str(d).split())
-                return score
-
-            return summarize_content(root, "wordcount", proc_sum)
-
-        # an example for working with strings from text nodes
-        def summarize_strings(root: HeadingNode) -> HeadingNode:
-
-            def proc_sum(data: Sequence[MetadataValue]) -> str:
-                buff = [str(d) for d in data]
-                return f"There are {len((" ".join(buff)).split())} words."
-
-            return summarize_content(
-                root,
-                "summary",
-                proc_sum,
-            )
-        ```
-    """
-
-    def process_node(nodes: Sequence[MarkdownNode]) -> MetadataValue:
-        values: list[MetadataValue] = []
-        for n in nodes:
-            match n:
-                case HeadingNode():
-                    value: MetadataValue = n.get_metadata_for_key(
-                        key, ""
-                    )
-                    if value:
-                        values.append(value)
-                case TextNode():
-                    values.append(n.get_content())
-                case _:
-                    # MarkdownNode left, but is abstract
-                    raise RuntimeError(
-                        "Unreachable code reached: "
-                        + "unrecognized node type"
-                    )
-        if values:
-            return summarize_func(values)
-        else:
-            return []
-
-    return extract_content(root_node, key, process_node, filter_func)
-
-
-def test_summarize_content(root: HeadingNode) -> MarkdownNode:
-
-    def proc_sum(data: Sequence[MetadataValue]) -> int:
-        score: int = 0
-        for d in data:
-            if isinstance(d, int):
-                score += d
-            else:
-                score += len(str(d).split())
-        return score
-
-    return summarize_content(root, "wordcount", proc_sum)
-
-
-def test_summarize_content_upwards(root: HeadingNode):
-    def proc_sum(data: Sequence[MetadataValue]) -> int:
-        score: int = 0
-        for d in data:
-            if isinstance(d, int):
-                score += d
-            else:
-                score += len(str(d).split())
-        return score
-
-    return summarize_content(root, "wordcount", proc_sum)
-
-
-def test_summarize_content_strings(root: HeadingNode) -> HeadingNode:
-
-    def proc_sum(data: Sequence[MetadataValue]) -> str:
-        buff: str = " ".join([str(d) for d in data])
-        return f"There are {len(buff)} words."
-
-    root = summarize_content(
-        root,
-        "summary",
-        proc_sum,
-        lambda x: isinstance(x, TextNode),
-    )
-    return root
+# inheritcance------------------------------------------------------
 
 
 def inherit_metadata(
@@ -241,74 +110,6 @@ def inherit_metadata(
     return node
 
 
-def extract_property(
-    node: MarkdownNode,
-    key: str,
-    add_type: bool = True,
-    select: bool = False,
-) -> MarkdownNode:
-    """Extract a property from the metadata of a heading and transform
-    it into a child text node with content given by that property.
-
-    Args:
-        node: the root or branch node to work on
-        key: the property to be moved into a text node
-        add_type: if True, the metadata of the added text child node
-            will have a 'type' property with the value of the
-            transferred property.
-        select: if True, replaces all children of the heading node
-            with the new node containing the property of the metadata.
-            If the heading node has no such property, then all text
-            children of the heading node are removed.
-
-    Returns:
-        the root node of the modified branch
-
-    Note:
-        This function changes the structure of the tree
-    """
-
-    def _extract_property(node: MarkdownNode):
-        if isinstance(node, HeadingNode):
-            if select:
-                if key in node.metadata:
-                    text = TextNode(
-                        TextBlock(
-                            content=str(node.metadata.pop(key))
-                        ),
-                        parent=node,
-                    )
-                    if add_type:
-                        text.metadata["type"] = key
-
-                    heading_nodes = node.get_heading_children()
-                    newchildren: list[MarkdownNode] = [text]
-                    newchildren.extend(heading_nodes)
-                    node.children = newchildren
-                else:
-                    node.children = cast(
-                        list[MarkdownNode],
-                        node.get_heading_children(),
-                    )
-            else:
-                if key in node.metadata:
-                    text = TextNode(
-                        TextBlock(
-                            content=str(node.metadata.pop(key))
-                        ),
-                        parent=node,
-                    )
-                    if add_type:
-                        text.metadata["type"] = key
-
-                    node.children.insert(0, text)
-
-    # process children before parents
-    post_order_traversal(node, _extract_property)
-
-    return node
-
-
 def propagate_property(
     node: HeadingNode,
     key: str,
@@ -334,7 +135,7 @@ def propagate_property(
         the root node of the modified branch
 
     Note:
-        This function changes the structure of the tree
+        This function changes the structure of the tree.
     """
 
     def process_node(n: HeadingNode) -> TextNode:
@@ -542,6 +343,8 @@ class CopyOpts(Enum):
 
 
 MN = TypeVar("MN", bound=MarkdownNode)  # fmt: skip
+
+
 def get_nodes(
     root: MarkdownNode,
     opts: CopyOpts = CopyOpts.NAKED_COPY,

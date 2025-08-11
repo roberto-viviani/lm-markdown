@@ -1,8 +1,10 @@
 """test treeutils"""
 
 # flake8: noqa
+# pyright: basic
+# pyright: reportAttributeAccessIssue=false
+# pyright: reportIndexIssue=false
 
-import trace
 import unittest
 
 from lmm.markdown import blocklist_copy
@@ -19,109 +21,15 @@ metadata = MetadataBlock(
 )
 heading = HeadingBlock(level=2, content="First title")
 text = TextBlock(content="This is text following the heading")
-blocklist = [header, metadata, heading, text]
-
-
-class TestSummarizeContent(unittest.TestCase):
-
-    def test_summarize_content(self):
-        root = blocks_to_tree(blocklist)
-
-        def proc_sum(data: Sequence[MetadataValue]) -> int:
-            score: int = 0
-            for d in data:
-                if isinstance(d, int):
-                    score += d
-                else:
-                    score += len(str(d).split())
-            return score
-
-        root = summarize_content(root, "wordcount", proc_sum)
-        self.assertIsInstance(
-            root.get_metadata_for_key("wordcount"), int
-        )
-        self.assertEqual(root.get_metadata_for_key("wordcount"), 6)
-
-    def test_summarize_content_upwards(self):
-        root = blocks_to_tree(
-            [header, text, metadata, text, heading, text]
-        )
-
-        def proc_sum(data: Sequence[MetadataValue]) -> int:
-            score: int = 0
-            for d in data:
-                if isinstance(d, int):
-                    score += d
-                else:
-                    score += len(str(d).split())
-            return score
-
-        root = summarize_content(root, "wordcount", proc_sum)
-        self.assertIsInstance(
-            root.get_metadata_for_key("wordcount"), int
-        )
-        self.assertEqual(
-            root.get_metadata_for_key("wordcount"), 6 * 3
-        )
-
-    def test_summarize_content_upwards_onelevel(self):
-        root = blocks_to_tree(
-            [header, text, metadata, text, heading, text]
-        )
-
-        def proc_sum(data: Sequence[MetadataValue]) -> int:
-            score: int = 0
-            for d in data:
-                if isinstance(d, int):
-                    score += d
-                else:
-                    score += len(str(d).split())
-            return score
-
-        root = summarize_content(
-            root,
-            "wordcount",
-            proc_sum,
-            lambda x: isinstance(x, TextNode),
-        )
-        self.assertIsInstance(
-            root.get_metadata_for_key("wordcount"), int
-        )
-        self.assertEqual(
-            root.get_metadata_for_key("wordcount"), 6 * 3
-        )
-
-    def test_summarize_content_strings(self):
-        root = blocks_to_tree(
-            [header, text, metadata, text, heading, text]
-        )
-
-        def proc_sum(data: Sequence[MetadataValue]) -> str:
-            buff = [str(d) for d in data]
-            return f"There are {len((" ".join(buff)).split())} words."
-
-        root = summarize_content(
-            root,
-            "summary",
-            proc_sum,
-        )
-        self.assertIsInstance(
-            root.get_metadata_for_key("summary"), str
-        )
-        self.assertEqual(
-            root.get_metadata_for_key("summary"),
-            "There are 16 words.",
-        )
+blocklist: list[Block] = [header, metadata, heading, text]
 
 
 class TestCollectTextBlocks(unittest.TestCase):
-
-    document = "---\ntitle: 'The title'\n---\n\nSome text here.\n"
-    root = load_tree(document)
-
     def test_header_plus_text(self):
         """A simple conformant document"""
-        blocks = collect_annotated_textblocks(self.root, inherit=True)
+        document = "---\ntitle: 'The title'\n---\n\nSome text here.\n"
+        root = load_tree(document)
+        blocks = collect_annotated_textblocks(root, inherit=True)
 
         self.assertEqual(len(blocks), 2)
         self.assertIsInstance(blocks[0], MetadataBlock)
@@ -133,8 +41,11 @@ class TestCollectTextBlocks(unittest.TestCase):
             "---\ntitle: 'The title'\n---\n\n# Level 1\n"
             + "\n## Level 2\n\nSome text here.\n"
         )
+        root = load_tree(document)
+        if root is None:
+            raise ValueError("Could not form tree")
         blocks = collect_annotated_textblocks(
-            self.root, inherit=True, include_header=True
+            root, inherit=True, include_header=True
         )
 
         self.assertEqual(len(blocks), 2)
@@ -148,8 +59,11 @@ class TestCollectTextBlocks(unittest.TestCase):
             "---\ntitle: 'The title'\n---\n\n# Level 1\n"
             + "\n## Level 2\n\nSome text here.\n"
         )
+        root = load_tree(document)
+        if root is None:
+            raise ValueError("Could not form tree")
         blocks = collect_annotated_textblocks(
-            self.root, inherit=True, include_header=False
+            root, inherit=True, include_header=False
         )
 
         self.assertEqual(len(blocks), 2)
@@ -159,7 +73,6 @@ class TestCollectTextBlocks(unittest.TestCase):
 
 
 class TestCollectThings(unittest.TestCase):
-
     def test_collect_nulltext(self):
         root: MarkdownTree = blocks_to_tree(blocklist[:-1])
         texts: list[str] = collect_text(root)
@@ -185,7 +98,7 @@ class TestCollectThings(unittest.TestCase):
         self.assertEqual(len(texts), 2)
         self.assertEqual(texts[0], "Test blocklist")
 
-    def test_collect_headings_filter(self):
+    def test_collect_headings_filtered(self):
         root: MarkdownTree = blocks_to_tree(blocklist)
         texts: list[str] = collect_headings(
             root, lambda n: n.get_content() == "First title"
@@ -195,9 +108,9 @@ class TestCollectThings(unittest.TestCase):
 
     def test_collect_dictionaries(self):
         root: MarkdownTree = blocks_to_tree(blocklist)
-        dicts: list[dict[str, str | MetadataDict]] = (
-            collect_dictionaries(root)
-        )
+        if root is None:
+            raise RuntimeError("Could not parse tree")
+        dicts: list[NodeDict] = collect_dictionaries(root)
         self.assertEqual(len(dicts), 3)
         self.assertEqual(root.get_content(), dicts[0]['content'])
         self.assertEqual(
@@ -211,10 +124,10 @@ class TestCollectThings(unittest.TestCase):
 
     def test_collect_headings_filter(self):
         root: MarkdownTree = blocks_to_tree(blocklist)
-        dicts: list[dict[str, str | MetadataDict]] = (
-            collect_dictionaries(
-                root, lambda n: n.get_content() == "First title"
-            )
+        if root is None:
+            raise RuntimeError("Could not parse tree")
+        dicts: list[NodeDict] = collect_dictionaries(
+            root, lambda n: n.get_content() == "First title"
         )
         self.assertEqual(len(dicts), 1)
         self.assertEqual(
@@ -228,6 +141,8 @@ class TestCollectThings(unittest.TestCase):
 
     def test_collect_table_of_contents(self):
         root: MarkdownTree = blocks_to_tree(blocklist)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         contents: list[dict[str, int | str]] = (
             collect_table_of_contents(root)
         )
@@ -238,15 +153,13 @@ class TestCollectThings(unittest.TestCase):
 
 
 class TestCountWords(unittest.TestCase):
-
     def test_count_words(self):
         root: MarkdownTree = blocks_to_tree(blocklist)
         count: int = count_words(root)
         self.assertEqual(count, 6)
 
 
-class TestExtractProperty(unittest.TestCase):
-
+class TestPropagateProperty(unittest.TestCase):
     def test_heading_with_property(self):
         key: str = "new_property"
         blocks = blocklist_copy(blocklist)
@@ -254,7 +167,7 @@ class TestExtractProperty(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree(blocks)
         if not root:
             raise (Exception("Invalid blocks"))
-        rootnode = extract_property(root, key)
+        rootnode = propagate_property(root, key)
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 2)
         self.assertFalse(key in heading.metadata)
@@ -269,7 +182,7 @@ class TestExtractProperty(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree(blocks)
         if not root:
             raise (Exception("Invalid blocks"))
-        rootnode = extract_property(root, key)
+        rootnode = propagate_property(root, key)
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 1)
         self.assertEqual(
@@ -284,7 +197,7 @@ class TestExtractProperty(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree(blocks)
         if not root:
             raise (Exception("Invalid blocks"))
-        rootnode = extract_property(root, key, True)
+        rootnode = propagate_property(root, key, True)
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 2)
         self.assertFalse(key in heading.metadata)
@@ -321,7 +234,7 @@ class TestExtractProperty(unittest.TestCase):
             ),
             1,
         )
-        rootnode = extract_property(root, key, False, True)
+        rootnode = propagate_property(root, key, False, True)
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 1)
         self.assertFalse(key in heading.metadata)
@@ -343,7 +256,7 @@ class TestExtractProperty(unittest.TestCase):
     def test_heading_with_property_select3(self):
         key: str = "new_property"
         blocks = blocklist_copy(blocklist)
-        # a negative, i.e. test for when the propoerty does not exist
+        # a negative, i.e. test for when the property does not exist
         # blocks[1].content[key] = "Text to be shifted"
         blocks.append(
             HeaderBlock(content={key: "Some content of property"})
@@ -366,9 +279,9 @@ class TestExtractProperty(unittest.TestCase):
             ),
             1,
         )
-        rootnode = extract_property(root, key, False, True)
+        rootnode = propagate_property(root, key, False, True)
         heading: HeadingNode = rootnode.get_heading_children()[0]
-        self.assertEqual(len(heading.get_text_children()), 0)
+        self.assertEqual(len(heading.get_text_children()), 1)
         self.assertEqual(len(heading.get_heading_children()), 1)
         self.assertEqual(
             heading.get_heading_children()[0].get_content(),
@@ -378,7 +291,7 @@ class TestExtractProperty(unittest.TestCase):
             len(
                 heading.get_heading_children()[0].get_text_children()
             ),
-            0,
+            1,
         )
 
     def test_heading_with_property_select2(self):
@@ -404,7 +317,7 @@ class TestExtractProperty(unittest.TestCase):
             ),
             1,
         )
-        rootnode = extract_property(root, key, False, True)
+        rootnode = propagate_property(root, key, False, True)
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 0)
         self.assertEqual(len(heading.get_heading_children()), 1)
@@ -416,7 +329,7 @@ class TestExtractProperty(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree([blocks[0]])
         if not root:
             raise (Exception("Invalid blocks"))
-        rootnode = extract_property(root, key, False, False)
+        rootnode = propagate_property(root, key, False, False)
         self.assertEqual(rootnode.count_children(), 1)
         self.assertEqual(
             rootnode.get_text_children()[0].get_content(),
@@ -425,7 +338,6 @@ class TestExtractProperty(unittest.TestCase):
 
 
 class TestInheritedProperty(unittest.TestCase):
-
     def test_inherit(self):
         blocks = blocklist_copy(blocklist)
         root = blocks_to_tree(blocks)
@@ -521,7 +433,7 @@ class TestGetTextnodes(unittest.TestCase):
         textnodes: list[TextNode] = get_textnodes(root)
         self.assertTrue(len(textnodes) > 0)
         for n in textnodes:
-            self.assertTrue(isinstance(n, TextNode))
+            self.assertTrue(isinstance(n, TextNode))  # type: ignore
 
 
 if __name__ == "__main__":

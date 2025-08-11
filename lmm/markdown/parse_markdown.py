@@ -61,7 +61,6 @@ with the following exceptions:
 # blank    ->        # one or more blank lines
 # content  -> .*     # everything else
 
-
 from pathlib import Path
 from typing import Tuple, Any, Callable, Mapping
 from pydantic import BaseModel, ValidationError
@@ -254,7 +253,7 @@ class MetadataBlock(BaseModel):
             # This is a pydantic type error
             return ErrorBlock(
                 content="Invalid dictionary for metadata "
-                + "(too deep nesting?)."
+                + "(too deep nesting, or invalid data types)."
             )
         except Exception as e:
             return ErrorBlock(

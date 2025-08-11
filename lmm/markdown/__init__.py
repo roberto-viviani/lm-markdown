@@ -55,9 +55,7 @@ from .tree import (  # noqa: F401
 )
 
 from .treeutils import (  # noqa: F401
-    summarize_content as summarize_content,
     inherit_metadata as inherit_metadata,
-    extract_property as extract_property,
     collect_text as collect_text,
     collect_table_of_contents as collect_table_of_contents,
     collect_dictionaries as collect_dictionaries,

@@ -1,3 +1,5 @@
+# pyright: reportArgumentType=false
+
 import unittest
 from typing import List
 import re
@@ -95,7 +97,7 @@ class TestClearMetadata(unittest.TestCase):
 
     def test_no_metadata(self):
         """Test with a list that has no metadata blocks."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             HeadingBlock(level=1, content="Heading"),
             TextBlock(content="Text 2"),
@@ -105,7 +107,7 @@ class TestClearMetadata(unittest.TestCase):
 
     def test_with_metadata(self):
         """Test with a list that has metadata blocks."""
-        blocks = [
+        blocks: list[Block] = [
             MetadataBlock(content={"key1": "value1"}),
             TextBlock(content="Text 1"),
             MetadataBlock(content={"key2": "value2"}),
@@ -148,7 +150,7 @@ class TestMergeTextblocks(unittest.TestCase):
 
     def test_no_text_blocks(self):
         """Test with a list that has no text blocks."""
-        blocks = [
+        blocks: list[Block] = [
             MetadataBlock(content={"key": "value"}),
             HeadingBlock(level=1, content="Heading"),
             HeadingBlock(level=2, content="Heading"),
@@ -320,7 +322,7 @@ class TestMergeTextblocks(unittest.TestCase):
 
     def test_mixed_blocks(self):
         """Test with a list that has mixed block types."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             TextBlock(content="Text 2"),
             HeadingBlock(level=1, content="Heading"),
@@ -347,7 +349,7 @@ class TestMergeTextblocks(unittest.TestCase):
 
     def test_mixed_blocks2(self):
         """Test with a list that has mixed block types."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             TextBlock(content="Text 2"),
             MetadataBlock(content={'content': "Heading"}),
@@ -380,7 +382,7 @@ class TestMergeTextblocks(unittest.TestCase):
 
     def test_text_blocks_at_end(self):
         """Test with text blocks at the end of the list."""
-        blocks = [
+        blocks: list[Block] = [
             HeadingBlock(level=1, content="Heading"),
             TextBlock(content="Text 1"),
             TextBlock(content="Text 2"),
@@ -411,7 +413,7 @@ class TestPoolEquationBlocks(unittest.TestCase):
 
     def test_no_equation_blocks(self):
         """Test with a list that has no equation blocks."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             HeadingBlock(level=1, content="Heading"),
             TextBlock(content="Text 2"),
@@ -524,7 +526,7 @@ class TestPoolEquationBlocks(unittest.TestCase):
 
     def test_with_non_text_blocks(self):
         """Test with non-text blocks between equation blocks."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             TextBlock(content="$$E = mc^2$$"),
             HeadingBlock(level=1, content="Heading"),
@@ -540,9 +542,6 @@ class TestPoolEquationBlocks(unittest.TestCase):
         self.assertEqual(
             result[2].get_content(), "$$F = ma$$\n\nText 2"
         )
-
-
-# txtbl = lambda x: TextBlock(content=x)
 
 
 class TestPoolCodeBlocks(unittest.TestCase):
@@ -603,7 +602,7 @@ class TestPoolCodeBlocks(unittest.TestCase):
 
     def test_no_code_blocks(self):
         """Test with a list that has no code blocks."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             HeadingBlock(level=1, content="Heading"),
             TextBlock(content="Text 2"),
@@ -725,7 +724,7 @@ class TestPoolCodeBlocks(unittest.TestCase):
 
     def test_with_non_text_blocks(self):
         """Test with non-text blocks between code blocks."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Text 1"),
             TextBlock(
                 content="```\nfit ~ lm(y ~ x, data = data)\n```"
@@ -756,7 +755,7 @@ class TestPoolShortTextblocks(unittest.TestCase):
 
     def test_no_text_blocks(self):
         """Test with a list that has no text blocks."""
-        blocks = [
+        blocks: list[Block] = [
             MetadataBlock(content={"key": "value"}),
             HeadingBlock(level=1, content="Heading"),
         ]
@@ -802,7 +801,7 @@ class TestPoolShortTextblocks(unittest.TestCase):
 
     def test_with_non_text_blocks(self):
         """Test with non-text blocks between short text blocks."""
-        blocks = [
+        blocks: list[Block] = [
             TextBlock(content="Short text 1"),
             TextBlock(content="Short text 2"),
             HeadingBlock(level=1, content="Heading"),

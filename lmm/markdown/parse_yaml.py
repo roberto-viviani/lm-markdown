@@ -46,7 +46,8 @@ import re
 # the type definition, because , but defining recursive types is a
 # challenge with Pydantic and python versions
 MetadataValue = (
-    str
+    None
+    | str
     | int
     | bool
     | float
@@ -64,7 +65,7 @@ def _is_metadata_type(value: object) -> bool:
     recursive, unlike the MetadataValue type. Also lists end up
     being nestable."""
     match value:
-        case str() | int() | bool() | float():
+        case str() | int() | bool() | float() | None:
             return True
         case list():
             return all([_is_metadata_type(x) for x in value])
@@ -75,7 +76,10 @@ def _is_metadata_type(value: object) -> bool:
 
 
 def _is_primitive_type(value: object) -> bool:
-    return isinstance(value, (int, float, str, bool, complex, bytes))
+    return (
+        isinstance(value, (int, float, str, bool, complex, bytes))
+        or value is None
+    )
 
 
 def _is_string_dict(data: object) -> bool:
@@ -147,7 +151,9 @@ def split_yaml_parse(
         case list() if _is_string_dict(yamldata[0]):
             # heterogeneous dict in first position
             part, buff = _split_metadata_dict(yamldata[0])
-            whole = (buff + yamldata[1:]) if len(yamldata) > 1 else buff
+            whole = (
+                (buff + yamldata[1:]) if len(yamldata) > 1 else buff
+            )
         case list():
             # invalid dictionary in first element or list of non-dict
             whole = yamldata

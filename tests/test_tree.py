@@ -1,6 +1,9 @@
 """Test tree"""
 
 # flake8: noqa
+# pyright: basic
+# pyright: reportUnknownMemberType=false
+# pyright: reportAttributeAccessIssue=false
 
 import unittest
 
@@ -16,15 +19,18 @@ from lmm.markdown.tree import *
 
 
 class TestNodeConstruction(unittest.TestCase):
-
     def test_build_headingnode(self):
         src = """---
 first: 1
 second: [1, 2, 3]
 ---"""
-        data = {'first': 1, 'second': [1, 2, 3]}
+        data: dict[str, int | list[int] | str] = {
+            'first': 1,
+            'second': [1, 2, 3],
+        }
         node = load_tree(src)
-        print(node)
+        if node is None:
+            raise RuntimeError("Could not parse tree")
         self.assertTrue(node.is_header_node())
         self.assertTrue(node.is_root_node())
         self.assertEqual(node.count_children(), 0)
@@ -146,7 +152,6 @@ second: [1, 2, 3]
 
 
 class TestTreeConstruction(unittest.TestCase):
-
     def test_construction_text_empty(self):
         text = ""
         root = load_tree(text)
@@ -155,18 +160,24 @@ class TestTreeConstruction(unittest.TestCase):
     def test_construction_text_regular(self):
         text = "Content of text block\non two lines"
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
         self.assertEqual(len(root.get_text_children()), 1)
 
     def test_construction_heading(self):
         text = "# A heading"
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
         self.assertEqual(len(root.get_heading_children()), 1)
 
     def test_construction_heading_empty(self):
         text = "# "
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
         self.assertEqual(len(root.get_text_children()), 1)
 
@@ -176,11 +187,15 @@ class TestTreeConstruction(unittest.TestCase):
     def test_construction_metadata(self):
         data = "---\ntitle: Title\n---"
         root = load_tree(data)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
 
     def test_construction_metadata_empty(self):
         data = "---\n---"
         root = load_tree(data)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
         self.assertEqual(len(root.get_text_children()), 1)
 
@@ -192,27 +207,37 @@ class TestTreeConstruction(unittest.TestCase):
         # expected behaviour: invalid dict is set to private_,
         # default dict created for header
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
 
-    def test_construction_metadata_invalid(self):
+    def test_construction_metadata_invalid1(self):
         text = "---\n1: first block\n---\n\n---\n2: second block\n---"
         # expected behaviour: invalid dict is set to private,
         # empty dict in metadata replaced with default
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
 
-    def test_construction_metadata_invalid(self):
+    def test_construction_metadata_invalid2(self):
         text = "---\n[1, 2, 3]\n---"
         # expected behaviour: invalid dict is set to private,
         # empty dict in metadata replaced with default
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
-        self.assertListEqual(root.metadata_block.private_, [1, 2, 3])
+        self.assertIsNotNone(root.metadata_block)
+        self.assertIsNotNone(root.metadata_block.private_)  # type: ignore
+        self.assertListEqual(root.metadata_block.private_, [1, 2, 3])  # type: ignore
 
     def test_construction_metadata_error(self):
         text = "---\nfirst\nsecond\n---"
         # expected behaviour: ErrorBlock instead of MetadataBlock
         root = load_tree(text)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
         self.assertEqual(len(root.get_text_children()), 1)
 
@@ -225,6 +250,8 @@ class TestTreeConstruction(unittest.TestCase):
         )
         # expected behaviour: over-nested dict goes in private_
         root = load_tree(data)
+        if root is None:
+            raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
 
         # Default metadata added
@@ -237,7 +264,6 @@ class TestTreeConstruction(unittest.TestCase):
 
 
 class TestEdgeTree(unittest.TestCase):
-
     def test_empty_list(self):
         root: MarkdownTree = blocks_to_tree([])
         blocks = tree_to_blocks(root)
@@ -257,6 +283,8 @@ class TestEdgeTree(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree(
             [HeadingBlock(level=1, content="This")]
         )
+        if root is None:
+            raise ValueError("Could not form tree")
         blocks = tree_to_blocks(root)
 
         self.assertEqual(len(blocks), 2)
@@ -268,6 +296,8 @@ class TestEdgeTree(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree(
             [ErrorBlock(content="This is an error.")]
         )
+        if root is None:
+            raise ValueError("Could not form tree")
         self.assertEqual(root.count_children(), 1)
         self.assertEqual(len(root.get_text_children()), 1)
 
@@ -279,7 +309,6 @@ class TestEdgeTree(unittest.TestCase):
 
 
 class TestParseMarkdown(unittest.TestCase):
-
     def test_parse(self):
         text = """---\ntitle: header\n---\nThis is text\n\n
             \n---\n- a: list\n- b: this\n---\n"""
@@ -378,7 +407,7 @@ class TestTreeCopy(unittest.TestCase):
         )
 
         # Create metadata for testing
-        self.test_metadata = {
+        self.test_metadata: MetadataDict = {
             "author": "Test Author",
             "tags": ["test", "markdown"],
             "nested": {"key": "value", "list": [1, 2, 3]},
@@ -424,11 +453,11 @@ class TestTreeCopy(unittest.TestCase):
         self.assertEqual(original.metadata, copy.metadata)
 
         # Verify nested metadata is now truly independent (deep copy)
-        original.metadata["nested"]["key"] = "modified"
+        original.metadata["nested"]["key"] = "modified"  # type: ignore
         # This assertion shows that nested metadata IS now independent
         self.assertNotEqual(
-            original.metadata["nested"]["key"],
-            copy.metadata["nested"]["key"],
+            original.metadata["nested"]["key"],  # type: ignore
+            copy.metadata["nested"]["key"],  # type: ignore
         )
 
         # Verify metadata_block is copied (deep copy via model_copy)
@@ -704,11 +733,10 @@ metadata = MetadataBlock(
 )
 heading = HeadingBlock(level=2, content="First title")
 text = TextBlock(content="This is text following the heading")
-blocklist = [header, metadata, heading, text]
+blocklist: list[Block] = [header, metadata, heading, text]
 
 
 class TestTraverseNodetype(unittest.TestCase):
-
     def test_text(self):
         root = blocks_to_tree(blocklist)
         if not root:
@@ -757,6 +785,149 @@ class TestTraverseNodetype(unittest.TestCase):
         self.assertEqual(
             dicts[1]["content"], "First title"
         )  # The child heading content
+
+
+class TestExtractContent(unittest.TestCase):
+    def test_extract_content(self):
+        root = blocks_to_tree(
+            [header, text, metadata, text, heading, text]
+        )
+        if root is None:
+            raise ValueError("Could not form tree")
+        KEY = "wordcount"
+
+        def proc_sum(node: Sequence[MarkdownNode]) -> int:
+            score: int = 0
+            for n in node:
+                if isinstance(n, TextNode):
+                    score += len(n.get_content().split())
+            return score
+
+        root = extract_content(root, KEY, proc_sum)
+        self.assertIsInstance(root.get_metadata_for_key(KEY), int)
+        self.assertEqual(root.get_metadata_for_key(KEY), 12)
+
+    def test_extract_content_upwards(self):
+        root = blocks_to_tree(
+            [header, text, metadata, text, heading, text]
+        )
+        if root is None:
+            raise ValueError("Could not form tree")
+        KEY = "wordcount"
+
+        def proc_sum(node: Sequence[MarkdownNode]) -> int:
+            score: int = 0
+            for n in node:
+                match n:
+                    case TextNode():
+                        score += len(n.get_content().split())
+                    case HeadingNode() as n_:
+                        value = n_.get_metadata_for_key(KEY)
+                        if isinstance(value, int):
+                            score += value
+                    case _:
+                        raise ValueError("Invalid node type")
+            return score
+
+        root = extract_content(root, KEY, proc_sum)
+        self.assertIsInstance(root.get_metadata_for_key(KEY), int)
+        self.assertEqual(root.get_metadata_for_key(KEY), 6 * 3)
+
+    def test_extract_content_in_null(self):
+        # check works in tree w/o Text nodes w/o error
+        root = blocks_to_tree(
+            [header, text, metadata, text, heading, text]
+        )
+        if root is None:
+            raise ValueError("Could not form tree")
+        KEY = "wordcount"
+
+        def proc_sum(node: Sequence[MarkdownNode]) -> int:
+            score: int = 0
+            for n in node:
+                if isinstance(n, TextNode):
+                    score += len(n.get_content().split())
+            return score
+
+        # eliminate text nodes
+        def del_text_nodes(node: MarkdownNode) -> None:
+            if isinstance(node, HeadingNode):
+                newkids: list[MarkdownNode] = []
+                for k in node.children:
+                    if isinstance(k, HeadingNode):
+                        newkids.append(k)
+                node.children = newkids
+
+        post_order_traversal(root, del_text_nodes)
+
+        root = extract_content(root, KEY, proc_sum)
+        self.assertIsInstance(root.get_metadata_for_key(KEY), int)
+        self.assertEqual(root.get_metadata_for_key(KEY), 0)
+
+    def test_extract_content_strings(self):
+        root = blocks_to_tree(
+            [header, text, metadata, text, heading, text]
+        )
+        KEY = "summary"
+        if root is None:
+            raise ValueError("Could not form tree")
+
+        def proc_sum(data: Sequence[MarkdownNode]) -> str:
+            buff: list[str] = []
+            for d in data:
+                match d:
+                    case TextNode():
+                        buff.append(d.get_content())
+                    case HeadingNode():
+                        value = str(d.get_metadata_for_key(KEY, ""))
+                        if value:
+                            buff.append(value)
+                    case _:
+                        raise RuntimeError("Unrecognized node")
+
+            count: int = len((" ".join(buff)).split())
+            return f"There are {count} words."
+
+        root = extract_content(root, KEY, proc_sum)
+        self.assertIsInstance(
+            root.get_metadata_for_key("summary"), str
+        )
+        self.assertEqual(
+            root.get_metadata_for_key("summary"),
+            "There are 16 words.",
+        )
+
+    def test_extract_content_strings_onlyheader(self):
+        # Check works in tree with only header w/o error
+        root = blocks_to_tree([header])
+        KEY = "summary"
+        if root is None:
+            raise ValueError("Could not form tree")
+
+        def proc_sum(data: Sequence[MarkdownNode]) -> str:
+            buff: list[str] = []
+            for d in data:
+                match d:
+                    case TextNode():
+                        buff.append(d.get_content())
+                    case HeadingNode():
+                        value = str(d.get_metadata_for_key(KEY, ""))
+                        if value:
+                            buff.append(value)
+                    case _:
+                        raise RuntimeError("Unrecognized node")
+
+            count: int = len((" ".join(buff)).split())
+            return f"There are {count} words."
+
+        root = extract_content(root, KEY, proc_sum)
+        self.assertIsInstance(
+            root.get_metadata_for_key("summary"), str
+        )
+        self.assertEqual(
+            root.get_metadata_for_key("summary"),
+            "There are 0 words.",
+        )
 
 
 if __name__ == "__main__":

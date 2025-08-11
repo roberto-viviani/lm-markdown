@@ -1,4 +1,5 @@
 # flake8: noqa
+# pyright: basic
 
 import unittest
 import yaml  # PyYAML library
@@ -7,13 +8,12 @@ import yaml  # PyYAML library
 from lmm.markdown.parse_yaml import split_yaml_parse
 from lmm.markdown.parse_yaml import desplit_yaml_parse
 from lmm.markdown.parse_yaml import serialize_yaml_parse
-from lmm.markdown.parse_yaml import ParsedYaml
 
 
 class TestMarkdownMetadata(unittest.TestCase):
-    """ Class testing behaviour when library provided with 
+    """Class testing behaviour when library provided with
     yaml objects. Note: in the markdown application, yaml objects
-    will be usually provided after parsing a string with 
+    will be usually provided after parsing a string with
     yaml.safe_load, which will not provide this level of variety"""
 
     # --- Tests for split_yaml_parse ---
@@ -36,17 +36,23 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_parse_conformant_dict(self):
         data = {"key1": "value1", "key2": 2}
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_conformant_dict_list(self):
         data = {"key1": "value1", "key2": ["first", "second"]}
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_conformant_dict_dict(self):
         data = {"key1": "value1", "key2": {"first": 1, "second": 2}}
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_conformant_dict_dict_list(self):
         data = {
@@ -55,7 +61,9 @@ class TestMarkdownMetadata(unittest.TestCase):
             "key3": ["One", "Two", 3],
         }
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_conformant_dict_dict_dict(self):
         data = {
@@ -64,7 +72,9 @@ class TestMarkdownMetadata(unittest.TestCase):
             "key3": ["One", "Two", 3],
         }
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_partially_conformant_dict(self):
         data = {
@@ -75,7 +85,9 @@ class TestMarkdownMetadata(unittest.TestCase):
         # the others in p2
         expected_p1 = {"key1": "value1"}
         expected_p2 = [{"key2": bytes("data", encoding="utf-8")}]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
         self.assertEqual(
             desplit_yaml_parse(split_yaml_parse(data)),
             [expected_p1] + expected_p2,
@@ -88,19 +100,27 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_parse_non_conformant_dict_int_key(self):
         data = {1: "value1", "key2": "value2"}
         self.assertEqual(split_yaml_parse(data), ({}, [data]))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_non_conformant_dict_tuple_key(self):
         data = {("a", "b"): "value1", "key2": "value2"}
         self.assertEqual(split_yaml_parse(data), ({}, [data]))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_list_first_conformant(self):
         data = [{"key1": "val1"}, {"key2": "val2"}, {3: "val3"}]
         expected_p1 = {"key1": "val1"}
         expected_p2 = [{"key2": "val2"}, {3: "val3"}]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_list_first_partially_conformant(self):
         data = [
@@ -110,7 +130,9 @@ class TestMarkdownMetadata(unittest.TestCase):
         # expected behavior: first dict split between p1 and p2
         expected_p1 = {"key1": "val1", "key2": ["first", "second"]}
         expected_p2 = [{3: "val3"}]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
         self.assertEqual(
             desplit_yaml_parse(split_yaml_parse(data)),
             [expected_p1] + expected_p2,
@@ -120,23 +142,35 @@ class TestMarkdownMetadata(unittest.TestCase):
         data = [{1: "val1"}, {"key2": "val2"}]
         expected_p1 = {}
         expected_p2 = data
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_list_single_conformant_item(self):
         data = [{"key1": "val1"}]
         # this is not reconstructed differently from {"key1": "val1"}
         expected_p1 = {"key1": "val1"}
         expected_p2 = []
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), expected_p1)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), expected_p1
+        )
 
     def test_parse_list_single_non_conformant_item(self):
         data = [{1: "val1"}]
         expected_p1 = {}
         expected_p2 = data
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data[0])
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data[0]
+        )
 
     def test_parse_list_with_non_dict_items(self):
         data = [
@@ -149,8 +183,12 @@ class TestMarkdownMetadata(unittest.TestCase):
         # Expected behavior: the rest of the list is taken over in p2
         expected_p1 = {"key1": "val1"}
         expected_p2 = data[1:]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_list_with_non_dict_items_first_dict_non_conformant(
         self,
@@ -159,14 +197,20 @@ class TestMarkdownMetadata(unittest.TestCase):
         # Expected behavior: everything in p2
         expected_p1 = {}
         expected_p2 = data
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_list_only_non_dict_items(self):
         data = ["a string", 123, None]
         # Expected behavior: everything in p2 list
         self.assertEqual(split_yaml_parse(data), ({}, data))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_scalar_string_input(self):
         data = "Just a string"
@@ -175,13 +219,15 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_parse_scalar_bytes_input(self):
         data = bytes("Encoded text", encoding="utf-8")
         self.assertEqual(split_yaml_parse(data), ({}, [data]))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
 
     def test_parse_query_prompt(self):
         data = yaml.safe_load("?: Please summarize")
         self.assertEqual(
-            split_yaml_parse(data, {"?": "query"}), 
-            ({"query": "Please summarize"}, [])
+            split_yaml_parse(data, {"?": "query"}),
+            ({"query": "Please summarize"}, []),
         )
 
     def test_parse_chat_prompt(self):
@@ -194,8 +240,8 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_parse_edit_prompt(self):
         data = yaml.safe_load("=: Please summarize")
         self.assertEqual(
-            split_yaml_parse(data, {"=": "edit"}), 
-            ({"edit": "Please summarize"}, [])
+            split_yaml_parse(data, {"=": "edit"}),
+            ({"edit": "Please summarize"}, []),
         )
 
     def test_mapped_key(self):
@@ -217,7 +263,9 @@ class TestMarkdownMetadata(unittest.TestCase):
     def test_mapped_keys(self):
         text = "?: Why is the sky blue?\n+: Rayleigh phenomenon"
         yamldata = yaml.safe_load(text)
-        part, whole = split_yaml_parse(yamldata, {"?": "query", "+": "resp"})
+        part, whole = split_yaml_parse(
+            yamldata, {"?": "query", "+": "resp"}
+        )
         self.assertDictEqual(
             part,
             {
@@ -253,7 +301,9 @@ class TestMarkdownMetadata(unittest.TestCase):
 
     # --- Tests for serialize_yaml_parse (and implicit split_yaml_parse) ---
     def _assert_serialization_logic(
-        self, original_data, expected_reloaded_object  # type: ignore
+        self,
+        original_data,
+        expected_reloaded_object,  # type: ignore
     ):
         """Helper to test the parse -> serialize -> reload cycle."""
         parsed_p1, parsed_p2 = split_yaml_parse(original_data)
@@ -341,7 +391,7 @@ class TestMarkdownMetadata(unittest.TestCase):
 
 class TestMarkdownMetadataText(unittest.TestCase):
     """this tests beahviour from strings parsed by yaml.safe_load.
-    This function tends to treat many things as strings, so some 
+    This function tends to treat many things as strings, so some
     behaviour of the previous tests cannot be reproduced."""
 
     def test_empty(self):
@@ -353,14 +403,20 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "key1: value1\nkey2: 2"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
-        self.assertEqual(serialize_yaml_parse(split_yaml_parse(data)).strip(), text)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
+        self.assertEqual(
+            serialize_yaml_parse(split_yaml_parse(data)).strip(), text
+        )
 
     def test_parse_conformant_dict_list(self):
         text = "key1: value1\nkey2: [first, second]"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
@@ -368,7 +424,9 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "key1: value1\nkey2: {first: 1, second: 2}"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
@@ -376,7 +434,9 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "key1: value1\nkey2: {first: 1, second: [One, Two]}\nkey3: [One, Two, 3]"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
@@ -384,7 +444,9 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "key1: value1\nkey2: {first: 1, second: {One: [0, 1, 2]}}\nkey3: [One, Two, 3]"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
@@ -393,7 +455,9 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "1: value1\nkey2: value2"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), ({}, [data]))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
@@ -402,7 +466,9 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "('a', 'b'): value1\nkey2: value2"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
@@ -411,18 +477,24 @@ class TestMarkdownMetadataText(unittest.TestCase):
         text = "(1, 2): value1\nkey2: value2"
         data = yaml.safe_load(text)
         self.assertEqual(split_yaml_parse(data), (data, []))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertDictEqual(yaml.safe_load(newtext), data)
 
     def test_parse_list_first_conformant(self):
-        #data = [{"key1": "val1"}, {"key2": "val2"}, {3: "val3"}]
+        # data = [{"key1": "val1"}, {"key2": "val2"}, {3: "val3"}]
         text = "- key1: val1\n- key2: val2\n- 3: val3"
         data = yaml.safe_load(text)
         expected_p1 = {"key1": "val1"}
         expected_p2 = [{"key2": "val2"}, {3: "val3"}]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertListEqual(yaml.safe_load(newtext), data)
 
@@ -436,7 +508,9 @@ class TestMarkdownMetadataText(unittest.TestCase):
         # expected behavior: first dict split between p1 and p2
         expected_p1 = {"key1": "val1", "key2": ["first", "second"]}
         expected_p2 = [{3: "val3"}]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
         self.assertEqual(
             desplit_yaml_parse(split_yaml_parse(data)),
             [expected_p1] + expected_p2,
@@ -445,37 +519,49 @@ class TestMarkdownMetadataText(unittest.TestCase):
         self.assertListEqual(yaml.safe_load(newtext), data)
 
     def test_parse_list_first_non_conformant(self):
-        #data = [{1: "val1"}, {"key2": "val2"}]
+        # data = [{1: "val1"}, {"key2": "val2"}]
         text = "- 1: val1\n- key2: val2"
         data = yaml.safe_load(text)
         expected_p1 = {}
         expected_p2 = data
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertListEqual(yaml.safe_load(newtext), data)
 
     def test_parse_list_single_conformant_item(self):
-        #data = [{"key1": "val1"}]
+        # data = [{"key1": "val1"}]
         # this is not reconstructed differently from {"key1": "val1"}
         text = "- key1: val1"
         data = yaml.safe_load(text)
         expected_p1 = {"key1": "val1"}
         expected_p2 = []
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), expected_p1)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), expected_p1
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         # note the list is shed here
         self.assertDictEqual(yaml.safe_load(newtext), data[0])
 
     def test_parse_list_single_non_conformant_item(self):
-        #data = [{1: "val1"}]
+        # data = [{1: "val1"}]
         text = "- 1: val1"
         data = yaml.safe_load(text)
         expected_p1 = {}
         expected_p2 = data
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data[0])
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data[0]
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         # note the list is shed here
         self.assertDictEqual(yaml.safe_load(newtext), data[0])
@@ -493,37 +579,47 @@ class TestMarkdownMetadataText(unittest.TestCase):
         # Expected behavior: the rest of the list is taken over in p2
         expected_p1 = {"key1": "val1"}
         expected_p2 = data[1:]
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertListEqual(yaml.safe_load(newtext), data)
 
     def test_parse_list_with_non_dict_items_first_dict_non_conformant(
         self,
     ):
-        #data = ["a string", {1: "non_conf"}, {"key2": "val2"}]
+        # data = ["a string", {1: "non_conf"}, {"key2": "val2"}]
         text = "- a string\n- 1: non_conf\n- key2: val2"
         data = yaml.safe_load(text)
         # Expected behavior: everything in p2
         expected_p1 = {}
         expected_p2 = data
-        self.assertEqual(split_yaml_parse(data), (expected_p1, expected_p2))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            split_yaml_parse(data), (expected_p1, expected_p2)
+        )
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertListEqual(yaml.safe_load(newtext), data)
 
     def test_parse_list_only_non_dict_items(self):
-        #data = ["a string", 123, None]
+        # data = ["a string", 123, None]
         text = "- a string\n- 123\n- None"
         data = yaml.safe_load(text)
         # Expected behavior: everything in p2 list
         self.assertEqual(split_yaml_parse(data), ({}, data))
-        self.assertEqual(desplit_yaml_parse(split_yaml_parse(data)), data)
+        self.assertEqual(
+            desplit_yaml_parse(split_yaml_parse(data)), data
+        )
         newtext = serialize_yaml_parse(split_yaml_parse(data))
         self.assertListEqual(yaml.safe_load(newtext), data)
 
     def test_parse_scalar_string_input(self):
-        #data = "Just a string"
+        # data = "Just a string"
         text = "Just a string"
         data = yaml.safe_load(text)
         self.assertRaises(ValueError, split_yaml_parse, data)
