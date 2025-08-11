@@ -127,7 +127,7 @@ def merge_textblocks_if(
     if not blocks:
         return []
 
-    test_func_withnone: Callable[[TextBlock | None], bool] = (
+    test_func_withnone: Callable[[TextBlock | None], bool] = (  # noqa: E731
         lambda x: test_func(x) if x is not None else False
     )
 
@@ -182,7 +182,7 @@ def merge_code_blocks(
                 re.DOTALL,
             )
             is not None
-        ) and (content.count('\n') <= (linecount + 1))
+        ) and (content.count("\n") <= (linecount + 1))
 
     return merge_textblocks_if(blocks, _is_code_block)
 

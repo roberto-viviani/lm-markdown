@@ -77,6 +77,21 @@ from .parse_markdown import serialize_blocks, load_blocks
 from .ioutils import report_error_blocks
 
 
+# defines the type of the dictionary that can represent a node
+from typing import TypedDict  # fmt: skip
+class NodeDict(TypedDict):
+    """A dictionary representation of a node.
+
+    Fields:
+        content (str): the string content of the node (the title for
+            a heading node, the text of a text node)
+        metadata (MetadataDict): the metadata
+    """
+
+    content: str
+    metadata: MetadataDict
+
+
 T = TypeVar("T")
 U = TypeVar("U")
 
@@ -121,8 +136,7 @@ class MarkdownNode(ABC):
 
     @abstractmethod
     def node_copy(self) -> Self:
-        """Make a copy of this node, but keep links to parent
-        and children."""
+        """Make a copy of this node, but keep links to children."""
         pass
 
     @abstractmethod
@@ -269,7 +283,7 @@ class MarkdownNode(ABC):
 
     def as_dict(
         self, inherit: bool = False, include_header: bool = True
-    ) -> dict[str, str | MetadataDict]:
+    ) -> NodeDict:
         """
         Return a dictionary representation of the node.
 
@@ -327,18 +341,13 @@ class HeadingNode(MarkdownNode):
         return new_node
 
     def node_copy(self) -> 'HeadingNode':
-        """Make a deep copy of this node, maintaining links.
-        To make a new branch root with reference to all children,
-        but detached from the upper tree, do this:
-        ```python
-        branch_root = node_copy(node)
-        branch_root.parent = None
-        ```
+        """Make a deep copy of this node, maintaining links to
+        children. This creates a new branch root with reference to
+        all children, but detached from the upper tree.
         """
 
         newnode = self.naked_copy()
         newnode.children = self.children
-        newnode.parent = self.parent
         return newnode
 
     def tree_copy(self) -> 'HeadingNode':
@@ -392,16 +401,15 @@ class HeadingNode(MarkdownNode):
 
         # Collect block type and content
         info: str
-        match self.block:
-            case HeaderBlock():
-                info = "Heading node with header block\n"
-                info += f"{indent_str}Header: {self.block.content}"
-            case HeadingBlock():
-                info = "Heading node\n"
-                info += (
-                    f"{indent_str}Heading (Level {self.block.level}):"
-                    + f" {self.block.content}"
-                )
+        if self.is_header_node():
+            info = "Header node:\n"
+            info += f"{indent_str}Content: {self.get_content()}"
+        else:
+            info = "Heading node\n"
+            info += (
+                f"{indent_str}Heading (Level {self.heading_level()}):"
+                + f" {self.get_content()}"
+            )
 
         # Info on children
         if self.children:
@@ -411,13 +419,13 @@ class HeadingNode(MarkdownNode):
                 + "text children"
             )
         else:
-            info += "\nEmpty parent node"
+            info += "\nNode with no children"
 
         # Collect metadata
         if self.metadata:
             info += (
                 f"\n{indent_str}Metadata:"
-                + f"\n{yaml.safe_dump(self.metadata)}"
+                + f"\n{yaml.safe_dump(self.get_metadata())}"
             )
 
         return info
@@ -479,11 +487,10 @@ class TextNode(MarkdownNode):
         return new_node
 
     def node_copy(self) -> 'TextNode':
-        """Make a deep copy of this node, keeping links to parent."""
+        """Make a deep copy of this node (same as naked_copy for
+        TextNodes)."""
 
-        new_node = self.naked_copy()
-        new_node.parent = self.parent
-        return new_node
+        return self.naked_copy()
 
     def tree_copy(self) -> 'TextNode':
         """Make a deep copy of this node"""
@@ -583,13 +590,11 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         case HeaderBlock():
             header_block = blocks[0]
         case MetadataBlock() as bl:
-            header_block = HeaderBlock._from_metadata_block(
-                bl
-            )  # type: ignore
+            header_block = HeaderBlock._from_metadata_block(bl)
         case HeadingBlock() as bl:
             if bl.get_content():
                 header_block = HeaderBlock(
-                    content={"title": bl.get_content()}
+                    content={'title': bl.get_content()}
                 )
             else:
                 header_block = HeaderBlock.from_default()
@@ -597,6 +602,18 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         case TextBlock() | ErrorBlock():
             header_block = HeaderBlock.from_default()
             blocks = [header_block] + blocks
+
+    # if isinstance(header_block, ErrorBlock):
+    #     # TODO: that header_block can be an ErrorBlock depends on the
+    #     # HeaderBlock._from_metadata_block(bl) call above. It is not
+    #     # clear that this case can occur. See note at the call code.
+    #     errblock = header_block
+    #     header_block = HeaderBlock.from_default()
+    #     header_block.comment = (
+    #         "Error when forming metadata for header. "
+    #         + "See following ErrorBlock."
+    #     )
+    #     blocks = [header_block, errblock] + blocks[1:]
 
     # Create root node as containing a HeadingBlock with the
     # document title as content.
@@ -833,7 +850,7 @@ def post_order_traversal(
 
 
 # type declaration of previous two functions
-type TraversalFunc = Callable[
+TraversalFunc = Callable[
     [MarkdownNode, Callable[[MarkdownNode], None]], None
 ]
 
@@ -861,6 +878,12 @@ def traverse_tree(
     Returns:
         A list containing the results of applying map_func to
             each node
+
+    Example:
+        ```python
+        def collect_contents(root: MarkdownNode) -> list[str]:
+            return traverse_tree(root, lambda n: n.get_content())
+        ```
     """
     result: list[T] = []
 
@@ -901,6 +924,14 @@ def traverse_tree_nodetype(
     Returns:
         A list containing the results of applying map_func to nodes of
             type node_type
+
+    Example:
+        ```python
+        def collect_titles(root: MarkdownNode) -> list[str]:
+            return traverse_tree_nodetype(root,
+                                          lambda n: n.get_content()),
+                                          HeadingNode)
+        ```
     """
     result: list[T] = []
 
@@ -964,9 +995,9 @@ def extract_content(
         output_key: the key of the heading metadata where information
             is stored
         extract_func: The function to extract functions. Args: a list
-            of MarkdownNode's, returns: a valid metadata value
-        filter_func: A predicate function to filter _HeadingNodes_ to
-            which extract_func is applied.
+            of `MarkdownNode`s, returns: a valid metadata value
+        filter_func: A predicate function to filter `HeadingNode`s to
+            which `extract_func` is applied.
 
     Returns:
         the root node where the traversal was started.

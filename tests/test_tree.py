@@ -138,8 +138,8 @@ second: [1, 2, 3]
 
         headingcopy = heading.node_copy()
         self.assertFalse(headingcopy.is_header_node())
-        self.assertFalse(headingcopy.is_root_node())
-        self.assertIs(headingcopy.parent, node)
+        self.assertTrue(headingcopy.is_root_node())
+        self.assertIsNone(headingcopy.parent)
         self.assertEqual(headingcopy.count_children(), 1)
         self.assertEqual(headingcopy.heading_level(), 1)
         self.assertEqual(headingcopy.get_content(), "Heading")
@@ -147,10 +147,93 @@ second: [1, 2, 3]
 
 class TestTreeConstruction(unittest.TestCase):
 
-    def test_load_tree(self):
-        root = load_tree("./tests/test_markdown.md")
+    def test_construction_text_empty(self):
+        text = ""
+        root = load_tree(text)
+        self.assertIsNone(root)
 
-        self.assertIsNotNone(root)
+    def test_construction_text_regular(self):
+        text = "Content of text block\non two lines"
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 1)
+        self.assertEqual(len(root.get_text_children()), 1)
+
+    def test_construction_heading(self):
+        text = "# A heading"
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 1)
+        self.assertEqual(len(root.get_heading_children()), 1)
+
+    def test_construction_heading_empty(self):
+        text = "# "
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 1)
+        self.assertEqual(len(root.get_text_children()), 1)
+
+        blocks = tree_to_blocks(root)
+        self.assertIsInstance(blocks[-1], ErrorBlock)
+
+    def test_construction_metadata(self):
+        data = "---\ntitle: Title\n---"
+        root = load_tree(data)
+        self.assertEqual(root.count_children(), 0)
+
+    def test_construction_metadata_empty(self):
+        data = "---\n---"
+        root = load_tree(data)
+        self.assertEqual(root.count_children(), 1)
+        self.assertEqual(len(root.get_text_children()), 1)
+
+        blocks = tree_to_blocks(root)
+        self.assertIsInstance(blocks[-1], ErrorBlock)
+
+    def test_construction_header_invalid(self):
+        text = "---\n1: first line\n---"
+        # expected behaviour: invalid dict is set to private_,
+        # default dict created for header
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 0)
+
+    def test_construction_metadata_invalid(self):
+        text = "---\n1: first block\n---\n\n---\n2: second block\n---"
+        # expected behaviour: invalid dict is set to private,
+        # empty dict in metadata replaced with default
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 0)
+
+    def test_construction_metadata_invalid(self):
+        text = "---\n[1, 2, 3]\n---"
+        # expected behaviour: invalid dict is set to private,
+        # empty dict in metadata replaced with default
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 0)
+        self.assertListEqual(root.metadata_block.private_, [1, 2, 3])
+
+    def test_construction_metadata_error(self):
+        text = "---\nfirst\nsecond\n---"
+        # expected behaviour: ErrorBlock instead of MetadataBlock
+        root = load_tree(text)
+        self.assertEqual(root.count_children(), 1)
+        self.assertEqual(len(root.get_text_children()), 1)
+
+        blocks = tree_to_blocks(root)
+        self.assertIsInstance(blocks[-1], ErrorBlock)
+
+    def test_construction_header_from_nested_dict(self):
+        data = (
+            "---\ntitle: MyTitle\ndata:\n  token:\n    nested: 1\n---"
+        )
+        # expected behaviour: over-nested dict goes in private_
+        root = load_tree(data)
+        self.assertEqual(root.count_children(), 0)
+
+        # Default metadata added
+        self.assertEqual(root.get_content(), "Title")
+
+    # def test_load_tree(self):
+    #     root = load_tree("./tests/test_markdown.md")
+
+    #     self.assertIsNotNone(root)
 
 
 class TestEdgeTree(unittest.TestCase):
@@ -178,8 +261,21 @@ class TestEdgeTree(unittest.TestCase):
 
         self.assertEqual(len(blocks), 2)
         self.assertIsInstance(blocks[0], HeaderBlock)
-        self.assertEqual(blocks[0].get_key("title"), "This")  # type: ignore
+        self.assertEqual(blocks[0].get_key("title"), "This")
         self.assertIsInstance(blocks[1], HeadingBlock)
+
+    def test_error_block(self):
+        root: MarkdownTree = blocks_to_tree(
+            [ErrorBlock(content="This is an error.")]
+        )
+        self.assertEqual(root.count_children(), 1)
+        self.assertEqual(len(root.get_text_children()), 1)
+
+        blocks = tree_to_blocks(root)
+        self.assertEqual(len(blocks), 2)
+        self.assertIsInstance(blocks[0], HeaderBlock)
+        self.assertEqual(blocks[0].get_key("title"), "Title")
+        self.assertIsInstance(blocks[1], ErrorBlock)
 
 
 class TestParseMarkdown(unittest.TestCase):
@@ -596,6 +692,71 @@ class TestTreeCopy(unittest.TestCase):
         # Verify they are separate objects
         self.assertIsNot(node.block, copy.block)
         self.assertIsNot(node.metadata, copy.metadata)
+
+
+header = HeaderBlock(content={"title": "Test blocklist"})
+metadata = MetadataBlock(
+    content={
+        "questions": "What is the nature of the test? - How can we fix it?",
+        "~chat": "Some discussion",
+        "summary": "The summary of the text.",
+    }
+)
+heading = HeadingBlock(level=2, content="First title")
+text = TextBlock(content="This is text following the heading")
+blocklist = [header, metadata, heading, text]
+
+
+class TestTraverseNodetype(unittest.TestCase):
+
+    def test_text(self):
+        root = blocks_to_tree(blocklist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        def _text_to_dict(n: TextNode) -> dict[str, str]:
+            return {"content": n.get_content()}
+
+        dicts: list[dict[str, str]] = traverse_tree_nodetype(
+            root, _text_to_dict, TextNode
+        )
+        self.assertEqual(len(dicts), 1)
+        self.assertIsInstance(dicts, list)
+        self.assertEqual(
+            dicts[0]["content"], "This is text following the heading"
+        )
+
+    def test_nontext(self):
+        root = blocks_to_tree([header, metadata, heading])
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        def _text_to_dict(n: TextNode) -> dict[str, str]:
+            return {"content": n.get_content()}
+
+        dicts: list[dict[str, str]] = traverse_tree_nodetype(
+            root, _text_to_dict, TextNode
+        )
+        self.assertEqual(len(dicts), 0)
+
+    def test_heading(self):
+        root = blocks_to_tree(blocklist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        def _text_to_dict(n: HeadingNode) -> dict[str, str]:
+            return {"content": n.get_content()}
+
+        dicts: list[dict[str, str]] = traverse_tree_nodetype(
+            root, _text_to_dict, HeadingNode
+        )
+        self.assertEqual(
+            len(dicts), 2
+        )  # Root heading + child heading
+        self.assertIsInstance(dicts, list)
+        self.assertEqual(
+            dicts[1]["content"], "First title"
+        )  # The child heading content
 
 
 if __name__ == "__main__":

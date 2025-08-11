@@ -7,6 +7,7 @@ from pathlib import Path
 from .parse_markdown import Block, ErrorBlock
 from .parse_markdown import serialize_blocks, blocklist_errors
 from lmm.utils.ioutils import validate_file
+from lmm.utils.ioutils import string_to_path_or_string
 
 # Set up default logger
 from lmm.utils.logging import get_logger, ILogger  # fmt: skip
@@ -20,6 +21,9 @@ def load_markdown(
     # loads the markdown file. No error thrown, instead
     # message printed to console and empty string returned.
 
+    if isinstance(source, str):
+        source = string_to_path_or_string(source)
+
     # Check if the input is a Path object
     if isinstance(source, Path):
         if not validate_file(source):
@@ -30,26 +34,26 @@ def load_markdown(
             logger.error(f"I/O error reading file {source}: {e}")
             return ""
     else:
-        # Check if the string is a single line
-        if '\n' not in source:
-            # Treat it as a file path
-            path = validate_file(source)
-            if not path:
-                return ""
-            if path.is_file():  # type
-                try:
-                    content = path.read_text(encoding='utf-8')
-                except IOError as e:
-                    logger.error(
-                        f"I/O error reading file {source}: " + f"{e}"
-                    )
-                    return ""
-            else:
-                logger.error(f"File not found: {source}")
-                return ""
-        else:
-            # Treat it as raw content
-            content = source
+        # # Check if the string is a single line
+        # if '\n' not in source:
+        #     # Treat it as a file path
+        #     path = validate_file(source)
+        #     if not path:
+        #         return ""
+        #     if path.is_file():  # type
+        #         try:
+        #             content = path.read_text(encoding='utf-8')
+        #         except IOError as e:
+        #             logger.error(
+        #                 f"I/O error reading file {source}: " + f"{e}"
+        #             )
+        #             return ""
+        #     else:
+        #         logger.error(f"File not found: {source}")
+        #         return ""
+        # else:
+        # Treat it as raw content
+        content = source
 
     return content
 
@@ -129,7 +133,10 @@ def report_error_blocks(
             if b.errormsg:
                 errinfo += ":\n" + b.errormsg
             if str(b.origin).strip():
-                errinfo += "\n\n Offending content:\n------------\n" \
-                    + str(b.origin) + "\n------------"
+                errinfo += (
+                    "\n\n Offending content:\n------------\n"
+                    + str(b.origin)
+                    + "\n------------"
+                )
             logger.warning(errinfo)
         return [b for b in blocks if not isinstance(b, ErrorBlock)]

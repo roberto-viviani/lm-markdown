@@ -62,13 +62,14 @@ from .treeutils import (  # noqa: F401
     collect_table_of_contents as collect_table_of_contents,
     collect_dictionaries as collect_dictionaries,
     collect_headings as collect_headings,
-    collect_textblocks as collect_textblocks,
+    collect_annotated_textblocks as collect_annotated_textblocks,
     count_words as count_words,
     CopyOpts as CopyOpts,
     get_nodes as get_nodes,
     get_headingnodes as get_headingnodes,
     get_nodes_with_metadata as get_nodes_with_metadata,
     get_textnodes as get_textnodes,
+    print_tree_info as print_tree_info,
 )
 
 from .ioutils import (  # noqa: F401

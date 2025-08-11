@@ -64,8 +64,9 @@ with the following exceptions:
 
 from pathlib import Path
 from typing import Tuple, Any, Callable, Mapping
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing_extensions import Literal
+from enum import Enum
 
 import re
 
@@ -189,10 +190,10 @@ class MetadataBlock(BaseModel):
         try:
             part, whole = pya.split_yaml_parse(yamldata, mapped_keys)
         except ValueError as e:
-            # It is not clear if this error can occur.
+            # These are metadata fields rejected by split_yaml_parse
             offending_meta = '\n'.join([y for (_, y) in stack])
             return ErrorBlock(
-                content="\nUnexpected error when checking metadata.",
+                content="Invalid markdown header.",
                 errormsg=str(e),
                 origin=offending_meta,
             )
@@ -217,8 +218,6 @@ class MetadataBlock(BaseModel):
                 content=part, private_=whole, comment=comment
             )
         except Exception:
-            # For the errors caught by pydantic. This ensues for
-            # recursive dictionaries.
             try:
                 block = MetadataBlock(
                     content={},
@@ -226,29 +225,41 @@ class MetadataBlock(BaseModel):
                     comment="Invalid (too deeply nested?) metadata,"
                     + " ignored by model.",
                 )
-            except Exception:
+            except ValidationError:
+                # Pydantic errors ensue from nested dictionaries
                 return ErrorBlock(
                     content="Could not parse metadata:"
                     + " YAML object type not supported.",
                     errormsg="",  # a convoluted pydantic message
                     origin='\n'.join([y for (_, y) in stack]),
                 )
+            except Exception as e:
+                return ErrorBlock(
+                    content="Could not parse metadata.",
+                    errormsg=str(e),
+                    origin='\n'.join([y for (_, y) in stack]),
+                )
         return block
 
     @staticmethod
     def _from_dict(
-        dct: dict[object, object],
+        dct: MetadataDict | dict[object, object],
     ) -> 'MetadataBlock|ErrorBlock':
         if not pya.is_metadata_dict(dct):
             return ErrorBlock(content="Invalid data for metadata.")
         # now dct is a metadata dict
         try:
             block = MetadataBlock(content=dct)  # type: ignore
-        except Exception:
+        except ValidationError:
             # This is a pydantic type error
             return ErrorBlock(
                 content="Invalid dictionary for metadata "
                 + "(too deep nesting?)."
+            )
+        except Exception as e:
+            return ErrorBlock(
+                content="Invalid dictionary for metadata",
+                errormsg=str(e),
             )
         return block
 
@@ -288,21 +299,14 @@ class HeaderBlock(MetadataBlock):
     @staticmethod
     def _from_metadata_block(
         block: MetadataBlock,
-    ) -> 'HeaderBlock|ErrorBlock':
+    ) -> 'HeaderBlock':
         if 'title' not in block.content:
             block.content['title'] = "Title"
-        try:
-            hblock = HeaderBlock(
-                content=block.content,
-                comment=block.comment,
-                private_=block.private_,
-            )
-        except Exception as e:
-            return ErrorBlock(
-                content="Could not parse metadata:"
-                + " YAML object type not supported.",
-                errormsg=str(e),
-            )
+        hblock = HeaderBlock(
+            content=block.content,
+            comment=block.comment,
+            private_=block.private_,
+        )
         return hblock
 
     @staticmethod
@@ -317,7 +321,7 @@ class HeaderBlock(MetadataBlock):
 
     @staticmethod
     def _from_dict(
-        dct: dict[object, object],
+        dct: MetadataDict | dict[object, object],
     ) -> 'HeaderBlock|ErrorBlock':
         block = MetadataBlock._from_dict(dct)
         match block:
@@ -588,7 +592,6 @@ Block = (
 # = Field(discriminator='type')
 
 # Tokens are defined at the granularity of single lines.
-from enum import Enum  # fmt: skip
 Token = Enum(
     'Token',
     [

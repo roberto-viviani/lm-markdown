@@ -10,6 +10,39 @@ from .logging import get_logger, ILogger  # fmt: skip
 logger: ILogger = get_logger(__name__)
 
 
+def string_to_path_or_string(input_string: str) -> Path | str:
+    """
+    Takes a string as argument. If the string is one line, checks that the
+    string codes for an existing file. If so, it returns a Path object for
+    that file. Otherwise, it returns the string.
+
+    A string is considered one line if it contains no newlines, or if it
+    only has a single trailing newline character.
+
+    Args:
+        input_string: The input string to check
+
+    Returns:
+        Path object if the string represents an existing file, otherwise the original string
+    """
+    # Check if string is a single line (allowing for trailing \n)
+    stripped_string = input_string.rstrip('\n\r')
+    if '\n' in stripped_string or '\r' in stripped_string:
+        return input_string
+
+    # Try to create a Path object and check if it exists as a file
+    try:
+        potential_path = Path(stripped_string.strip())
+        if potential_path.exists() and potential_path.is_file():
+            return potential_path
+    except (OSError, ValueError):
+        # Invalid path characters or other path-related errors
+        pass
+
+    # Return original string if not a valid existing file
+    return input_string
+
+
 # Validate file name
 def validate_file(
     source: str | Path, logger: ILogger = logger

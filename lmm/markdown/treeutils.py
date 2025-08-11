@@ -18,7 +18,7 @@ Traversal:
     `collect_headings`
     `collect_dictionaries`
     `collect_table_of_contents`
-    `collect_textblocks`
+    `collect_annotated_textblocks`
 
 Fold:
     `count_words`
@@ -33,13 +33,15 @@ Select nodes:
 # protected members of Block used
 # pyright: reportPrivateUsage=false
 
-from typing import Any, Callable, TypeVar, cast
+from typing import Callable, TypeVar, cast, Sequence
+from enum import Enum
 
 from .tree import (
     MarkdownNode,
     TextNode,
     HeadingNode,
     MarkdownTree,
+    NodeDict,
     pre_order_traversal,
     post_order_traversal,
     traverse_tree,
@@ -53,6 +55,7 @@ from .parse_markdown import (
     MetadataBlock,
     TextBlock,
 )
+from .parse_yaml import MetadataValue
 
 
 # aggregation and inheritance---------------------------------------
@@ -61,7 +64,9 @@ from .parse_markdown import (
 def summarize_content(
     root_node: HeadingNode,
     key: str,
-    summarize_func: Callable[[str], str],
+    summarize_func: Callable[
+        [Sequence[MetadataValue]], MetadataValue
+    ],
     filter_func: Callable[[HeadingNode], bool] = lambda _: True,
 ) -> HeadingNode:
     """
@@ -81,30 +86,107 @@ def summarize_content(
             before storing
         filter_func: a filter function to select the nodes that
             should be processed
+
+    Returns:
+        the heading node the traversal was started from
+
+    Example:
+        ```python
+        # adds a metadata property 'wordcount' to each heading
+        def add_wordcount(root: HeadingNode) -> MarkdownNode:
+
+            def proc_sum(data: Sequence[MetadataValue]) -> int:
+                score: int = 0
+                for d in data:
+                    if isinstance(d, int):
+                        score += d
+                    else:
+                        score += len(str(d).split())
+                return score
+
+            return summarize_content(root, "wordcount", proc_sum)
+
+        # an example for working with strings from text nodes
+        def summarize_strings(root: HeadingNode) -> HeadingNode:
+
+            def proc_sum(data: Sequence[MetadataValue]) -> str:
+                buff = [str(d) for d in data]
+                return f"There are {len((" ".join(buff)).split())} words."
+
+            return summarize_content(
+                root,
+                "summary",
+                proc_sum,
+            )
+        ```
     """
 
-    def process_node(nodes: list[MarkdownNode]) -> str:
-        text: list[str] = []
+    def process_node(nodes: Sequence[MarkdownNode]) -> MetadataValue:
+        values: list[MetadataValue] = []
         for n in nodes:
             match n:
                 case HeadingNode():
-                    value: str = str(n.get_metadata_for_key(key, ""))
+                    value: MetadataValue = n.get_metadata_for_key(
+                        key, ""
+                    )
                     if value:
-                        text.append(value)
+                        values.append(value)
                 case TextNode():
-                    text.append(n.get_content())
+                    values.append(n.get_content())
                 case _:
                     # MarkdownNode left, but is abstract
                     raise RuntimeError(
                         "Unreachable code reached: "
                         + "unrecognized node type"
                     )
-        if text:
-            return summarize_func("\n\n".join(text))
+        if values:
+            return summarize_func(values)
         else:
-            return ""
+            return []
 
     return extract_content(root_node, key, process_node, filter_func)
+
+
+def test_summarize_content(root: HeadingNode) -> MarkdownNode:
+
+    def proc_sum(data: Sequence[MetadataValue]) -> int:
+        score: int = 0
+        for d in data:
+            if isinstance(d, int):
+                score += d
+            else:
+                score += len(str(d).split())
+        return score
+
+    return summarize_content(root, "wordcount", proc_sum)
+
+
+def test_summarize_content_upwards(root: HeadingNode):
+    def proc_sum(data: Sequence[MetadataValue]) -> int:
+        score: int = 0
+        for d in data:
+            if isinstance(d, int):
+                score += d
+            else:
+                score += len(str(d).split())
+        return score
+
+    return summarize_content(root, "wordcount", proc_sum)
+
+
+def test_summarize_content_strings(root: HeadingNode) -> HeadingNode:
+
+    def proc_sum(data: Sequence[MetadataValue]) -> str:
+        buff: str = " ".join([str(d) for d in data])
+        return f"There are {len(buff)} words."
+
+    root = summarize_content(
+        root,
+        "summary",
+        proc_sum,
+        lambda x: isinstance(x, TextNode),
+    )
+    return root
 
 
 def inherit_metadata(
@@ -272,11 +354,10 @@ def propagate_property(
 
 def collect_text(
     root: MarkdownTree,
-    sep: str = "\n\n",
     filter_func: Callable[[TextNode], bool] = lambda _: True,
-) -> str:
+) -> list[str]:
     """
-    Join all text in the text descendants of the node.
+    Collect all text in the text node descendants of the node.
 
     Args:
         root: The root node of the tree, or a heading node
@@ -284,27 +365,22 @@ def collect_text(
         filter_func: an optional filter on the node
 
     Returns:
-        The accumulated text.
+        A list containing the accumulated text.
     """
-    import re
 
     if not root:
-        return ""
+        return []
 
     mapf: Callable[[TextNode], str] = lambda x: x.get_content()
-    content = sep.join(
-        traverse_tree_nodetype(root, mapf, TextNode, filter_func)
-    )
-    return re.sub(rf"{sep}({sep})+", sep, content).strip()
+    return traverse_tree_nodetype(root, mapf, TextNode, filter_func)
 
 
 def collect_headings(
     root: MarkdownTree,
-    sep: str = "\n\n",
     filter_func: Callable[[HeadingNode], bool] = lambda _: True,
-) -> str:
+) -> list[str]:
     """
-    Join all heading text of the node and its descendants.
+    Collect all heading text of the node and its descendants.
 
     Args:
         root: The root node of the tree, or a heading node
@@ -312,26 +388,25 @@ def collect_headings(
         filter_func: an optional filter on the node
 
     Returns:
-        The accumulated text.
+        A list of the accumulated text.
     """
 
     if not root:
-        return ""
+        return []
 
     mapf: Callable[[HeadingNode], str] = lambda x: x.get_content()
-    content = sep.join(
-        traverse_tree_nodetype(root, mapf, HeadingNode, filter_func)
+    return traverse_tree_nodetype(
+        root, mapf, HeadingNode, filter_func
     )
-    return content.strip()
 
 
 def collect_dictionaries(
     root: MarkdownTree,
-    map_func: Callable[
-        [MarkdownNode], dict[str, Any]
-    ] = lambda x: x.as_dict(True, False),
     filter_func: Callable[[MarkdownNode], bool] = lambda _: True,
-) -> list[dict[str, Any]]:
+    map_func: Callable[
+        [MarkdownNode], NodeDict
+    ] = lambda x: x.as_dict(True, False),
+) -> list[NodeDict]:
     """Unfold a tree or branch into a list of dictionaries,
     containing the node content and its metadata, or a selection of
     metadata as specified by map_func, optionally filtered by filter
@@ -383,7 +458,7 @@ def collect_table_of_contents(
     return traverse_tree_nodetype(root, collect_headings, HeadingNode)
 
 
-def collect_textblocks(
+def collect_annotated_textblocks(
     root: MarkdownTree,
     inherit: bool = True,
     include_header: bool = False,
@@ -414,7 +489,7 @@ def collect_textblocks(
     if not root:
         return []
 
-    dicts: list[dict[str, Any]] = traverse_tree_nodetype(
+    dicts: list[NodeDict] = traverse_tree_nodetype(
         root.tree_copy(),
         lambda x: x.as_dict(inherit, include_header),
         TextNode,
@@ -424,7 +499,7 @@ def collect_textblocks(
     for d in dicts:
         if 'metadata' in d:
             blocks.append(MetadataBlock._from_dict(d['metadata']))
-        blocks.append(TextBlock(content=d['content']))
+        blocks.append(TextBlock(content=str(d['content'])))
     return blocks
 
 
@@ -460,7 +535,6 @@ def count_words(root: MarkdownTree) -> int:
 # select nodes -----------------------------------------------------
 
 
-from enum import Enum  # fmt: skip
 class CopyOpts(Enum):
     NAKED_COPY = 2  # copy node and take it off tree
     NODE_COPY = 1  # copy node and keep links

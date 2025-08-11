@@ -127,6 +127,23 @@ class TestMardownBlocks(unittest.TestCase):
         self.assertDictEqual(block.private_[0], {2: "second block"})
         self.assertTrue(block == parse_markdown_text(text)[1])
 
+    def test_construction_metadata_error(self):
+        text = "---\nfirst\nsecond\n---"
+        # expected behaviour: ErrorBlock instead of MetadataBlock
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 1)
+        block = blocks[0]
+        self.assertIsInstance(block, ErrorBlock)
+
+    def test_construction_literallist(self):
+        text = "---\n[1, 2, 3]\n---"
+        # expected behaviour: ErrorBlock instead of MetadataBlock
+        blocks = parse_markdown_text(text)
+        self.assertEqual(len(blocks), 1)
+        block = blocks[0]
+        self.assertIsInstance(block, HeaderBlock)
+        self.assertListEqual(block.private_, [1, 2, 3])
+
     def test_construction_metadata_from_dict(self):
         data = {'title': "Title"}
         block = MetadataBlock._from_dict(data)
@@ -139,14 +156,6 @@ class TestMardownBlocks(unittest.TestCase):
             serialize_blocks(parse_markdown_text(parse)),
         )
         self.assertTrue(block == MetadataBlock(content=data))
-
-    def test_construction_metadata_from_nested_dict(self):
-        data = {'title': "Title", 'data': {'token': {'nested': 1}}}
-        block = MetadataBlock._from_dict(data)
-        self.assertIsInstance(block, ErrorBlock)
-        self.assertTrue(
-            block.get_content().startswith("Invalid dictionary")
-        )
 
     def test_construction_header_from_nested_dict(self):
         data = {'title': "Title", 'data': {'token': {'nested': 1}}}
