@@ -24,7 +24,7 @@ The whole part is kept aside and recomposed with the part when the
 whole YAML object is reconstituted.
 
 YAML objects consisting of literals only will raise an exception,
-since it is conceivable that the user inteded something different.
+since it is conceivable that the user intended something different.
 Byte/imaginary literals are put in whole.
 """
 
@@ -92,13 +92,13 @@ def _split_metadata_dict(
     """Eliminate all values in yaml header that are not in
     the conformant value set"""
     newdict: MetadataDict = {}
-    bin = {}
+    buff = {}
     for v in values.keys():
         if _is_metadata_type(values[v]):
             newdict[v] = values[v]  # type: ignore
         else:
-            bin[v] = values[v]
-    return (newdict, [bin]) if bin else (newdict, [])
+            buff[v] = values[v]
+    return (newdict, [buff]) if buff else (newdict, [])
 
 
 def is_metadata_dict(data: object) -> bool:
@@ -146,8 +146,8 @@ def split_yaml_parse(
                 whole = yamldata[1:]
         case list() if _is_string_dict(yamldata[0]):
             # heterogeneous dict in first position
-            part, bin = _split_metadata_dict(yamldata[0])
-            whole = (bin + yamldata[1:]) if len(yamldata) > 1 else bin
+            part, buff = _split_metadata_dict(yamldata[0])
+            whole = (buff + yamldata[1:]) if len(yamldata) > 1 else buff
         case list():
             # invalid dictionary in first element or list of non-dict
             whole = yamldata
@@ -201,15 +201,15 @@ def desplit_yaml_parse(
 ) -> Any:
     """
     Reconstitute the original yaml object from the tuple
-    constructed by yaml_parse. Dictionaries that were splitted
-    as some values were not elementary remain splitted.
+    constructed by yaml_parse. Dictionaries that were split
+    as some values were not elementary remain split.
     """
     if split_parse is None:
         return None
     part, whole = split_parse
     if part == {} and whole == []:
         return None
-    if whole == []:
+    if not whole:
         return part
     if part == {}:
         if len(whole) == 1:
@@ -227,8 +227,8 @@ def serialize_yaml_parse(
 ) -> str:
     """
     Reconstitute a yaml string from the tuple
-    constructed by yaml_parse. Dictionaries that were splitted
-    as some values were not elementary remain splitted.
+    constructed by yaml_parse. Dictionaries that were split
+    as some values were not elementary remain split.
     """
     yamldata = desplit_yaml_parse(split_parse)
     return dump_yaml(yamldata)
