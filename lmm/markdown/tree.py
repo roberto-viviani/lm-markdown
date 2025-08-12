@@ -166,7 +166,7 @@ class MarkdownNode(ABC):
     def get_heading_children(self) -> list['HeadingNode']:
         pass
 
-    def get_parent(self) -> 'MarkdownNode | None':
+    def get_parent(self) -> 'HeadingNode | None':
         return self.parent
 
     def count_children(self) -> int:
@@ -337,9 +337,9 @@ class HeadingNode(MarkdownNode):
         parent: "HeadingNode | None" = None,
     ):
         # this can only happen if type checks were ignored
-        assert isinstance(block, (HeadingBlock, HeaderBlock)), (
-            f"Invalid block type: {type(block)}"
-        )
+        assert isinstance(
+            block, (HeadingBlock, HeaderBlock)
+        ), f"Invalid block type: {type(block)}"
         # type checker complains here, but it will enforce the
         # type at any subsequent access to the block data member,
         # simulating covariance
@@ -485,9 +485,9 @@ class TextNode(MarkdownNode):
         parent: "HeadingNode | None" = None,
     ):
         # this can only happen if type checks were ignored
-        assert isinstance(block, (TextBlock, ErrorBlock)), (
-            f"Invalid block type: {type(block)}"
-        )
+        assert isinstance(
+            block, (TextBlock, ErrorBlock)
+        ), f"Invalid block type: {type(block)}"
         # type checker complains here, but it will enforce the
         # type at any subsequent access to the block data member,
         # simulating covariance
