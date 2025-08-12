@@ -1108,8 +1108,12 @@ def propagate_content(
         match node:
             case HeadingNode():
                 heading_node = node
-            case _:
+            case TextNode():
                 return
+            case _:
+                raise RuntimeError(
+                    "Unreachable code reached: unrecognized node type"
+                )
 
         if not filter_func(heading_node):
             return
