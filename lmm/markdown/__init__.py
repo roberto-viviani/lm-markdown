@@ -67,6 +67,8 @@ from .treeutils import (  # noqa: F401
     get_nodes_with_metadata as get_nodes_with_metadata,
     get_textnodes as get_textnodes,
     print_tree_info as print_tree_info,
+    pre_order_map_tree as pre_order_map_tree,
+    post_order_map_tree as post_order_map_tree,
 )
 
 from .ioutils import (  # noqa: F401

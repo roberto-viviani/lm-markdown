@@ -424,6 +424,44 @@ class TestInheritedProperty(unittest.TestCase):
             self.assertFalse("summary" in t.metadata)
 
 
+class TestMapTree(unittest.TestCase):
+    def test_pre_order_map(self):
+        blist = blocklist_copy(blocklist)
+        root = blocks_to_tree(blist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        def map_func(node: MarkdownNode) -> MarkdownNode:
+            if isinstance(node, TextNode):
+                node.set_content("New text!")
+            return node
+
+        root = pre_order_map_tree(root, map_func)
+
+        blocks = tree_to_blocks(root)
+        for b in blocks:
+            if isinstance(b, TextBlock):
+                self.assertEqual(b.get_content(), "New text!")
+
+    def test_post_order_map(self):
+        blist = blocklist_copy(blocklist)
+        root = blocks_to_tree(blist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        def map_func(node: MarkdownNode) -> MarkdownNode:
+            if isinstance(node, TextNode):
+                node.set_content("New text!")
+            return node
+
+        root = post_order_map_tree(root, map_func)
+
+        blocks = tree_to_blocks(root)
+        for b in blocks:
+            if isinstance(b, TextBlock):
+                self.assertEqual(b.get_content(), "New text!")
+
+
 class TestGetTextnodes(unittest.TestCase):
     def test_textnodes(self):
         blist = blocklist_copy(blocklist)

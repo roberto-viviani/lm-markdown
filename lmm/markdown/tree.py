@@ -182,6 +182,11 @@ class MarkdownNode(ABC):
         """Returns text of headings or of text nodes."""
         pass
 
+    @abstractmethod
+    def set_content(self, content: str) -> None:
+        """Set text of headings or of text nodes."""
+        pass
+
     def get_metadata(self, key: str | None = None) -> MetadataDict:
         """
         Get the metadata of the current node. For the header node,
@@ -214,6 +219,17 @@ class MarkdownNode(ABC):
         if key in self.metadata:
             return self.metadata[key]
         return default
+
+    def set_metadata_for_key(
+        self, key: str, value: MetadataValue
+    ) -> None:
+        """Set the metadata value at key of the current node.
+
+        Args:
+            key: the key where the value should be set
+            value: the metadata value
+        """
+        self.metadata[key] = value
 
     def fetch_metadata(
         self, key: str | None = None, include_header: bool = True
@@ -390,7 +406,23 @@ class HeadingNode(MarkdownNode):
             case HeadingBlock():
                 return self.block.get_content()
             case HeaderBlock():
+                raise RuntimeError(
+                    "Unreachable code reached: "
+                    + "unrecognized block type in node"
+                )
                 return str(self.block.get_key('title', ""))
+
+    def set_content(self, content: str) -> None:
+        match self.block:
+            case HeadingBlock() if self.is_header_node():
+                self.set_metadata_for_key('title', content)
+            case HeadingBlock():
+                self.block.content = content
+            case _:
+                raise RuntimeError(
+                    "Unreachable code reached: "
+                    + "unrecognized block type in node"
+                )
 
     def get_info(self, indent: int = 0) -> str:
         """
@@ -520,6 +552,10 @@ class TextNode(MarkdownNode):
         """Returns the content of the markdown text represented by
         the node."""
         return self.block.get_content()
+
+    def set_content(self, content: str) -> None:
+        """Set the content of the node"""
+        self.block.content = content
 
     def get_info(self, indent: int = 0) -> str:
         """

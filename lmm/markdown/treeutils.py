@@ -451,6 +451,75 @@ def get_headingnodes(
     return get_nodes(root, naked_copy, HeadingNode, filter_func)
 
 
+# map -------------------------------------------------------------
+def pre_order_map_tree(
+    node: MarkdownNode,
+    map_func: Callable[[MarkdownNode], MarkdownNode],
+) -> MarkdownNode:
+    """
+    Applies map_func in pre-order to the nodes of the tree.
+
+    Args:
+        node: The root node of the tree or subtree
+        map_func: The function to apply to each node that returns a
+            new node
+
+    Returns:
+        A new tree with the same structure, but transformed by
+            map_func
+
+    Related functions:
+        pre_order_traversal: has the same purpose, but with a
+            different parameter function signature
+            'Callable[[MarkdownNode], None]` and return type None
+
+    Note:
+        Make a deep copy of the root node prior to calling this
+        function to prevent side effects:
+        'pre_order_map(node.tree_copy())'
+    """
+
+    mapped_node = map_func(node)
+    mapped_node.children = [
+        pre_order_map_tree(child, map_func) for child in node.children
+    ]
+
+    return mapped_node
+
+
+def post_order_map_tree(
+    node: MarkdownNode,
+    map_func: Callable[[MarkdownNode], MarkdownNode],
+) -> MarkdownNode:
+    """
+    Applies map_func in post-order to the nodes of the tree.
+
+    Args:
+        node: The root node of the tree or subtree
+        map_func: The function to apply to each node that returns a
+            new node
+
+    Returns:
+        A new tree with the same structure, but transformed by
+            map_func
+
+    Related functions:
+        post_order_traversal: has the same purpose, but with a
+            different parameter function signature
+            'Callable[[MarkdownNode], None]` and return type None
+
+    Note:
+        Make a deep copy of the root node prior to calling this
+        function to prevent side effects:
+        `post_order_map(node.tree_copy())`
+    """
+    node.children = [
+        post_order_map_tree(child, map_func)
+        for child in node.children
+    ]
+    return map_func(node)
+
+
 # utilities -------------------------------------------------------
 def print_tree_info(node: MarkdownNode, indent: int = 0) -> None:
     """
