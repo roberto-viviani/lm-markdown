@@ -16,6 +16,7 @@ from lmm.markdown.parse_markdown import (
     blocklist_errors,
     blocklist_copy,
     blocklist_map,
+    Block,
     HeaderBlock,
     MetadataBlock,
     HeadingBlock,
@@ -803,6 +804,70 @@ This is some text immediately following a metadata block."""
         self.assertIn(
             "ErrorBlock", block_types
         )  # Due to non-conformant content
+
+
+class TestBlocklistCopy(unittest.TestCase):
+    def test_blocklistcopy(self):
+        text = """
+---
+title: Title
+---
+
+The first block!
+
+The second block!
+"""
+        blocks: list[Block] = parse_markdown_text(text)
+
+        def blocklist_replace(
+            blocks: list[Block], target: str, replacement: str
+        ) -> list[Block]:
+            def replace_block(block: Block) -> Block:
+                return (
+                    TextBlock.from_text(
+                        block.get_content().replace(
+                            target, replacement
+                        )
+                    )
+                    if isinstance(block, TextBlock)
+                    else block
+                )
+
+            return blocklist_map(blocks, replace_block)
+
+        blocks = blocklist_replace(blocks, "!", ".")
+        self.assertEqual(blocks[1].get_content(), "The first block.")
+        self.assertEqual(blocks[2].get_content(), "The second block.")
+
+    def test_blocklistcopy_filtered(self):
+        text = """
+---
+title: Title
+---
+
+The first block!
+
+The second block!
+"""
+        blocks: list[Block] = parse_markdown_text(text)
+
+        def blocklist_replace(
+            blocks: list[Block], target: str, replacement: str
+        ) -> list[Block]:
+            def replace_block(block: TextBlock) -> TextBlock:
+                return TextBlock.from_text(
+                    block.get_content().replace(target, replacement)
+                )
+
+            return blocklist_map(
+                blocks,
+                replace_block,  # type: ignore
+                lambda x: isinstance(x, TextBlock),
+            )
+
+        blocks = blocklist_replace(blocks, "!", ".")
+        self.assertEqual(blocks[1].get_content(), "The first block.")
+        self.assertEqual(blocks[2].get_content(), "The second block.")
 
 
 if __name__ == "__main__":

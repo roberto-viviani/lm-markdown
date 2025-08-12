@@ -800,7 +800,7 @@ def parse_markdown_text(
         - serialize_blocks: Recreates Markdown text from blocks
         - blocklist_haserrors: Checks if parsing was successful
         - blocklist_errors: Returns list of error blocks
-        - blocklist_get_info: Return string about the blocks
+        - blocklist_get_info: Return description of the blocks
     """
 
     if not content:
@@ -830,6 +830,10 @@ def serialize_blocks(blocks: list[Block]) -> str:
 
     Returns:
         A string containing the markdown representation of the blocks.
+
+    Related functions:
+        - parse_markdown_text: Converts a markdown string into a
+            parsed block list.
     """
     if not blocks:
         return ""
@@ -850,9 +854,38 @@ def serialize_blocks(blocks: list[Block]) -> str:
     )
 
 
-def blocklist_copy(blocks: list[Block]) -> list[Block]:
-    """Return a deep copy of the blocklist."""
-    return [b.deep_copy() for b in blocks]
+def blocklist_copy(
+    blocks: list[Block],
+    filter_func: Callable[[Block], bool] | None = None,
+) -> list[Block]:
+    """Return a deep copy of the blocklist.
+
+    Args:
+        blocks: the block list to copy.
+        filter_func: a predicate function to filter the blocks. If
+            not provided, all blocks are returned.
+
+    Returns:
+        A copy of the block list.
+
+    Examples:
+        A deep copy of all text blocks:
+        ```python
+        blockscopy = blocklist_copy(
+            blocklist, lambda b: isinstance(b, TextBlock)
+        )
+        ```
+    Notes:
+        To copy by reference, stardard Python syntax may be used:
+        ```python
+        blockscopy = [b for b in blocks if isinstance(b, TextBlock)]
+        ```
+    """
+    return (
+        [b.deep_copy() for b in blocks]
+        if filter_func is None
+        else [b.deep_copy() for b in blocks if filter_func(b)]
+    )
 
 
 # info functions on block lists---------------------------------
@@ -884,20 +917,24 @@ def blocklist_map(
     filter_func.
 
     Example:
+        Write a function that applies a replacement text to all
+        contents of text blocks.
         ```python
-        blocks = [
-            MetadataBlock._from_dict({'title': "Title"}),
-            TextBlock.from_text("A text block"),
-        ]
-        newblocks = blocklist_map(
-            blocks,
-            lambda x: TextBlock.from_text(
-                x.get_content() + ", with addition."
-            ),
-            lambda x: isinstance(x, TextBlock),
-        )
-        print(serialize_blocks(blocks))
-        print(serialize_blocks(newblocks))
+        def blocklist_replace(
+            blocks: list[Block], target: str, replacement: str
+        ) -> list[Block]:
+            def replace_block(block: Block) -> Block:
+                return (
+                    TextBlock.from_text(
+                        block.get_content().replace(
+                            target, replacement
+                        )
+                    )
+                    if isinstance(block, TextBlock)
+                    else block
+                )
+
+            return blocklist_map(blocks, replace_block)
         ```
     """
     return [
