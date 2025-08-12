@@ -426,14 +426,93 @@ class TestInheritedProperty(unittest.TestCase):
 
 class TestGetTextnodes(unittest.TestCase):
     def test_textnodes(self):
-        root = blocks_to_tree(blocklist)
+        blist = blocklist_copy(blocklist)
+        root = blocks_to_tree(blist)
         if not root:
             raise (Exception("Invalid blocks"))
 
-        textnodes: list[TextNode] = get_textnodes(root)
+        NAKED_COPY = True
+        textnodes: list[TextNode] = get_textnodes(root, NAKED_COPY)
         self.assertTrue(len(textnodes) > 0)
         for n in textnodes:
-            self.assertTrue(isinstance(n, TextNode))  # type: ignore
+            self.assertIsNone(n.parent)
+
+        textblocks = [b for b in blist if isinstance(b, TextBlock)]
+        textnodes[0].block.content = "New content"
+        self.assertNotEqual(
+            textblocks[0].get_content(), "New content"
+        )
+
+    def test_textnodes_ref(self):
+        blist = blocklist_copy(blocklist)
+        root = blocks_to_tree(blist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        NAKED_COPY = False
+        textnodes: list[TextNode] = get_textnodes(root, NAKED_COPY)
+        self.assertTrue(len(textnodes) > 0)
+        for n in textnodes:
+            self.assertTrue(bool(n.parent))
+
+        textblocks = [b for b in blist if isinstance(b, TextBlock)]
+        textnodes[0].block.content = "New content"
+        self.assertEqual(textblocks[0].get_content(), "New content")
+
+    def test_textnodes_filter(self):
+        root = blocks_to_tree(
+            blocklist_copy(blocklist)
+            + [TextBlock(content="That is new")]
+        )
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        NAKED_COPY = True
+        textnodes: list[TextNode] = get_textnodes(
+            root,
+            NAKED_COPY,
+            lambda tn: tn.get_content().startswith("That"),
+        )
+        self.assertTrue(len(textnodes) == 1)
+        for n in textnodes:
+            self.assertIsNone(n.parent)
+
+        self.assertEqual(textnodes[0].get_content(), "That is new")
+
+
+class TestGetHeadingnodes(unittest.TestCase):
+    def test_headingnodes(self):
+        blist = blocklist_copy(blocklist)
+        root = blocks_to_tree(blist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        NAKED_COPY = True
+        hnodes: list[HeadingNode] = get_headingnodes(root, NAKED_COPY)
+        self.assertTrue(len(hnodes) > 0)
+        for n in hnodes:
+            self.assertIsNone(n.parent)
+
+        hblocks = [b for b in blist if isinstance(b, HeadingBlock)]
+        hnodes[0].block.content = "New content"
+        self.assertNotEqual(hblocks[0].get_content(), "New content")
+
+    def test_headingnodes_ref(self):
+        blist = blocklist_copy(blocklist)
+        root = blocks_to_tree(blist)
+        if not root:
+            raise (Exception("Invalid blocks"))
+
+        NAKED_COPY = False
+        hnodes: list[HeadingNode] = get_headingnodes(root, NAKED_COPY)
+        self.assertTrue(len(hnodes) > 0)
+        # note: the first heading is the root, and has no parent
+        for n in hnodes[1:]:
+            self.assertIsNotNone(n.parent)
+
+        hblocks = [b for b in blist if isinstance(b, HeadingBlock)]
+        hnodes[1].block.content = "New content"
+        self.assertEqual(hblocks[0].get_content(), "New content")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,6 @@ Select nodes:
 # pyright: reportPrivateUsage=false
 
 from typing import Callable, TypeVar
-from enum import Enum
 
 from .tree import (
     MarkdownNode,
@@ -336,18 +335,12 @@ def count_words(root: MarkdownTree) -> int:
 # select nodes -----------------------------------------------------
 
 
-class CopyOpts(Enum):
-    NAKED_COPY = 2  # copy node and take it off tree
-    NODE_COPY = 1  # copy node and keep links
-    REFERENCE = 0  # reference to node (python way)
-
-
 MN = TypeVar("MN", bound=MarkdownNode)  # fmt: skip
 
 
 def get_nodes(
     root: MarkdownNode,
-    opts: CopyOpts = CopyOpts.NAKED_COPY,
+    naked_copy: bool = True,
     node_type: type[MN] = MarkdownNode,
     filter_func: Callable[[MN], bool] = lambda _: True,
 ) -> list[MN]:
@@ -357,7 +350,9 @@ def get_nodes(
 
     Args:
         root: The root node of the tree
-        opts: a CopyOpts value
+        naked_copy: naked copy is a deep copy of a node taken off the
+            tree (without parent or children); if False, gives a
+            reference. Defaults to True.
         node_type: the type of node to select (default to all)
         filter_func: a predicate to select the nodes (defaults
             to all nodes)
@@ -370,23 +365,15 @@ def get_nodes(
         `get_text_nodes`, `get_heading_nodes`,
         `get_nodes_with_metadata` for examples of uses
     """
-    f: Callable[[MN], MN]
-    match opts:
-        case CopyOpts.NAKED_COPY:
-            f = lambda x: x.naked_copy()  # noqa
-        case CopyOpts.NODE_COPY:
-            f = lambda x: x.node_copy()  # noqa
-        case CopyOpts.REFERENCE:
-            f = lambda x: x  # noqa
-        case _:
-            raise RuntimeError(
-                "Unreachable code reached due to "
-                + "unrecognized CopyOpts enum value"
-            )
-
-    nodes: list[MN] = traverse_tree_nodetype(
-        root, f, node_type, filter_func
-    )
+    nodes: list[MN]
+    if naked_copy:
+        nodes = traverse_tree_nodetype(
+            root, lambda x: x.naked_copy(), node_type, filter_func
+        )
+    else:
+        nodes = traverse_tree_nodetype(
+            root, lambda x: x, node_type, filter_func
+        )
     return nodes
 
 
@@ -394,7 +381,7 @@ def get_nodes_with_metadata(
     root: MarkdownNode,
     metadata_key: str,
     node_type: type[MN] = MarkdownNode,
-    opts: CopyOpts = CopyOpts.NAKED_COPY,
+    naked_copy: bool = True,
 ) -> list[MN]:
     """
     Find all nodes that have a specific metadata key.
@@ -403,7 +390,8 @@ def get_nodes_with_metadata(
         root: The root node of the tree
         metadata_key: The metadata key to search for
         node_type: the node type, defaults to MarkdownNode
-        opts: a CopyOpts value, defaults to NAKED_COPY
+        naked_copy: if True, naked copy, otherwise reference (defaults
+            to True)
 
     Returns:
         A list of nodes that have the specified metadata key
@@ -411,7 +399,7 @@ def get_nodes_with_metadata(
 
     return get_nodes(
         root,
-        opts,
+        naked_copy,
         node_type,
         lambda x: bool(x.metadata) and metadata_key in x.metadata,
     )
@@ -419,7 +407,7 @@ def get_nodes_with_metadata(
 
 def get_textnodes(
     root: MarkdownNode,
-    opts: CopyOpts = CopyOpts.NAKED_COPY,
+    naked_copy: bool = True,
     filter_func: Callable[[TextNode], bool] = lambda _: True,
 ) -> list[TextNode]:
     """
@@ -428,7 +416,8 @@ def get_textnodes(
 
     Args:
         root: The root node of the tree
-        opts: a CopyOpts value
+        naked_copy: if True, naked copy, otherwise reference (defaults
+            to True)
         filter_func: a predicate to select the text nodes
 
     Returns:
@@ -436,12 +425,12 @@ def get_textnodes(
         true
     """
 
-    return get_nodes(root, opts, TextNode, filter_func)
+    return get_nodes(root, naked_copy, TextNode, filter_func)
 
 
 def get_headingnodes(
     root: MarkdownNode,
-    opts: CopyOpts = CopyOpts.NAKED_COPY,
+    naked_copy: bool = True,
     filter_func: Callable[[HeadingNode], bool] = lambda _: True,
 ) -> list[HeadingNode]:
     """
@@ -450,7 +439,8 @@ def get_headingnodes(
 
     Args:
         root: The root node of the tree
-        opts: a CopyOpts value
+        naked_copy: if True, naked copy, otherwise reference (defaults
+            to True)
         filter_func: a predicate to select the heading nodes
 
     Returns:
@@ -458,7 +448,7 @@ def get_headingnodes(
         true
     """
 
-    return get_nodes(root, opts, HeadingNode, filter_func)
+    return get_nodes(root, naked_copy, HeadingNode, filter_func)
 
 
 # utilities -------------------------------------------------------

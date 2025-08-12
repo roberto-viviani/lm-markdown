@@ -62,7 +62,6 @@ from .treeutils import (  # noqa: F401
     collect_headings as collect_headings,
     collect_annotated_textblocks as collect_annotated_textblocks,
     count_words as count_words,
-    CopyOpts as CopyOpts,
     get_nodes as get_nodes,
     get_headingnodes as get_headingnodes,
     get_nodes_with_metadata as get_nodes_with_metadata,
