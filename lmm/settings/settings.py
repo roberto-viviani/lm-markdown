@@ -1,4 +1,9 @@
-"""Read and write configuration file"""
+"""
+Read and write configuration file.
+
+This file also contains the definitions of the models supported in the
+package.
+"""
 
 from typing import Literal
 
@@ -9,30 +14,37 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-# define supported models
-LMSource = Literal[
-    'OpenAI', 'Anthropic', 'Mistral', 'Gemini', 'HuggingFace'
+# define supported models. These models must also be defined
+# in the model_selection.py file of the language framework
+LMSource = Literal['OpenAI', 'Anthropic', 'Mistral', 'Gemini']
+EmbSource = Literal[
+    'OpenAI', 'Mistral', 'Gemini', 'SentenceTransformers'
 ]
-EmbSource = Literal['OpenAI', 'Mistral', 'Gemini', 'HuggingFace']
 SparseModel = Literal['prithivida/Splade_PP_en_v1', 'Qdrant/bm25']
 
 
-class Embeddings(BaseSettings):
+class EmbeddingSettings(BaseSettings):
+    """Specification of embeddings object."""
+
     source: EmbSource = "OpenAI"
     model: str = "text-embedding-3-small"
     sparse: str = "Qdrant/bm25"  # multilingual
 
-
-class LanguageModel(BaseSettings):
-    source_major: LMSource = "OpenAI"
-    model_major: str = "gpt-4o-mini"
-    source_minor: LMSource = "OpenAI"
-    model_minor: str = "gpt-4.1-nano"
-    source_aux: LMSource = "Mistral"
-    model_aux: str = "mistral-small-latest"
+    model_config = SettingsConfigDict(frozen=True)
 
 
-class Server(BaseSettings):
+class LanguageModelSettings(BaseSettings):
+    """Specification of language sources and models."""
+
+    source: LMSource = "OpenAI"
+    model: str = ""
+
+    model_config = SettingsConfigDict(frozen=True)
+
+
+class ServerSettings(BaseSettings):
+    """Server modality (Local/remote)"""
+
     mode: str = "local"
     port: int = 0
 
@@ -46,12 +58,21 @@ class Settings(BaseSettings):
     format.
     """
 
-    server: Server = Server()
-    embeddings: Embeddings = Embeddings()
-    language_models: LanguageModel = LanguageModel()
+    server: ServerSettings = ServerSettings()
+    embeddings: EmbeddingSettings = EmbeddingSettings()
+    # language_models: LanguageModelSettings = LanguageModelSettings()
+    major: LanguageModelSettings = LanguageModelSettings(
+        source="OpenAI", model="gpt-4o-mini"
+    )
+    minor: LanguageModelSettings = LanguageModelSettings(
+        source="OpenAI", model="gpt-4o-nano"
+    )
+    aux: LanguageModelSettings = LanguageModelSettings(
+        source="Mistral", model="mistral-small-latest"
+    )
 
     model_config = SettingsConfigDict(
-        toml_file='config.toml', env_prefix="lmm_"
+        toml_file='config.toml', env_prefix="lmm_", frozen=True
     )
 
     @classmethod

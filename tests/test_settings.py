@@ -15,44 +15,33 @@ class TestSettings(unittest.TestCase):
 
     def test_set_settings_given(self):
         sets: Settings = Settings(
-            **{'language_models': {'model_minor': "gpt-4o"}}
+            **{'minor': {'source': "OpenAI", 'model': "gpt-4o"}}
         )
-        self.assertEqual(sets.language_models.model_minor, "gpt-4o")
+        self.assertEqual(sets.minor.model, "gpt-4o")
         # unmentioned setting still set
-        self.assertEqual(
-            sets.language_models.model_aux, "mistral-small-latest"
-        )
+        self.assertEqual(sets.aux.model, "mistral-small-latest")
 
     def test_set_settings_given2(self):
-        sets: Settings = Settings(
-            language_models={'model_minor': "gpt-4o"}
-        )
-        self.assertEqual(sets.language_models.model_minor, "gpt-4o")
+        sets: Settings = Settings(minor={'model': "gpt-4o"})
+        self.assertEqual(sets.minor.model, "gpt-4o")
 
     def test_set_settings_given_invalid(self):
         with self.assertRaises(ValidationError):
-            sets = Settings(language_models={'model_minor': 4})
-            sets.language_models.model_minor  # for linter
+            sets = Settings(minor={'model': 4})
+            sets.minor.model  # for linter
 
     def test_set_settings_given_invalid_enum(self):
         # invalid literal: cohere not supported
         with self.assertRaises(ValidationError):
-            sets = Settings(
-                **{'language_models': {'source_major': "cohere"}}
-            )
-            sets.language_models.source_major  # for linter
+            sets = Settings(**{'major': {'source': "cohere"}})
+            sets.major.source  # for linter
 
     def test_set_settings_invalid(self):
         sets: Settings = Settings()
-        # alas, no error here, but pyright complains
-        sets.language_models.source_minor = "Cohere"  # type: ignore
-        self.assertTrue(True)
-
-    def test_set_settings_error(self):
-        sets: Settings = Settings()
-        # alas, no error here, but pyright complains
-        sets.language_models.source_minor = 1  # type: ignore
-        self.assertTrue(True)
+        # model is frozen, otherwise would raise no error
+        with self.assertRaises(ValidationError):
+            sets.minor.source = "Gemini"
+            sets.minor.source
 
 
 if __name__ == "__main__":
