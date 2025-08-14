@@ -49,7 +49,6 @@ class LazyLoadingDict(dict[object, ValueT]):
 
     # This will throw a ValueError:
     model = lazy_dict[LMSource("OpenX")]
-
     ```
     """
 
@@ -114,7 +113,57 @@ class LazyLoadingDictFunc(dict[KeyT, ValueT]):
 
     # This will throw a ValueError:
     model = lazy_dict[LMSource("OpenX")]
+    ```
 
+    This is a more elaborate example, where a whole specification is
+    used to create objects and memoize them:
+
+    ```python
+    # This defines the supported model sources
+    class LanguageModelSource(StrEnum):
+        Anthropic = 'Anthropic'
+        Gemini = 'Gemini'
+        Mistral = 'Mistral'
+        OpenAI = 'OpenAI'
+
+
+    # This defines source + model
+    class LanguageModelSpecification(BaseModel):
+        source_name: LanguageModelSource
+        model_name: str
+
+        # This required to make it hashable
+        class Config:
+            frozen = True
+
+
+    # Langchain model type specified here.
+    def _create_model_instance(
+        model: LanguageModelSpecification,
+    ) -> BaseLM[BaseMsg]:
+        # Factory function to create Langchain models while checking permissible
+        # sources.
+
+        match model.source_name:
+            case LanguageModelSource.OpenAI:
+                from langchain_openai.chat_models import ChatOpenAI
+
+                return ChatOpenAI(
+                    model=model.model_name,
+                    temperature=0.1,
+                    max_retries=2,
+                    use_responses_api=False,
+                )
+        ... (rest of code not shown)
+
+    # The memoized dictionary
+    langchain_factory = LazyLoadingDictFunc(_create_model_instance)
+
+    # Example of use
+    model_spec = {'source_name': "OpenAI", 'model_name': "gpt-4o"}
+    model = langchain_factory[
+        LanguageModelSpecification(**model_spec)
+    ]
     ```
     """
 
