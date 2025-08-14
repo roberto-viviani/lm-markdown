@@ -15,20 +15,20 @@ class TestSettings(unittest.TestCase):
 
     def test_set_settings_given(self):
         sets: Settings = Settings(
-            **{'minor': {'source': "OpenAI", 'model': "gpt-4o"}}
+            **{'minor': {'source': "OpenAI", 'name_model': "gpt-4o"}}
         )
-        self.assertEqual(sets.minor.model, "gpt-4o")
+        self.assertEqual(sets.minor.name_model, "gpt-4o")
         # unmentioned setting still set
-        self.assertEqual(sets.aux.model, "mistral-small-latest")
+        self.assertEqual(sets.aux.name_model, "mistral-small-latest")
 
     def test_set_settings_given2(self):
-        sets: Settings = Settings(minor={'model': "gpt-4o"})
-        self.assertEqual(sets.minor.model, "gpt-4o")
+        sets: Settings = Settings(minor={'name_model': "gpt-4o"})
+        self.assertEqual(sets.minor.name_model, "gpt-4o")
 
     def test_set_settings_given_invalid(self):
         with self.assertRaises(ValidationError):
-            sets = Settings(minor={'model': 4})
-            sets.minor.model  # for linter
+            sets = Settings(minor={'name_model': 4})
+            sets.minor.name_model  # for linter
 
     def test_set_settings_given_invalid_enum(self):
         # invalid literal: cohere not supported

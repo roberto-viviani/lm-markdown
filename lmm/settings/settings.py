@@ -27,7 +27,7 @@ class EmbeddingSettings(BaseSettings):
     """Specification of embeddings object."""
 
     source: EmbSource = "OpenAI"
-    model: str = "text-embedding-3-small"
+    name_model: str = "text-embedding-3-small"
     sparse: str = "Qdrant/bm25"  # multilingual
 
     model_config = SettingsConfigDict(frozen=True)
@@ -37,7 +37,7 @@ class LanguageModelSettings(BaseSettings):
     """Specification of language sources and models."""
 
     source: LMSource = "OpenAI"
-    model: str = ""
+    name_model: str = ""
 
     model_config = SettingsConfigDict(frozen=True)
 
@@ -62,13 +62,13 @@ class Settings(BaseSettings):
     embeddings: EmbeddingSettings = EmbeddingSettings()
     # language_models: LanguageModelSettings = LanguageModelSettings()
     major: LanguageModelSettings = LanguageModelSettings(
-        source="OpenAI", model="gpt-4o-mini"
+        source="OpenAI", name_model="gpt-4o-mini"
     )
     minor: LanguageModelSettings = LanguageModelSettings(
-        source="OpenAI", model="gpt-4o-nano"
+        source="OpenAI", name_model="gpt-4o-nano"
     )
     aux: LanguageModelSettings = LanguageModelSettings(
-        source="Mistral", model="mistral-small-latest"
+        source="Mistral", name_model="mistral-small-latest"
     )
 
     model_config = SettingsConfigDict(
