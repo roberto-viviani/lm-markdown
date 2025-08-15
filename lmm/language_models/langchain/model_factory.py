@@ -25,9 +25,9 @@ from langchain_core.language_models.base import (
 from langchain_core.messages import BaseMessage as BaseMsg
 from langchain_core.embeddings import Embeddings
 
-from ..lazy_dict import LazyLoadingDictFunc
+from ..lazy_dict import LazyLoadingDict
 
-from lmm.settings import LanguageModelSettings, EmbeddingSettings
+from lmm.config import LanguageModelSettings, EmbeddingSettings
 
 
 # Langchain model type specified here.
@@ -123,8 +123,8 @@ def _create_embedding_instance(
 
 
 # Public interface----------------------------------------------
-langchain_factory = LazyLoadingDictFunc(_create_model_instance)
-langchain_embeddings = LazyLoadingDictFunc(_create_embedding_instance)
+langchain_factory = LazyLoadingDict(_create_model_instance)
+langchain_embeddings = LazyLoadingDict(_create_embedding_instance)
 
 
 def create_model_from_spec(
