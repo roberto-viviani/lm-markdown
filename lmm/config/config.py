@@ -56,11 +56,15 @@ class Settings(BaseSettings):
 
     Settings are saved and read from the configuration file in toml
     format.
+
+    Note:
+        At present, the Settings object only reads from config.toml in
+        the project folder. This path and name cannot be changed.
     """
 
     server: ServerSettings = ServerSettings()
     embeddings: EmbeddingSettings = EmbeddingSettings()
-    # language_models: LanguageModelSettings = LanguageModelSettings()
+
     major: LanguageModelSettings = LanguageModelSettings(
         source="OpenAI", name_model="gpt-4o-mini"
     )
@@ -118,7 +122,7 @@ def export_settings(sts: Settings, file: str = "config.toml") -> None:
 
     Args:
         sts: a settings object to save
-        file: the settings toml file (deafults to config.toml)
+        file: the settings toml file (defaults to config.toml)
     """
     with open(file, "w") as f:
         f.write(serialize_settings(sts))
