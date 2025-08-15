@@ -1,8 +1,9 @@
 """
-A utility class to store memoized language model class objects, or
-indeed objects of any class, produced by a factory function.
+A utility class LazyLoadingDict to store memoized language model
+class objects, or indeed objects of any class, produced by a factory
+function.
 
-This class has three main uses that may be combined.
+The LazyLoadingDict class has three main uses that may be combined.
 
 - the first is to create objects based on a definition using a
 dictionary interface. The key of the dictionary is the definition that
@@ -11,17 +12,20 @@ based on the definition
 
 - the second is to memoize the objects created by the definition
 
- the third is to enable runtime errors when an invalid definition is
+- the third is to enable runtime errors when an invalid definition is
 given.
 
 The class is instantiated by providing the factory function in the
-constructor. To trigger runtime errors, provide keys of a EnumStr
-of BaseModel-derived types.
+constructor. The factory function takes one argument of the type of
+the dictionary key, and returns a type that determined the type of
+the values in the dictionary. To trigger runtime errors when invalid
+definitions are provided, provide keys of EnumStr of BaseModel-derived
+types (for example, see the documentation of the class).
 """
 
 from typing import Callable, TypeVar
 
-# We define a TypeVar for value type the dictionary is storing.
+# ValueT is the parameter for the stored valued, KeyT for the keys.
 ValueT = TypeVar('ValueT')
 KeyT = TypeVar('KeyT')
 
