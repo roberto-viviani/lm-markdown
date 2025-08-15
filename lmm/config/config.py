@@ -5,8 +5,10 @@ This file also contains the definitions of the models supported in the
 package.
 """
 
-from typing import Literal
+from pathlib import Path
+from typing import Any, Dict, Literal, Optional
 
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -14,7 +16,7 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-# define supported models. These models must also be defined
+# Define supported models. These models must also be defined
 # in the model_selection.py file of the language framework
 LMSource = Literal['OpenAI', 'Anthropic', 'Mistral', 'Gemini']
 EmbSource = Literal[
@@ -22,31 +24,90 @@ EmbSource = Literal[
 ]
 SparseModel = Literal['prithivida/Splade_PP_en_v1', 'Qdrant/bm25']
 
+# Constants for better maintainability
+DEFAULT_CONFIG_FILE = "config.toml"
+DEFAULT_PORT_RANGE = (
+    1024,
+    65535,
+)  # Valid port range excluding system ports
+
 
 class EmbeddingSettings(BaseSettings):
     """Specification of embeddings object."""
 
-    source: EmbSource = "OpenAI"
-    name_model: str = "text-embedding-3-small"
-    sparse: str = "Qdrant/bm25"  # multilingual
+    source: EmbSource = Field(
+        default="OpenAI", description="The embedding source provider"
+    )
+    name_model: str = Field(
+        default="text-embedding-3-small",
+        description="The specific embedding model name",
+    )
+    sparse: str = Field(
+        default="Qdrant/bm25",  # multilingual
+        description="Sparse embedding model for hybrid search",
+    )
 
     model_config = SettingsConfigDict(frozen=True)
+
+    @field_validator('name_model')
+    @classmethod
+    def validate_model_name(cls, v: str) -> str:
+        """Ensure model name is not empty."""
+        if not v.strip():
+            raise ValueError("Model name cannot be empty")
+        return v.strip()
 
 
 class LanguageModelSettings(BaseSettings):
     """Specification of language sources and models."""
 
-    source: LMSource = "OpenAI"
-    name_model: str = ""
+    source: LMSource = Field(
+        default="OpenAI", description="The language model provider"
+    )
+    name_model: str = Field(
+        default="", description="The specific language model name"
+    )
 
     model_config = SettingsConfigDict(frozen=True)
 
+    @field_validator('name_model')
+    @classmethod
+    def validate_model_name(cls, v: str) -> str:
+        """Ensure model name is provided when needed."""
+        # Allow empty for base class, but specific instances should validate
+        return v.strip() if v else v
+
 
 class ServerSettings(BaseSettings):
-    """Server modality (Local/remote)"""
+    """Server configuration settings."""
 
-    mode: str = "local"
-    port: int = 0
+    mode: Literal["local", "remote"] = Field(
+        default="local", description="Server deployment mode"
+    )
+    port: int = Field(
+        default=0,
+        ge=0,
+        le=65535,
+        description="Server port (0 for auto-assignment)",
+    )
+    host: str = Field(
+        default="localhost", description="Server host address"
+    )
+
+    model_config = SettingsConfigDict(frozen=True)
+
+    @field_validator('port')
+    @classmethod
+    def validate_port(cls, v: int) -> int:
+        """Validate port number is in acceptable range."""
+        if v != 0 and not (
+            DEFAULT_PORT_RANGE[0] <= v <= DEFAULT_PORT_RANGE[1]
+        ):
+            raise ValueError(
+                f"Port must be 0 (auto-assign) or between "
+                f"{DEFAULT_PORT_RANGE[0]} and {DEFAULT_PORT_RANGE[1]}"
+            )
+        return v
 
 
 class Settings(BaseSettings):
@@ -54,29 +115,57 @@ class Settings(BaseSettings):
     A pydantic settings object containing the fields with the
     configuration information.
 
-    Settings are saved and read from the configuration file in toml
+    Settings are saved and read from the configuration file in TOML
     format.
+
+    Attributes:
+        server: Server configuration settings
+        embeddings: Embedding model configuration
+        major: Primary language model for complex tasks
+        minor: Secondary language model for simple tasks
+        aux: Auxiliary language model for specialized tasks
 
     Note:
         At present, the Settings object only reads from config.toml in
-        the project folder. This path and name cannot be changed.
+        the project folder. This path and name can be customized via
+        the model_config.
     """
 
-    server: ServerSettings = ServerSettings()
-    embeddings: EmbeddingSettings = EmbeddingSettings()
+    server: ServerSettings = Field(
+        default_factory=ServerSettings,
+        description="Server configuration",
+    )
+    embeddings: EmbeddingSettings = Field(
+        default_factory=EmbeddingSettings,
+        description="Embedding model configuration",
+    )
 
-    major: LanguageModelSettings = LanguageModelSettings(
-        source="OpenAI", name_model="gpt-4o-mini"
+    # Language models with better naming and validation
+    major: LanguageModelSettings = Field(
+        default_factory=lambda: LanguageModelSettings(
+            source="OpenAI", name_model="gpt-4o-mini"
+        ),
+        description="Primary language model for complex reasoning tasks",
     )
-    minor: LanguageModelSettings = LanguageModelSettings(
-        source="OpenAI", name_model="gpt-4o-nano"
+    minor: LanguageModelSettings = Field(
+        default_factory=lambda: LanguageModelSettings(
+            source="OpenAI", name_model="gpt-4o-nano"
+        ),
+        description="Secondary language model for simple tasks",
     )
-    aux: LanguageModelSettings = LanguageModelSettings(
-        source="Mistral", name_model="mistral-small-latest"
+    aux: LanguageModelSettings = Field(
+        default_factory=lambda: LanguageModelSettings(
+            source="Mistral", name_model="mistral-small-latest"
+        ),
+        description="Auxiliary language model for specialized tasks",
     )
 
     model_config = SettingsConfigDict(
-        toml_file='config.toml', env_prefix="lmm_", frozen=True
+        toml_file=DEFAULT_CONFIG_FILE,
+        env_prefix="LMM_",  # Uppercase for environment variables
+        frozen=True,
+        validate_assignment=True,
+        extra='forbid',  # Prevent unexpected fields
     )
 
     @classmethod
@@ -88,72 +177,184 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Customize the order of settings sources."""
         return (
             init_settings,
             TomlConfigSettingsSource(settings_cls),
             env_settings,
         )
 
-
-# utilities
-def serialize_settings(sts: Settings) -> str:
-    """Transform the settings into a string in toml format"""
-    import tomlkit
-
-    doc = tomlkit.document()
-    doc.add(tomlkit.comment("Configuration file"))
-    doc.add(tomlkit.nl())
-    data: dict[str, str | BaseSettings] = sts.model_dump()
-    for key, value in data.items():
-        if isinstance(value, BaseSettings):
-            subdata: dict[str, str] = value.model_dump()
-            tbl = tomlkit.table()
-            for kkey, vvalue in subdata.items():
-                tbl[kkey] = vvalue
-            doc[key] = tbl
-        else:
-            doc[key] = value
-
-    return tomlkit.dumps(doc)  # type: ignore
+    @field_validator('major', 'minor', 'aux')
+    @classmethod
+    def validate_language_models(
+        cls, v: LanguageModelSettings
+    ) -> LanguageModelSettings:
+        """Ensure language models have valid names."""
+        if not v.name_model.strip():
+            raise ValueError("Language model name cannot be empty")
+        return v
 
 
-def export_settings(sts: Settings, file: str = "config.toml") -> None:
-    """Save settings to file in toml format.
+# Utility functions with improved error handling and type safety
+def serialize_settings(settings: Settings) -> str:
+    """Transform the settings into a string in TOML format.
 
     Args:
-        sts: a settings object to save
-        file: the settings toml file (defaults to config.toml)
+        settings: The settings object to serialize
+
+    Returns:
+        TOML formatted string representation of settings
+
+    Raises:
+        ImportError: If tomlkit is not available
+        ValueError: If settings cannot be serialized
     """
-    with open(file, "w") as f:
-        f.write(serialize_settings(sts))
+    try:
+        import tomlkit
+    except ImportError as e:
+        raise ImportError(
+            "tomlkit is required for TOML serialization"
+        ) from e
+
+    try:
+        doc = tomlkit.document()
+        doc.add(tomlkit.comment("Configuration file"))
+        doc.add(tomlkit.nl())
+
+        data: Dict[str, Any] = settings.model_dump()
+        for key, value in data.items():
+            if isinstance(value, BaseSettings):
+                subdata: dict[str, str] = value.model_dump()
+                tbl = tomlkit.table()
+                for kkey, vvalue in subdata.items():
+                    tbl[kkey] = vvalue
+                doc[key] = tbl
+            else:
+                doc[key] = value
+
+        return str(tomlkit.dumps(doc))  # type: ignore
+    except Exception as e:
+        raise ValueError(f"Failed to serialize settings: {e}") from e
+
+
+def export_settings(
+    settings: Settings, file_path: Optional[str | Path] = None
+) -> None:
+    """Save settings to file in TOML format.
+
+    Args:
+        settings: A settings object to save
+        file_path: The settings file path (defaults to config.toml)
+
+    Raises:
+        OSError: If file cannot be written
+        ValueError: If settings cannot be serialized
+    """
+    if file_path is None:
+        file_path = DEFAULT_CONFIG_FILE
+
+    file_path = Path(file_path)
+
+    try:
+        # Ensure parent directory exists
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with file_path.open("w", encoding="utf-8") as f:
+            f.write(serialize_settings(settings))
+    except OSError as e:
+        raise OSError(
+            f"Failed to write settings to {file_path}: {e}"
+        ) from e
 
 
 def create_default_settings_file(
-    sts: Settings = Settings(), file: str = "config.toml"
+    settings: Optional[Settings] = None,
+    file_path: Optional[str | Path] = None,
 ) -> None:
     """Create a default settings file.
 
+    Args:
+        settings: Custom settings object (defaults to Settings())
+        file_path: Target file path (defaults to config.toml)
+
     Example:
         ```python
-        # creates config.toml in base folder with default values
+        # Creates config.toml in base folder with default values
         create_default_settings_file()
+
+        # Creates custom config file
+        create_default_settings_file(file_path="custom_config.toml")
         ```
     """
-    export_settings(sts, file)
+    if settings is None:
+        settings = Settings()
+
+    export_settings(settings, file_path)
 
 
-def print_settings(sts: Settings) -> None:
-    print(serialize_settings(sts))
+def print_settings(settings: Settings) -> None:
+    """Print settings in TOML format to stdout.
+
+    Args:
+        settings: The settings object to print
+    """
+    print(serialize_settings(settings))
 
 
-def fmat_pydantic_errmsg(errmsg: str) -> str:
-    """Filter out lines containing 'For further information visit'
-    from error message."""
+def format_pydantic_error_message(error_message: str) -> str:
+    """Filter out verbose lines from pydantic error messages.
 
-    lines = errmsg.split('\n')
+    Args:
+        error_message: Raw pydantic error message
+
+    Returns:
+        Cleaned error message without verbose help text
+    """
+    lines = error_message.split('\n')
     filtered_lines = [
         line
         for line in lines
         if "For further information visit" not in line
     ]
     return '\n'.join(filtered_lines)
+
+
+def load_settings(file_path: Optional[str | Path] = None) -> Settings:
+    """Load settings from TOML file.
+
+    Args:
+        file_path: Path to settings file (defaults to config.toml)
+
+    Returns:
+        Loaded settings object
+
+    Raises:
+        FileNotFoundError: If settings file doesn't exist
+        ValueError: If settings file is invalid
+    """
+    if file_path is None:
+        file_path = DEFAULT_CONFIG_FILE
+
+    file_path = Path(file_path)
+
+    if not file_path.exists():
+        raise FileNotFoundError(
+            f"Settings file not found: {file_path}"
+        )
+
+    try:
+        # Create a temporary settings class with the specified file
+        class TempSettings(Settings):
+            model_config = SettingsConfigDict(
+                toml_file=str(file_path),
+                env_prefix="LMM_",
+                frozen=True,
+                validate_assignment=True,
+                extra='forbid',
+            )
+
+        return TempSettings()
+    except Exception as e:
+        raise ValueError(
+            f"Failed to load settings from {file_path}: {e}"
+        ) from e
