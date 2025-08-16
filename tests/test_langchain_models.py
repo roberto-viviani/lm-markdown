@@ -2,7 +2,7 @@
 
 import unittest
 
-from lmm.language_models.langchain.model_factory import (
+from lmm.language_models.langchain.models import (
     langchain_factory,
     langchain_embeddings,
     create_model_from_spec,

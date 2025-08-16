@@ -6,12 +6,15 @@ Example:
     from lmm.language_models.kernels import kernel_prompts
     prompt_template: str = kernel_promts["summarizer"]
     ```
+
+Note:
+    Support for new kernels should be added here.
 """
 
 from typing import Literal
 from .lazy_dict import LazyLoadingDict
 
-# Define here the kernel defined in the package.
+# Define here the kernel supported by the package.
 KernelNames = Literal[
     "summarizer",
     "question_generator",

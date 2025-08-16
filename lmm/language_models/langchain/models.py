@@ -4,25 +4,28 @@ a dictionary specification.
 Examples:
 
 ```python
-from lmm.language_models.langchain import langchain_factory, LanguageModelSettings
-from lmm.language_models.langchain import create_model_from_spec
+from lmm.language_models.langchain.models import (
+    create_model_from_spec,
+    langchain_factory,
+    LanguageModelSettings,
+)
 
 spec = Settings('source': "OpenAI", 'name_model': "gpt-4o")
 model = langchain_factory[spec]
 
-# alterantive
+# alternative coding
 model = create_model_from_settings(spec)
 
-# alternative
+# alternative coding
 spec = {'source': "OpenAI", 'name_model': "gpt-4o"}
 model = create_model_from_spec(**spec)
 ```
+
+Note:
+    Support for new model sources should be added here.
 """
 
-from langchain_core.language_models.base import (
-    BaseLanguageModel as BaseLM,
-)
-from langchain_core.messages import BaseMessage as BaseMsg
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 
 from ..lazy_dict import LazyLoadingDict
@@ -33,7 +36,7 @@ from lmm.config import LanguageModelSettings, EmbeddingSettings
 # Langchain model type specified here.
 def _create_model_instance(
     model: LanguageModelSettings,
-) -> BaseLM[BaseMsg]:
+) -> BaseChatModel:
     """
     Factory function to create Langchain models while checking permissible
     sources.
@@ -129,7 +132,7 @@ langchain_embeddings = LazyLoadingDict(_create_embedding_instance)
 
 def create_model_from_spec(
     source_name: str, model_name: str
-) -> BaseLM[BaseMsg]:
+) -> BaseChatModel:
     """Create langchain model from source_name and model_name.
     Raises a ValueError if the source_name argument is not supported.
 
@@ -155,7 +158,7 @@ def create_model_from_spec(
 
 def create_model_from_settings(
     settings: LanguageModelSettings,
-) -> BaseLM[BaseMsg]:
+) -> BaseChatModel:
     """Create langchain model from a LanguageModelSettings object.
     Raises a ValueError if the source_name argument is not supported.
 
