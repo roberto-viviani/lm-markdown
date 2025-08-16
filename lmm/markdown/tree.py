@@ -473,7 +473,44 @@ class HeadingNode(MarkdownNode):
 
         Args:
             child_node: The node to add as a child
+
+        Note:
+            one cannot add a heading node with a level equal or higher
+            than that of the parent node. The level of the heading node
+            is adjusted downwards automatically. Beyond level 6, a text
+            node is added.
+
+        TODO:
+            Add testing
         """
+        if isinstance(child_node, HeadingNode):
+            if self.heading_level() == 6:
+                self.children.append(
+                    TextNode.from_content(
+                        content="######## "
+                        + child_node.get_content(),
+                        metadata=child_node.metadata,
+                        parent=self,
+                    )
+                )
+                return
+            elif child_node.heading_level() <= self.heading_level():
+                if child_node.is_header_node():
+                    new_node = HeadingNode(
+                        block=HeadingBlock(
+                            level=self.heading_level() + 1,
+                            content=child_node.get_content(),
+                        )
+                    )
+                    new_node.metadata = child_node.metadata
+                    new_node.metadata_block = MetadataBlock(
+                        content=child_node.metadata
+                    )
+                    child_node = new_node
+                else:
+                    # it is a header block now
+                    child_node.block.level = self.heading_level() + 1  # type: ignore
+
         child_node.parent = self
         self.children.append(child_node)
 
