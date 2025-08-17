@@ -43,11 +43,17 @@ second: [1, 2, 3]
         meta['first'] = 2
         self.assertDictEqual(node.get_metadata('first'), {'first': 1})
         self.assertEqual(node.get_metadata_for_key('first'), 1)
+        self.assertEqual(
+            node.get_metadata_string_for_key('first'), "1"
+        )
         self.assertDictEqual(node.fetch_metadata(), titleddata)
         self.assertDictEqual(
             node.fetch_metadata('first'), {'first': 1}
         )
         self.assertEqual(node.fetch_metadata_for_key('first'), 1)
+        self.assertEqual(
+            node.fetch_metadata_string_for_key('first'), "1"
+        )
         nodedict = node.as_dict()
         self.assertEqual(nodedict['content'], "Title")
         self.assertEqual(nodedict['metadata'], titleddata)

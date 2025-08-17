@@ -64,7 +64,11 @@ from typing import Callable, TypeVar, Self, Sequence
 import copy
 from pathlib import Path
 
-from .parse_yaml import MetadataDict, MetadataValue
+from .parse_yaml import (
+    MetadataDict,
+    MetadataValue,
+    is_metadata_primitive,
+)
 from .parse_markdown import (
     Block,
     MetadataBlock,
@@ -214,10 +218,38 @@ class MarkdownNode(ABC):
 
         Returns:
             the key value, or a default value if the key is not
-                found.
+                found (None if no default specified).
         """
         if key in self.metadata:
             return self.metadata[key]
+        return default
+
+    def get_metadata_string_for_key(
+        self, key: str, default: str | None = None
+    ) -> str | None:
+        """
+        Get the string representation of the key value in the
+        metadata of the current node. If the value is a dict
+        of list, return None. If the key is not present, return
+        a default value. For the root node, the header value for
+        that key is returned.
+
+        Args:
+            key: the key for which the metadata is searched
+            default: a default value if the key is absent
+
+        Returns:
+            the key value, a default value if the key is not
+                found (None if no default specified). If the value
+                is not a primitive value of the int, float, str, or
+                bool type, returns None.
+        """
+        if key in self.metadata:
+            value: MetadataValue = self.metadata[key]
+            if is_metadata_primitive(value):
+                return str(value)
+            else:
+                return None
         return default
 
     def set_metadata_for_key(
@@ -257,7 +289,8 @@ class MarkdownNode(ABC):
                 return self.metadata.copy()
             elif self.parent:
                 return self.parent.fetch_metadata(
-                    None, include_header
+                    None,
+                    include_header,
                 )
             return {}
         else:
@@ -285,8 +318,9 @@ class MarkdownNode(ABC):
             default: the value to return if the key is not found
 
         Returns:
-            The value for the specified key, or None if not found in
-            the node or any of its ancestors if no default specified
+            The value for the specified key, or a default value if not
+            found in the node or any of its ancestors (or None if no
+            default was specified).
         """
 
         if not key:
@@ -298,7 +332,49 @@ class MarkdownNode(ABC):
             return self.metadata[key]
         elif self.parent:
             return self.parent.fetch_metadata_for_key(
-                key, include_header
+                key, include_header, default
+            )
+        return default
+
+    def fetch_metadata_string_for_key(
+        self,
+        key: str,
+        include_header: bool = True,
+        default: str | None = None,
+    ) -> str | None:
+        """
+        Returns the string representation of the value of a specific
+        metadata key by traversing up the tree if necessary to find
+        inherited metadata. If the key is not present, return a
+        dafault value. If the key is a dict or list, return None. If
+        include_header is False, the header node is not considered.
+
+        This function extends the concept of metadata inheritance to
+        look for a specific key in the node's metadata or its
+        ancestors' metadata.
+
+        Args:
+            key: The specific metadata key to look for
+            include_header: If to include the header in the search
+            default: the value to return if the key is not found
+
+        Returns:
+            The value for the specified key, or a default value if not
+            found in the node or any of its ancestors (or None if no
+            default was specified). If the value is not a primitive value
+            of the int, float, str, or bool type returns None.
+        """
+
+        if not key:
+            return default
+
+        if self.metadata and key in self.metadata:
+            if not include_header and self.is_header_node():
+                return default
+            return self.get_metadata_string_for_key(key)
+        elif self.parent:
+            return self.parent.fetch_metadata_string_for_key(
+                key, include_header, default
             )
         return default
 

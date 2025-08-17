@@ -45,16 +45,13 @@ import re
 # values in the dictionary. We allow only one level of recursion in
 # the type definition, because , but defining recursive types is a
 # challenge with Pydantic and python versions
+MetadataPrimitive = str | int | bool | float
+
 MetadataValue = (
     None
-    | str
-    | int
-    | bool
-    | float
-    | list[str | int | bool | float]
-    | dict[
-        str, str | int | bool | float | list[str | int | bool | float]
-    ]
+    | MetadataPrimitive
+    | list[MetadataPrimitive]
+    | dict[str, MetadataPrimitive | list[MetadataPrimitive]]
 )
 MetadataDict = dict[str, MetadataValue]
 ParsedYaml = tuple[dict[str, MetadataValue], list[object]]
@@ -76,10 +73,11 @@ def _is_metadata_type(value: object) -> bool:
 
 
 def _is_primitive_type(value: object) -> bool:
-    return (
-        isinstance(value, (int, float, str, bool, complex, bytes))
-        or value is None
-    )
+    return isinstance(value, (int, float, str, bool, complex, bytes))
+
+
+def is_metadata_primitive(value: object) -> bool:
+    return isinstance(value, (int, float, str, bool))
 
 
 def _is_string_dict(data: object) -> bool:
