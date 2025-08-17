@@ -6,7 +6,7 @@ package.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import (
@@ -65,17 +65,107 @@ class LanguageModelSettings(BaseSettings):
         default="OpenAI", description="The language model provider"
     )
     name_model: str = Field(
-        default="", description="The specific language model name"
+        default="gpt-4-mini",
+        description="The specific language model name",
+    )
+
+    # Common configurable parameters
+    temperature: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=2.0,
+        description="Controls randomness in model responses (0.0-2.0)",
+    )
+    max_tokens: int | None = Field(
+        default=None,
+        ge=1,
+        description="Maximum number of tokens to generate",
+    )
+    max_retries: int = Field(
+        default=2,
+        ge=0,
+        description="Maximum number of retry attempts",
+    )
+    timeout: float | None = Field(
+        default=None, gt=0, description="Request timeout in seconds"
+    )
+
+    # Provider-specific parameters
+    provider_params: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Provider-specific parameters (e.g., frequency_penalty for OpenAI)",
     )
 
     model_config = SettingsConfigDict(frozen=True)
+
+    def __hash__(self) -> int:
+        """Make the object hashable by converting provider_params to a sorted tuple."""
+        # Convert provider_params dict to a sorted tuple of items for hashing
+        provider_params_tuple = tuple(
+            sorted(self.provider_params.items())
+        )
+        return hash(
+            (
+                self.source,
+                self.name_model,
+                self.temperature,
+                self.max_tokens,
+                self.max_retries,
+                self.timeout,
+                provider_params_tuple,
+            )
+        )
 
     @field_validator('name_model')
     @classmethod
     def validate_model_name(cls, v: str) -> str:
         """Ensure model name is provided when needed."""
         # Allow empty for base class, but specific instances should validate
-        return v.strip() if v else v
+        return v.strip() if v.strip() else v
+
+    @field_validator('provider_params')  # type: ignore
+    @classmethod
+    def validate_provider_params(
+        cls, v: dict[str, Any], info: tuple[tuple[str, Any], ...]
+    ) -> dict[str, Any]:
+        """Validate provider-specific parameters based on the source."""
+        if not v:  # Empty dict is always valid
+            return v
+
+        # Define allowed parameters per provider (keeping it simple)
+        ALLOWED_PARAMS = {
+            'OpenAI': {
+                'frequency_penalty',
+                'presence_penalty',
+                'top_p',
+                'seed',
+                'logprobs',
+                'top_logprobs',
+            },
+            'Anthropic': {'top_p', 'top_k', 'stop_sequences'},
+            'Mistral': {'top_p', 'random_seed', 'safe_mode'},
+            'Gemini': {'top_p', 'top_k', 'candidate_count'},
+        }
+
+        # Get source from the current validation context
+        source = None
+        if (
+            hasattr(info, 'data')
+            and info.data  # type: ignore
+            and 'source' in info.data  # type: ignore
+        ):
+            source = info.data['source']  # type: ignore
+
+        if source and source in ALLOWED_PARAMS:
+            allowed = ALLOWED_PARAMS[source]
+            invalid_params = set(v.keys()) - allowed
+
+            if invalid_params:
+                raise ValueError(
+                    f"Invalid provider_params for {source}: {invalid_params}. Allowed: {allowed}"
+                )
+
+        return v
 
 
 class ServerSettings(BaseSettings):
@@ -216,29 +306,33 @@ def serialize_settings(settings: Settings) -> str:
             "tomlkit is required for TOML serialization"
         ) from e
 
-    try:
-        doc = tomlkit.document()
-        doc.add(tomlkit.comment("Configuration file"))
-        doc.add(tomlkit.nl())
+    # try:
+    doc = tomlkit.document()
+    doc.add(tomlkit.comment("Configuration file"))
+    doc.add(tomlkit.nl())
 
-        data: Dict[str, Any] = settings.model_dump()
-        for key, value in data.items():
-            if isinstance(value, BaseSettings):
-                subdata: dict[str, str] = value.model_dump()
-                tbl = tomlkit.table()
-                for kkey, vvalue in subdata.items():
+    data: dict[str, Any] = settings.model_dump()
+    for key, value in data.items():
+        if isinstance(value, dict):
+            # Handle nested dictionaries (from BaseSettings objects)
+            tbl = tomlkit.table()
+            for kkey, vvalue in value.items():  # type: ignore
+                # Skip None values as they can't be serialized to TOML
+                if vvalue is not None:
                     tbl[kkey] = vvalue
-                doc[key] = tbl
-            else:
+            doc[key] = tbl
+        else:
+            # Skip None values at top level too
+            if value is not None:
                 doc[key] = value
 
-        return str(tomlkit.dumps(doc))  # type: ignore
-    except Exception as e:
-        raise ValueError(f"Failed to serialize settings: {e}") from e
+    return str(tomlkit.dumps(doc))  # type: ignore
+    # except Exception as e:
+    #     raise ValueError(f"Failed to serialize settings: {e}") from e
 
 
 def export_settings(
-    settings: Settings, file_path: Optional[str | Path] = None
+    settings: Settings, file_path: str | Path | None = None
 ) -> None:
     """Save settings to file in TOML format.
 
@@ -255,21 +349,21 @@ def export_settings(
 
     file_path = Path(file_path)
 
-    try:
-        # Ensure parent directory exists
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+    # try:
+    # Ensure parent directory exists
+    file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with file_path.open("w", encoding="utf-8") as f:
-            f.write(serialize_settings(settings))
-    except OSError as e:
-        raise OSError(
-            f"Failed to write settings to {file_path}: {e}"
-        ) from e
+    with file_path.open("w", encoding="utf-8") as f:
+        f.write(serialize_settings(settings))
+    # except OSError as e:
+    #     raise OSError(
+    #         f"Failed to write settings to {file_path}: {e}"
+    #     ) from e
 
 
 def create_default_settings_file(
-    settings: Optional[Settings] = None,
-    file_path: Optional[str | Path] = None,
+    settings: Settings | None = None,
+    file_path: str | Path | None = None,
 ) -> None:
     """Create a default settings file.
 
@@ -319,7 +413,7 @@ def format_pydantic_error_message(error_message: str) -> str:
     return '\n'.join(filtered_lines)
 
 
-def load_settings(file_path: Optional[str | Path] = None) -> Settings:
+def load_settings(file_path: str | Path | None = None) -> Settings:
     """Load settings from TOML file.
 
     Args:
