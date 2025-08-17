@@ -17,7 +17,7 @@ Note:
         type (major, minor, aux).
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from langchain_core.runnables.base import (
     RunnableSerializable,
@@ -43,8 +43,7 @@ class KernelModel(BaseModel):
     kernel_name: KernelNames
     settings: LanguageModelSettings
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 # The factory function

@@ -82,8 +82,7 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
         model_name: str
 
         # This required to make it hashable
-        class Config:
-            frozen = True
+        model_config = ConfigDict(frozen=True)
 
 
     # Langchain model type specified here.
