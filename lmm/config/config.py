@@ -8,7 +8,7 @@ package.
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -65,7 +65,7 @@ class LanguageModelSettings(BaseSettings):
         default="OpenAI", description="The language model provider"
     )
     name_model: str = Field(
-        default="gpt-4-mini",
+        default="gpt-4o-mini",
         description="The specific language model name",
     )
 
@@ -98,6 +98,39 @@ class LanguageModelSettings(BaseSettings):
 
     model_config = SettingsConfigDict(frozen=True)
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize LanguageModelSettings with validation for partial overrides."""
+
+        # Handle positional dict argument
+        if (
+            len(args) == 1
+            and isinstance(args[0], dict)
+            and not kwargs
+        ):
+            # Convert positional dict to kwargs
+            dict_data = args[0]  # type: ignore , is being checked below
+            has_source: bool = 'source' in dict_data
+            has_name_model: bool = 'name_model' in dict_data
+
+            # If dict is empty, raise error
+            # if not bool(dict_data):  # type: ignore
+            #     raise ValueError(
+            #         "When specifying a model, 'source' and 'name_model' must be provided"
+            #     )
+
+            # If source is provided without name_model, it's an incomplete override
+            if has_source and not has_name_model:
+                raise ValueError(
+                    "When specifying 'source', 'name_model' must also be provided"
+                )
+            # Note: providing only name_model is allowed since source has a default
+
+            # Call parent with dict as kwargs
+            super().__init__(**dict_data)  # type: ignore
+        else:
+            # Normal initialization
+            super().__init__(*args, **kwargs)
+
     def __hash__(self) -> int:
         """Make the object hashable by converting provider_params to a sorted tuple."""
         # Convert provider_params dict to a sorted tuple of items for hashing
@@ -115,6 +148,27 @@ class LanguageModelSettings(BaseSettings):
                 provider_params_tuple,
             )
         )
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_complete_override(
+        cls, data: 'dict[str, Any] | LanguageModelSettings'
+    ) -> 'dict[str, Any] | LanguageModelSettings':
+        """Ensure that when creating from dict, both source and name_model are provided."""
+
+        # Only validate if we receive a dictionary (partial override scenario)
+        if isinstance(data, dict):
+            has_source: bool = 'source' in data
+            has_name_model: bool = 'name_model' in data
+
+            # If source is provided without name_model, it's an incomplete override
+            if has_source and not has_name_model:
+                raise ValueError(
+                    "When specifying 'source', 'name_model' must also be provided"
+                )
+            # Note: providing only name_model is allowed since source has a default
+
+        return data
 
     @field_validator('name_model')
     @classmethod
@@ -274,6 +328,28 @@ class Settings(BaseSettings):
             env_settings,
         )
 
+    def __init__(self, **data: Any) -> None:
+        """Initialize Settings with validation for partial language model overrides."""
+
+        # Check for partial language model overrides before Pydantic processes them
+        for field_name in ['major', 'minor', 'aux']:
+            if field_name in data and isinstance(
+                data[field_name], dict
+            ):
+                field_data = data[field_name]
+                has_source = 'source' in field_data
+                has_name_model = 'name_model' in field_data
+
+                # If source is provided without name_model, it's an incomplete override
+                if has_source and not has_name_model:
+                    raise ValueError(
+                        f"When specifying {field_name}, both 'source' and 'name_model' must be provided"
+                    )
+                # Note: providing only name_model is allowed since source has a default
+
+        # Call parent constructor
+        super().__init__(**data)
+
     @field_validator('major', 'minor', 'aux')
     @classmethod
     def validate_language_models(
@@ -306,29 +382,29 @@ def serialize_settings(settings: Settings) -> str:
             "tomlkit is required for TOML serialization"
         ) from e
 
-    # try:
-    doc = tomlkit.document()
-    doc.add(tomlkit.comment("Configuration file"))
-    doc.add(tomlkit.nl())
+    try:
+        doc = tomlkit.document()
+        doc.add(tomlkit.comment("Configuration file"))
+        doc.add(tomlkit.nl())
 
-    data: dict[str, Any] = settings.model_dump()
-    for key, value in data.items():
-        if isinstance(value, dict):
-            # Handle nested dictionaries (from BaseSettings objects)
-            tbl = tomlkit.table()
-            for kkey, vvalue in value.items():  # type: ignore
-                # Skip None values as they can't be serialized to TOML
-                if vvalue is not None:
-                    tbl[kkey] = vvalue
-            doc[key] = tbl
-        else:
-            # Skip None values at top level too
-            if value is not None:
-                doc[key] = value
+        data: dict[str, Any] = settings.model_dump()
+        for key, value in data.items():
+            if isinstance(value, dict):
+                # Handle nested dictionaries (from BaseSettings objects)
+                tbl = tomlkit.table()
+                for kkey, vvalue in value.items():  # type: ignore
+                    # Skip None values as they can't be serialized to TOML
+                    if vvalue is not None:
+                        tbl[kkey] = vvalue
+                doc[key] = tbl
+            else:
+                # Skip None values at top level too
+                if value is not None:
+                    doc[key] = value
 
-    return str(tomlkit.dumps(doc))  # type: ignore
-    # except Exception as e:
-    #     raise ValueError(f"Failed to serialize settings: {e}") from e
+        return str(tomlkit.dumps(doc))  # type: ignore
+    except Exception as e:
+        raise ValueError(f"Failed to serialize settings: {e}") from e
 
 
 def export_settings(
@@ -341,6 +417,7 @@ def export_settings(
         file_path: The settings file path (defaults to config.toml)
 
     Raises:
+        ImportError: If tomlkit is not available
         OSError: If file cannot be written
         ValueError: If settings cannot be serialized
     """
@@ -349,16 +426,11 @@ def export_settings(
 
     file_path = Path(file_path)
 
-    # try:
     # Ensure parent directory exists
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
     with file_path.open("w", encoding="utf-8") as f:
         f.write(serialize_settings(settings))
-    # except OSError as e:
-    #     raise OSError(
-    #         f"Failed to write settings to {file_path}: {e}"
-    #     ) from e
 
 
 def create_default_settings_file(
@@ -370,6 +442,11 @@ def create_default_settings_file(
     Args:
         settings: Custom settings object (defaults to Settings())
         file_path: Target file path (defaults to config.toml)
+
+    Raises:
+        ImportError: If tomlkit is not available
+        OSError: If file cannot be written
+        ValueError: If settings cannot be serialized
 
     Example:
         ```python
@@ -391,26 +468,12 @@ def print_settings(settings: Settings) -> None:
 
     Args:
         settings: The settings object to print
+
+    Raises:
+        ImportError: If tomlkit is not available
+        ValueError: If settings cannot be serialized
     """
     print(serialize_settings(settings))
-
-
-def format_pydantic_error_message(error_message: str) -> str:
-    """Filter out verbose lines from pydantic error messages.
-
-    Args:
-        error_message: Raw pydantic error message
-
-    Returns:
-        Cleaned error message without verbose help text
-    """
-    lines = error_message.split('\n')
-    filtered_lines = [
-        line
-        for line in lines
-        if "For further information visit" not in line
-    ]
-    return '\n'.join(filtered_lines)
 
 
 def load_settings(file_path: str | Path | None = None) -> Settings:
@@ -452,3 +515,21 @@ def load_settings(file_path: str | Path | None = None) -> Settings:
         raise ValueError(
             f"Failed to load settings from {file_path}: {e}"
         ) from e
+
+
+def format_pydantic_error_message(error_message: str) -> str:
+    """Filter out verbose lines from pydantic error messages.
+
+    Args:
+        error_message: Raw pydantic error message
+
+    Returns:
+        Cleaned error message without verbose help text
+    """
+    lines = error_message.split('\n')
+    filtered_lines = [
+        line
+        for line in lines
+        if "For further information visit" not in line
+    ]
+    return '\n'.join(filtered_lines)

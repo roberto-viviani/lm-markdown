@@ -12,12 +12,18 @@ from lmm.config.config import (
 )
 from pydantic_core import ValidationError
 
+base_settings: Settings = Settings()
+
 
 class TestSettings(unittest.TestCase):
     def test_create_settings(self):
         sets: Settings = Settings()
         conf: str = serialize_settings(sets)
         self.assertTrue(bool(conf))
+
+    def test_defalt_settings(self):
+        sets: Settings = Settings()
+        self.assertEqual(base_settings, sets)
 
     def test_set_settings_given(self):
         sets: Settings = Settings(
@@ -53,6 +59,71 @@ class TestSettings(unittest.TestCase):
                 **{'minor': {'source': "OpenAI"}}
             )
             sets
+
+    def test_set_settings_incomplete2(self):
+        # need to specify name model
+        with self.assertRaises(ValueError):
+            sets: Settings = Settings(
+                minor=LanguageModelSettings(source="Gemini")
+            )
+            sets
+
+    def test_set_settings_incomplete3(self):
+        # need to specify name model
+        with self.assertRaises(ValueError):
+            sets: Settings = Settings(
+                minor=LanguageModelSettings({'source': "OpenAI"})
+            )
+            sets
+
+    def test_set_settings_invalid_dict(self):
+        # need to specify valid fields
+        with self.assertRaises(ValueError):
+            sets: Settings = Settings(
+                minor=LanguageModelSettings(
+                    {
+                        'source': "OpenAI",
+                        'name_model': "gpt-4o",
+                        'peppa': "this",
+                    }
+                )
+            )
+            sets
+
+    def test_set_settings_invalid_dict2(self):
+        # need to specify valid fields
+        with self.assertRaises(ValueError):
+            sets: Settings = Settings(
+                **{
+                    'minor': {
+                        'source': "OpenAI",
+                        'name_model': "gpt-4o",
+                        'peppa': "this",
+                    }
+                }
+            )
+            sets
+
+    def test_set_settings_invalid_dict3(self):
+        # need to specify valid fields
+        with self.assertRaises(ValueError):
+            sets: Settings = Settings(
+                **{
+                    'general': {
+                        'source': "OpenAI",
+                        'name_model': "gpt-4o",
+                    }
+                }
+            )
+            sets
+
+    def test_set_settings_empty(self):
+        # when using an empty dictionary, defaults are used. Note
+        # they are the defaults for LanguageModelSettings, not
+        # Settings
+        sets: Settings = Settings(minor=LanguageModelSettings({}))
+        self.assertEqual(sets.minor.source, "OpenAI")
+        self.assertEqual(sets.minor.name_model, "gpt-4o-mini")
 
     def test_readwrite_settings(self):
         set = Settings(
