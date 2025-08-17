@@ -72,7 +72,7 @@ kernel_factory = LazyLoadingDict(_create_kernel)
 # specification provided in config.toml
 def create_kernel(
     kernel_name: KernelNames,
-    settings_override: (
+    user_settings: (
         dict[str, str] | LanguageModelSettings | None
     ) = None,
 ) -> RunnableSerializable[dict[str, str], str]:
@@ -88,14 +88,14 @@ def create_kernel(
     - 'check_content' -> aux model settings
 
     Settings Hierarchy (highest to lowest priority):
-    1. settings_override parameter (if provided)
+    1. user_settings parameter (if provided)
     2. config.toml file settings
     3. Default settings from Settings class
 
     Args:
         kernel_name: The name of the kernel to create. Must be one of the
             supported kernel names defined in KernelNames literal type.
-        settings_override: Optional settings to override the default
+        user_settings: Optional settings to override the default
             configuration. Can be either:
             - dict[str, str]: Dictionary with 'source' and 'name_model' keys
             - LanguageModelSettings: Pydantic model instance
@@ -108,7 +108,7 @@ def create_kernel(
         and returns a string response.
 
     Raises:
-        ValueError: If kernel_name is not supported or if settings_override
+        ValueError: If kernel_name is not supported or if user_settings
             contains invalid model source names. No check is made at this
             stage that the model names are correct (as they frequently
             change); instead, failure occurs when the .invoke member function
@@ -135,8 +135,8 @@ def create_kernel(
     """
     match kernel_name:
         case 'query' | 'query_with_context':
-            if bool(settings_override):  # disallow empty dictionary
-                settings = Settings(major=settings_override)  # type: ignore
+            if bool(user_settings):  # disallow empty dictionary
+                settings = Settings(major=user_settings)  # type: ignore
             else:
                 settings = Settings()
             return kernel_factory[
@@ -146,8 +146,8 @@ def create_kernel(
                 )
             ]
         case 'question_generator' | 'summarizer':
-            if bool(settings_override):  # disallow empty dictionary
-                settings = Settings(minor=settings_override)  # type: ignore
+            if bool(user_settings):  # disallow empty dictionary
+                settings = Settings(minor=user_settings)  # type: ignore
             else:
                 settings = Settings()
             return kernel_factory[
@@ -157,8 +157,8 @@ def create_kernel(
                 )
             ]
         case 'check_content':
-            if bool(settings_override):  # disallow empty dictionary
-                settings = Settings(aux=settings_override)  # type: ignore
+            if bool(user_settings):  # disallow empty dictionary
+                settings = Settings(aux=user_settings)  # type: ignore
             else:
                 settings = Settings()
             return kernel_factory[
@@ -169,8 +169,8 @@ def create_kernel(
             ]
         case _:
             # unreachable code if match on mernel names is exhaustive
-            if bool(settings_override):  # disallow empty dictionary
-                settings = Settings(minor=settings_override)  # type: ignore
+            if bool(user_settings):  # disallow empty dictionary
+                settings = Settings(minor=user_settings)  # type: ignore
             else:
                 settings = Settings()
             return kernel_factory[

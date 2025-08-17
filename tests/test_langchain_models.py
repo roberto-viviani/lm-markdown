@@ -73,6 +73,11 @@ class TestLazyDict(unittest.TestCase):
             )
             str(model_spec)  # for linter
 
+    def test_create_invlid3(self):
+        with self.assertRaises(TypeError):
+            model = create_model_from_spec(None)
+            model
+
     def test_create_embeddings(self):
         model_spec = {
             'source_name': "OpenAI",
