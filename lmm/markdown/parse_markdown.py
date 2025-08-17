@@ -200,7 +200,7 @@ class MetadataBlock(BaseModel):
         if (not part) and (not whole):
             return ErrorBlock(
                 content="Invalid or empty metadata block.",
-                origin="",
+                origin="---\n---",
             )
         # We should be able to cope with this now
         # if not part:
@@ -404,7 +404,9 @@ class HeadingBlock(BaseModel):
         m = re.match(r'^#{1,6}\s*$', content)
         if m:
             return ErrorBlock(
-                content="Empty heading content", origin=content
+                content="Empty heading content (a series of '#'"
+                + " followed by space)",
+                origin=content,
             )
 
         # check attributes: text delimited by '{' '}' at end of line
