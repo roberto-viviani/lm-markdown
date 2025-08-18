@@ -3,6 +3,7 @@ parsing markdown files, creating a tree representation, and modifying
 them."""
 
 from .parse_yaml import (  # noqa: F401
+    MetadataPrimitive as MetadataPrimitive,
     MetadataValue as MetadataValue,
     MetadataDict as MetadataDict,
     is_metadata_dict as is_metadata_dict,

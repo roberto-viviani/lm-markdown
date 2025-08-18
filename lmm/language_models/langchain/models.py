@@ -1,6 +1,9 @@
 """This module implements creation of Langchain models from
 a dictionary specification.
 
+The 'model' parameter must be provided. All other parameters
+are initialized to defaults.
+
 Examples:
 
 ```python
@@ -13,8 +16,7 @@ from lmm.config import LanguageModelSettings
 
 # Method 1: Using LanguageModelSettings object
 settings = LanguageModelSettings(
-    source="OpenAI",
-    name_model="gpt-4o",
+    model="OpenAI/gpt-4o",
     temperature=0.7,
     max_tokens=1000,
     max_retries=3
@@ -25,10 +27,10 @@ model = langchain_factory[settings]
 model = create_model_from_settings(settings)
 
 # Method 3: Using create_model_from_spec function
-model = create_model_from_spec(source_name="OpenAI", model_name="gpt-4o")
+model = create_model_from_spec(model="OpenAI/gpt-4o")
 
 # Method 4: Using dictionary unpacking
-spec = {'source_name': "OpenAI", 'model_name': "gpt-4o"}
+spec = {'model': "OpenAI/gpt-4o", 'temperature': 0.7}
 model = create_model_from_spec(**spec)
 ```
 
@@ -46,6 +48,7 @@ from langchain_core.embeddings import Embeddings
 from ..lazy_dict import LazyLoadingDict
 
 from lmm.config import LanguageModelSettings, EmbeddingSettings
+from lmm.markdown.parse_yaml import MetadataPrimitive
 
 
 # Langchain model type specified here.
@@ -56,8 +59,9 @@ def _create_model_instance(
     Factory function to create Langchain models while checking permissible
     sources.
     """
-    model_name: str = str(model.name_model)
-    match model.source:
+    model_source: str = model.get_model_source()
+    model_name: str = model.get_model_name()
+    match model_source:
         case 'Anthropic':
             try:
                 from langchain_anthropic.chat_models import (
@@ -97,7 +101,7 @@ def _create_model_instance(
 
             # Build kwargs dict to handle optional parameters
             kwargs = {
-                "model": model.name_model,
+                "model": model_name,
                 "temperature": model.temperature,
             }
             if model.max_tokens is not None:
@@ -172,8 +176,9 @@ def _create_embedding_instance(
     Factory function to create Langchain models while checking permissible
     sources.
     """
-    model_name = str(model.name_model)
-    match model.source:
+    model_source: str = model.get_model_source()
+    model_name: str = model.get_model_name()
+    match model_source:
         case 'Gemini':
             from langchain_google_genai import (
                 GoogleGenerativeAIEmbeddings,
@@ -217,27 +222,38 @@ langchain_embeddings = LazyLoadingDict(_create_embedding_instance)
 
 
 def create_model_from_spec(
-    source_name: str, model_name: str
+    model: str,
+    temperature: float = 0.1,
+    max_tokens: int | None = None,
+    max_retries: int = 2,
+    timeout: float | None = None,
+    provider_params: dict[str, MetadataPrimitive] = {},
 ) -> BaseChatModel:
-    """Create langchain model from source_name and model_name.
-    Raises a ValueError if the source_name argument is not supported.
+    """Create langchain model from specifications.
 
     Args:
-        source_name: the model source, such as 'OpenAI'
-        model_name: the name of the model, such as 'gpt-4o'
+        model: the model in the form source/model, such as 'OpenAI/gpt-4o'
 
     Returns:
         a Langchain model object.
 
+    Raises:
+        ValuationError, TypeError, ValidationError
+
     Example:
         ```python
-        spec = {'source_name': "OpenAI", 'model_name': "gpt-4o-mini"}
+        spec = {'model': "OpenAI/gpt-4o-mini"}
         model = create_model_from_spec(**spec)
         ```
     """
+
     spec = LanguageModelSettings(
-        source=source_name,  # type: ignore
-        name_model=model_name,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        max_retries=max_retries,
+        timeout=timeout,
+        provider_params=provider_params,
     )
     return langchain_factory[spec]
 
@@ -254,11 +270,13 @@ def create_model_from_settings(
     Returns:
         a Langchain model object.
 
+    Raises:
+        ValuationError, TypeError, ValidationError
+
     Example:
         ```python
         settings = LanguageModelSettings(
-            source="OpenAI",
-            name_model="gpt-4o-mini",
+            model="OpenAI/gpt-4o-mini",
             temperature=0.7,
             max_tokens=1000
         )
@@ -269,29 +287,30 @@ def create_model_from_settings(
 
 
 def create_embedding_model_from_spec(
-    source_name: str, model_name: str
+    dense_model: str, sparse_model: str = 'Qdrant/bm25'
 ) -> Embeddings:
     """Create langchain embedding model from source_name and
     model_name. Raises a ValueError if the source_name argument
     is not supported.
 
     Args:
-        source_name: the model source, such as 'OpenAI'
-        model_name: the name of the model, such as 'text-embedding-3-small'
+        dense_model: the model specification in the form source/model,
+            such as 'OpenAI/text-embedding-3-small'
 
     Returns:
         a Langchain embeddings model object.
 
+    Raises:
+        ValuationError, TypeError, ValidationError
+
     Example:
         ```python
-        spec = {'source_name': "OpenAI",
-                'model_name': "text-embedding-3-small"}
+        spec = {'dense_model': "OpenAI/text-embedding-3-small"}
         model = create_embedding_model_from_spec(**spec)
         ```
     """
     spec = EmbeddingSettings(
-        source=source_name,  # type: ignore
-        name_model=model_name,
+        dense_model=dense_model, sparse_model=sparse_model
     )
     return langchain_embeddings[spec]
 
@@ -309,11 +328,13 @@ def create_embedding_model_from_settings(
     Returns:
         a Langchain embeddings model object.
 
+    Raises:
+        ValuationError, TypeError, ValidationError
+
     Example:
         ```python
         settings = EmbeddingSettings(
-            source="OpenAI",
-            name_model="text-embedding-3-small"
+            dense_model="OpenAI/text-embedding-3-small"
         )
         model = create_embedding_model_from_settings(settings)
         ```

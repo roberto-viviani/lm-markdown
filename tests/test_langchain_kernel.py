@@ -20,8 +20,8 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name(),
             _get_name(
                 "query",
-                base_settings.major.source,
-                base_settings.major.name_model,
+                base_settings.major.get_model_source(),
+                base_settings.major.get_model_name(),
             ),
         )
 
@@ -31,8 +31,8 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name(),
             _get_name(
                 "query_with_context",
-                base_settings.major.source,
-                base_settings.major.name_model,
+                base_settings.major.get_model_source(),
+                base_settings.major.get_model_name(),
             ),
         )
 
@@ -42,8 +42,8 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name(),
             _get_name(
                 "summarizer",
-                base_settings.minor.source,
-                base_settings.minor.name_model,
+                base_settings.minor.get_model_source(),
+                base_settings.minor.get_model_name(),
             ),
         )
 
@@ -53,8 +53,8 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name(),
             _get_name(
                 "question_generator",
-                base_settings.minor.source,
-                base_settings.minor.name_model,
+                base_settings.minor.get_model_source(),
+                base_settings.minor.get_model_name(),
             ),
         )
 
@@ -64,8 +64,8 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name(),
             _get_name(
                 "check_content",
-                base_settings.aux.source,
-                base_settings.aux.name_model,
+                base_settings.aux.get_model_source(),
+                base_settings.aux.get_model_name(),
             ),
         )
 
@@ -73,8 +73,8 @@ class TestDefaultModels(unittest.TestCase):
         model = create_kernel(
             "summarizer",
             {
-                'source': "Mistral",
-                'name_model': "mistral-small-latest",
+                'model': "Mistral/mistral-small-latest",
+                'temperature': 0.7,
             },
         )
         self.assertEqual(
@@ -90,7 +90,7 @@ class TestDefaultModels(unittest.TestCase):
         model = create_kernel(
             "summarizer",
             LanguageModelSettings(
-                source="Mistral", name_model="mistral-small-latest"
+                model="Mistral/mistral-small-latest"
             ),
         )
         self.assertEqual(
@@ -107,8 +107,7 @@ class TestDefaultModels(unittest.TestCase):
             model = create_kernel(
                 "summarizer",
                 {
-                    'source': "Cohere",
-                    'name_model': "cohere-small-latest",
+                    'model': "Cohere/cohere-small-latest",
                 },
             )
             model.get_name()
@@ -118,8 +117,7 @@ class TestDefaultModels(unittest.TestCase):
             model = create_kernel(
                 "joker",
                 {
-                    'source': "Mistral",
-                    'name_model': "mistral-small-latest",
+                    'model': "Mistral/mistral-small-latest",
                 },
             )
             model.get_name()

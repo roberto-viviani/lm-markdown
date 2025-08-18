@@ -6,6 +6,6 @@ from lmm.config.config import (  # noqa
     EmbeddingSettings,
     serialize_settings,
     export_settings,
-    create_default_settings_file,
+    create_default_config_file,
     load_settings,
 )

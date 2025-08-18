@@ -43,7 +43,7 @@ class KernelModel(BaseModel):
     kernel_name: KernelNames
     settings: LanguageModelSettings
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra='forbid')
 
 
 # The factory function
@@ -60,7 +60,7 @@ def _create_kernel(
         model.settings
     )
     kernel = prompt | language_model | StrOutputParser()  # type: ignore
-    kernel.name = f"{model.kernel_name}:{model.settings.source}/{model.settings.name_model}"
+    kernel.name = f"{model.kernel_name}:{model.settings.get_model_source()}/{model.settings.get_model_name()}"
     return kernel  # type: ignore
 
 
