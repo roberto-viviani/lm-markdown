@@ -32,10 +32,11 @@ def _get_prompts(kernel_name: KernelNames) -> str:
 SUMMARY:
 """
         case "question_generator":  # --- kernel case definition
-            return """Provide 1-{n} questions that are answered by the 
-following text. Use the format in the EXAMPLE below:
+            return """Provide the questions that are answered by the 
+following text. To form the questions, use the format in the EXAMPLES 
+OF QUESTIONS below:
 
-EXAMPLE:
+EXAMPLES OF QUESTIONS:
 - When is it appropriate to use logistic regression?
 - What is the link function?
 
