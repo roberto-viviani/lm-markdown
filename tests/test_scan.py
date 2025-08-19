@@ -2,7 +2,7 @@
 
 import unittest
 
-from lmm.scan import scan, markdown_scan
+from lmm.scan.scan import scan, markdown_scan
 from lmm.markdown.parse_markdown import (
     Block,
     HeaderBlock,
