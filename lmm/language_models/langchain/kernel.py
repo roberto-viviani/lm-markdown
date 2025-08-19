@@ -33,6 +33,9 @@ from .models import create_model_from_settings
 from ..lazy_dict import LazyLoadingDict
 from ..kernels import KernelNames, kernel_prompts, KernelModel
 
+# for external use
+KernelType = RunnableSerializable[dict[str, str], str]
+
 
 # The factory function
 def _create_kernel(
