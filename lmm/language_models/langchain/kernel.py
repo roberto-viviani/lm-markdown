@@ -17,8 +17,6 @@ Note:
         type (major, minor, aux).
 """
 
-from pydantic import BaseModel, ConfigDict
-
 from langchain_core.runnables.base import (
     RunnableSerializable,
 )
@@ -33,17 +31,7 @@ from lmm.config.config import (
 from .models import create_model_from_settings
 
 from ..lazy_dict import LazyLoadingDict
-from ..kernels import KernelNames, kernel_prompts
-
-
-# Defines the kernel/model combinations
-class KernelModel(BaseModel):
-    """Kernel definition"""
-
-    kernel_name: KernelNames
-    settings: LanguageModelSettings
-
-    model_config = ConfigDict(frozen=True, extra='forbid')
+from ..kernels import KernelNames, kernel_prompts, KernelModel
 
 
 # The factory function

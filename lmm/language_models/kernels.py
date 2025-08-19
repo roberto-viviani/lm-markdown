@@ -12,6 +12,8 @@ Note:
 """
 
 from typing import Literal
+from pydantic import BaseModel, ConfigDict
+from lmm.config.config import LanguageModelSettings
 from .lazy_dict import LazyLoadingDict
 
 # Define here the kernel supported by the package.
@@ -22,6 +24,16 @@ KernelNames = Literal[
     "query_with_context",
     "check_content",
 ]
+
+
+# Defines the kernel/model combinations
+class KernelModel(BaseModel):
+    """Kernel definition"""
+
+    kernel_name: KernelNames
+    settings: LanguageModelSettings
+
+    model_config = ConfigDict(frozen=True, extra='forbid')
 
 
 # A functional returning the prompts for these kernels.
