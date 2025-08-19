@@ -190,11 +190,9 @@ def post_order_aggregation(
     vely stored in the output_key field of the metadata member of the
     parent node.
 
-    Note: this function differs from aggregate_content_in_parent_
-    metadata in two respects: a hash is computed to verify that the
-    content was changed before calling the aggregate function, and the
-    aggregate function may return an empty string if appropriate. In
-    this case, the input is passed to the next level of recursion.
+    Note: this function differs from tree.extract_content in that a
+    hash is computed to verify that the content was changed before
+    calling the aggregate function.
 
     Args:
         root_node: The root node of the markdown tree
