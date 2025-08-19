@@ -1193,11 +1193,17 @@ def extract_content(
     """
 
     def process_node(node: MarkdownNode) -> None:
-        if isinstance(node, TextNode):
-            return
-        # it is a heading node
-        elif not filter_func(node):  # type: ignore
-            return
+        match node:
+            case TextNode():
+                return
+            case HeadingNode():
+                if not filter_func(node):
+                    return
+            case _:
+                raise RuntimeError(
+                    "Unreachable code reached: "
+                    + "unrecognized node type"
+                )
 
         value: MetadataValue = extract_func(node.children)
         if not node.metadata:
