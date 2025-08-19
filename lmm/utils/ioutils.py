@@ -4,6 +4,11 @@ Errors are not propagated, but functions return null value.
 """
 
 from pathlib import Path
+from typing import Callable
+
+from pydantic import validate_call
+
+from lmm.markdown.parse_markdown import Block
 
 # Set up default logger
 from .logging import get_logger, ILogger  # fmt: skip
@@ -70,10 +75,6 @@ def validate_file(
 
 
 # Interactive call of file -> file
-from typing import Callable
-from lmm.markdown import Block
-
-from pydantic import validate_call
 
 
 @validate_call

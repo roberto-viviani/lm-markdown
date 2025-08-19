@@ -21,7 +21,7 @@ from lmm.markdown.parse_markdown import (
     TextBlock,
     ErrorBlock,
 )
-import lmm.markdown as mkd
+import lmm.markdown.parse_markdown as mkd
 from lmm.markdown.parse_yaml import MetadataDict
 from lmm.markdown.tree import (
     MarkdownNode,
@@ -29,6 +29,7 @@ from lmm.markdown.tree import (
     TextNode,
     post_order_traversal,
 )
+from lmm.markdown.ioutils import save_markdown
 from .scan_keys import TXTHASH_KEY
 
 from lmm.utils.logging import ILogger, get_logger
@@ -166,9 +167,9 @@ def markdown_scan(
         case False:
             pass
         case True:
-            mkd.save_markdown(source, blocks)
+            save_markdown(source, blocks)
         case str() | Path():
-            mkd.save_markdown(save, blocks)
+            save_markdown(save, blocks)
         case _:  # ignore
             pass
 

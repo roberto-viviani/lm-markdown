@@ -33,7 +33,13 @@ from lmm.markdown.treeutils import (
     pre_order_map_tree,
 )
 from lmm.markdown.ioutils import save_markdown
-import lmm.scan.scan as scan
+
+from lmm.config.config import LanguageModelSettings
+from lmm.language_models.kernels import KernelNames
+from lmm.language_models.langchain.kernel import (
+    create_kernel,
+    KernelType,
+)
 
 # metadata block keys
 from .scan_keys import (
@@ -43,13 +49,7 @@ from .scan_keys import (
     EDIT_KEY,
     SUMMARY_KEY,
 )
-
-from lmm.config.config import LanguageModelSettings
-from lmm.language_models.kernels import KernelNames
-from lmm.language_models.langchain.kernel import (
-    create_kernel,
-    KernelType,
-)
+from .scan import scan
 
 from requests.exceptions import ConnectionError
 
@@ -266,7 +266,7 @@ def scan_messages(blocks: list[Block]) -> list[Block]:
     if not blocks:
         return []
 
-    blocks = scan.scan(blocks)
+    blocks = scan(blocks)
     if blocklist_haserrors(blocks):
         logger.warning("Problems in markdown, fix before continuing")
         return blocks

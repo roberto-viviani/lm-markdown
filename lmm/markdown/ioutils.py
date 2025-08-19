@@ -4,10 +4,10 @@ Errors are not propagated, but functions return null value.
 """
 
 from pathlib import Path
-from .parse_markdown import Block, ErrorBlock
-from .parse_markdown import serialize_blocks, blocklist_errors
 from lmm.utils.ioutils import validate_file
 from lmm.utils.ioutils import string_to_path_or_string
+from .parse_markdown import Block, ErrorBlock
+from .parse_markdown import serialize_blocks, blocklist_errors
 
 # Set up default logger
 from lmm.utils.logging import get_logger, ILogger  # fmt: skip
