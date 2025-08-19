@@ -6,7 +6,7 @@ HEADINGID_KEY = 'headingid'
 TEXTID_KEY = 'textid'
 
 # metadata block keys
-CHAT_KEY = 'chat'
+CHAT_KEY = '~chat'
 QUERY_KEY = 'query'
 MESSAGE_KEY = 'message'
 EDIT_KEY = 'edit'

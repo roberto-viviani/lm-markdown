@@ -75,7 +75,7 @@ def _fetch_kernel(
     assert node is None
 
     if node is None:
-        model = create_kernel(kernel_name="summarizer")
+        model = create_kernel(kernel_name=kernel_name)
     else:
         INCLUDE_HEADER = True
         model_properties: MetadataValue = node.fetch_metadata_for_key(
@@ -135,7 +135,6 @@ def _add_chat(node: MarkdownNode, chat: list[str]) -> MarkdownNode:
 
 
 def _scan_queries(node: MarkdownNode) -> MarkdownNode:
-
     if QUERY_KEY not in node.metadata:
         return node
 
@@ -163,7 +162,6 @@ def _scan_queries(node: MarkdownNode) -> MarkdownNode:
         match node:
             case HeadingNode() as h:
                 content = "\n".join(collect_text(h))
-                context = _fetch_summary(h)
             case TextNode() as t:
                 content = t.get_content()
                 parent = t.get_parent()
@@ -172,7 +170,7 @@ def _scan_queries(node: MarkdownNode) -> MarkdownNode:
             case _:
                 # this should not happen
                 raise ValueError(
-                    "Unrecognized node type in summarzation request"
+                    "Unrecognized node type in summarization request"
                 )
     except ConnectionError as e:
         logger.error(

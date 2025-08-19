@@ -278,13 +278,13 @@ class Settings(BaseSettings):
     # Language models with better naming and validation
     major: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
-            model="OpenAI/gpt-4o-mini",
+            model="OpenAI/gpt-4.1-mini",
         ),
         description="Primary language model for complex reasoning tasks",
     )
     minor: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
-            model="OpenAI/gpt-4o-nano",
+            model="OpenAI/gpt-4.1-nano",
         ),
         description="Secondary language model for simple tasks",
     )
@@ -498,3 +498,8 @@ def format_pydantic_error_message(error_message: str) -> str:
         if "For further information visit" not in line
     ]
     return '\n'.join(filtered_lines)
+
+
+# Create a default config.toml file, if there is none.
+if not Path(DEFAULT_CONFIG_FILE).exists():
+    create_default_config_file()
