@@ -81,7 +81,7 @@ class MetadataBlock(BaseModel):
     markdown document.
 
     Important functions:
-    serialize()     reconstitute a text repreentation of the metadata
+    serialize()     reconstitute a text representation of the metadata
     get_content()   the metadata
     get_key(key, default) a metadata value indexed by key
     """
@@ -272,7 +272,7 @@ class HeaderBlock(MetadataBlock):
     undefined.
 
     Important functions:
-    serialize()     reconstitute a text repreentation of the metadata
+    serialize()     reconstitute a text representation of the metadata
     get_content()   the metadata
     get_key(key, default) a metadata value indexed by key
     """
@@ -343,7 +343,7 @@ class HeadingBlock(BaseModel):
     characters followed by a space, and the title text.
 
     Important functions:
-    serialize()     reconstitutes a text repreentation of the heading
+    serialize()     reconstitutes a text representation of the heading
     get_content()   the title given by the heading text
     """
 
@@ -533,7 +533,7 @@ class TextBlock(BaseModel):
 
     @staticmethod
     def from_text(text: str) -> 'TextBlock':
-        """Instatiate a new text block from text."""
+        """Instantiate a new text block from text."""
         return TextBlock(content=text)
 
 
