@@ -33,10 +33,10 @@ import uuid
 
 
 def generate_uuid(
-    text_input: str, namespace_uuid=uuid.NAMESPACE_URL
+    text_input: str, namespace_uuid: uuid.UUID = uuid.NAMESPACE_URL
 ) -> str:
     """
-    Generates a UUID Version 5 from a given text string using a 
+    Generates a UUID Version 5 from a given text string using a
     specified namespace.
 
     UUID v5 is based on SHA-1 hashing, ensuring that the same text
@@ -53,7 +53,8 @@ def generate_uuid(
     Returns:
         str: The generated UUID v5 as a hyphenated string.
     """
-    if not isinstance(text_input, str):
+    # We do need to raise exception here, as type check is static
+    if not isinstance(text_input, str):  # type: ignore[reportUnnecessaryInstance]
         raise TypeError("Input 'text_input' must be a string.")
 
     generated_uuid = uuid.uuid5(namespace_uuid, text_input)
