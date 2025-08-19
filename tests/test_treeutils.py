@@ -7,7 +7,7 @@
 
 import unittest
 
-from lmm.markdown import blocklist_copy
+from lmm.markdown.parse_markdown import blocklist_copy
 from lmm.markdown.tree import *
 from lmm.markdown.treeutils import *
 

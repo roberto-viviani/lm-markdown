@@ -7,15 +7,31 @@
 
 import unittest
 
+from typing import Sequence
+
 # Attempt to import the functions to be tested
-from lmm.markdown import (
+from lmm.markdown.parse_markdown import (
     parse_markdown_text,
     ErrorBlock,
     HeaderBlock,
+    HeadingBlock,
     TextBlock,
     MetadataBlock,
+    Block,
 )
-from lmm.markdown.tree import *
+from lmm.markdown.tree import (
+    MarkdownNode,
+    HeadingNode,
+    TextNode,
+    blocks_to_tree,
+    tree_to_blocks,
+    load_tree,
+    traverse_tree_nodetype,
+    traverse_tree,
+    extract_content,
+    post_order_traversal,
+    pre_order_traversal,
+)
 
 
 class TestNodeConstruction(unittest.TestCase):
