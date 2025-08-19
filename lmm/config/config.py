@@ -14,7 +14,6 @@ from pydantic import (
     field_validator,
     model_validator,
     BaseModel,
-    validate_call,
 )
 from pydantic_settings import (
     BaseSettings,
@@ -321,7 +320,6 @@ class Settings(BaseSettings):
         )
 
 
-@validate_call
 def serialize_settings(sets: Settings) -> str:
     """Transform the settings into a string in TOML format.
 
@@ -367,7 +365,6 @@ def serialize_settings(sets: Settings) -> str:
     #     raise ValueError(f"Failed to serialize settings: {e}") from e
 
 
-@validate_call
 def export_settings(
     settings: Settings, file_path: str | Path | None = None
 ) -> None:
@@ -394,7 +391,6 @@ def export_settings(
         f.write(serialize_settings(settings))
 
 
-@validate_call
 def create_default_config_file(
     file_path: str | Path | None = None,
 ) -> None:
@@ -432,7 +428,6 @@ def create_default_config_file(
     export_settings(settings, file_path)
 
 
-@validate_call
 def print_settings(settings: Settings) -> None:
     """Print settings in TOML format to stdout.
 
@@ -446,7 +441,6 @@ def print_settings(settings: Settings) -> None:
     print(serialize_settings(settings))
 
 
-@validate_call
 def load_settings(file_path: str | Path | None = None) -> Settings:
     """Load settings from TOML file.
 
