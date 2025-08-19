@@ -73,7 +73,10 @@ def validate_file(
 from typing import Callable
 from lmm.markdown import Block
 
+from pydantic import validate_call
 
+
+@validate_call
 def create_interface(
     f: Callable[[str, str], list[Block]], argv: list[str]
 ) -> None:
@@ -111,9 +114,9 @@ def create_interface(
 
     print(f"Press 'Enter' to execute the function on '{filename}'.")
     print("Press 'Ctrl-C' to exit.")
-    input()
 
     try:
+        input()
         while True:
             f(filename, target)
             # Waits for the user to press Enter
@@ -189,7 +192,7 @@ def process_string_quotes(input_string: str) -> str:
     return final_string
 
 
-def append_postfix_to_filename(filename, postfix):
+def append_postfix_to_filename(filename: str, postfix: str) -> str:
     """
     Appends a postfix string to the name of a file.
 
@@ -208,7 +211,7 @@ def append_postfix_to_filename(filename, postfix):
     return new_filename
 
 
-def parse_external_boolean(value):
+def parse_external_boolean(value: object) -> bool:
     """Sanitize externally given boolean"""
     if isinstance(value, str):
         if value.lower() in ('true', '1', 'yes'):
