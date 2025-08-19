@@ -248,7 +248,7 @@ class MetadataBlock(BaseModel):
             return ErrorBlock(content="Invalid data for metadata.")
         # now dct is a metadata dict
         try:
-            block = MetadataBlock(content=dct)  # type: ignore
+            block = MetadataBlock(content=dct)
         except ValidationError:
             # This is a pydantic type error
             return ErrorBlock(

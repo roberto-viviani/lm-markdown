@@ -32,12 +32,9 @@ Byte/imaginary literals are put in whole.
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false
 
-from typing import Any, cast, Mapping
+from typing import Any, Mapping, TypeGuard
 import yaml
 import re
-
-# TODO: move function using these to scan
-# from lmm.scan.scan_keys import QUERY_KEY, MESSAGE_KEY, EDIT_KEY
 
 # The parsed yaml object. ParsedYaml is a tuple with the first
 # member being a dictionary with which we can work, and the
@@ -57,7 +54,7 @@ MetadataDict = dict[str, MetadataValue]
 ParsedYaml = tuple[dict[str, MetadataValue], list[object]]
 
 
-def _is_metadata_type(value: object) -> bool:
+def _is_metadata_type(value: object) -> TypeGuard[MetadataValue]:
     """Alas, required to match on MetadataValue. This is completely
     recursive, unlike the MetadataValue type. Also lists end up
     being nestable."""
@@ -76,16 +73,24 @@ def _is_primitive_type(value: object) -> bool:
     return isinstance(value, (int, float, str, bool, complex, bytes))
 
 
-def is_metadata_primitive(value: object) -> bool:
+def is_metadata_primitive(
+    value: object,
+) -> TypeGuard[MetadataPrimitive]:
     return isinstance(value, (int, float, str, bool))
 
 
-def _is_string_dict(data: object) -> bool:
+def _is_string_dict(data: object) -> TypeGuard[dict[str, object]]:
     if not isinstance(data, dict):
         return False
     if not all([isinstance(k, str) for k in data.keys()]):
         return False
     return True
+
+
+def is_metadata_dict(data: object) -> TypeGuard[MetadataDict]:
+    if not _is_string_dict(data):
+        return False
+    return all([_is_metadata_type(value) for value in data.values()])
 
 
 def _split_metadata_dict(
@@ -96,19 +101,12 @@ def _split_metadata_dict(
     newdict: MetadataDict = {}
     buff = {}
     for v in values.keys():
-        if _is_metadata_type(values[v]):
-            newdict[v] = values[v]  # type: ignore
+        value_ = values[v]
+        if _is_metadata_type(value_):
+            newdict[v] = value_
         else:
             buff[v] = values[v]
     return (newdict, [buff]) if buff else (newdict, [])
-
-
-def is_metadata_dict(data: object) -> bool:
-    if not _is_string_dict(data):
-        return False
-    # data is now of type dict[str, ...]
-    data = cast(dict[str, object], data)
-    return all([_is_metadata_type(value) for value in data.values()])
 
 
 def split_yaml_parse(
@@ -182,16 +180,11 @@ def split_yaml_parse(
 
     if mapped_keys is not None and bool(part):
         # need a copy of the keys
-        keys: list[str] = [k for k in part.keys()]  # type: ignore
+        keys: list[str] = [k for k in part.keys()]
         for key in keys:
             for new_key in mapped_keys:
                 if key == new_key:
-                    # since part is a MetadataDict, its values are
-                    # MetadataValue's. pyright does not agree,
-                    # however. It is difficult to see how this could
-                    # fail, given that we use the same value as before
-                    # but with a new key.
-                    val: MetadataValue = part.pop(key)  # type: ignore
+                    val: MetadataValue = part.pop(key)
                     part[mapped_keys[new_key]] = val
                     break
 
