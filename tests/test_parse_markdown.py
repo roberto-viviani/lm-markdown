@@ -89,7 +89,8 @@ class TestMardownBlocks(unittest.TestCase):
         data = {'title': "Title"}
         block = MetadataBlock(content=data)
         self.assertEqual(block.get_key('title'), "Title")
-        self.assertEqual(block.get_key('titles'), "")
+        self.assertEqual(block.get_key('titles', ""), "")
+        self.assertEqual(block.get_key('titles'), None)
         self.assertDictEqual(block.get_content(), data)
         parse = block.serialize()
         self.assertEqual(
@@ -168,7 +169,20 @@ class TestMardownBlocks(unittest.TestCase):
         block = MetadataBlock._from_dict(data)
         block = cast(MetadataBlock, block)
         self.assertEqual(block.get_key('title'), "Title")
-        self.assertEqual(block.get_key('titles'), "")
+        self.assertEqual(block.get_key('titles', ""), "")
+        self.assertEqual(block.get_key('titles'), None)
+        self.assertEqual(
+            block.get_key_type('title', str, ""), "Title"
+        )
+        self.assertEqual(
+            block.get_key_type('title', bool | None, None), None
+        )
+        self.assertEqual(
+            block.get_key_type('title', bool | float, 0.0), 0.0
+        )
+        self.assertEqual(
+            block.get_key_type('title', bool, False), False
+        )
         self.assertDictEqual(block.get_content(), data)
         parse = block.serialize()
         self.assertEqual(

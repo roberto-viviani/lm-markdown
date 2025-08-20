@@ -68,7 +68,8 @@ class TestCollectTextBlocks(unittest.TestCase):
 
         self.assertEqual(len(blocks), 2)
         self.assertIsInstance(blocks[0], MetadataBlock)
-        self.assertEqual(blocks[0].get_key('title'), "")
+        self.assertEqual(blocks[0].get_key('title', ""), "")
+        self.assertEqual(blocks[0].get_key('title'), None)
         self.assertIsInstance(blocks[1], TextBlock)
 
 

@@ -70,8 +70,12 @@ from enum import Enum
 import re
 
 from . import parse_yaml as pya
-from .parse_yaml import MetadataDict
+from .parse_yaml import MetadataDict, MetadataValue
 import yaml
+
+from typing import TypeVar, Type
+
+T = TypeVar("T")
 
 
 # We define a union type for the block types, in functional style, but
@@ -141,13 +145,46 @@ class MetadataBlock(BaseModel):
         """Returns a dictionary with the metadata."""
         return self.content
 
-    def get_key(self, key: str, default: str = ""):
+    def get_key(
+        self, key: str, default: MetadataValue = None
+    ) -> MetadataValue:
         """Returns the value of a key in the metadata."""
         return (
             self.content[key]
             if key in self.content.keys()
             else default
         )
+
+    def get_key_type(
+        self, key: str, value_type: Type[T], default: T
+    ) -> T:
+        """Get a metadata value if of type T. The argument
+        default must be given.
+
+        Args:
+            key: the key (a string)
+            value_type: the type of the value
+            default (of type value_type) a default return type.
+
+        Returns:
+            a value of type value_type.
+
+        Note:
+            To code for a checkable None:
+            ```python
+            value = get_key_type('title', str | None, None)
+            ```
+            Here, value is of type str | None, and the function will
+            return None if 'title' is not found or is not a
+            string.
+        """
+        value: MetadataValue = (
+            self.content[key] if key in self.content.keys() else None
+        )
+        if isinstance(value, value_type):
+            return value
+        else:
+            return default
 
     def deep_copy(self) -> 'MetadataBlock':
         return self.model_copy(deep=True)
