@@ -295,7 +295,9 @@ def remove_messages(blocks: list[Block]) -> list[Block]:
                 newb.content.pop(EDIT_KEY)
             if CHAT_KEY in keys:
                 newb.content.pop(CHAT_KEY)
-            blocklist.append(newb)
+
+            if len(newb.content) > 0 or bool(newb.private_):
+                blocklist.append(newb)
         else:
             blocklist.append(b)
 
