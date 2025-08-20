@@ -11,6 +11,7 @@ QUERY_KEY = 'query'
 MESSAGE_KEY = 'message'
 EDIT_KEY = 'edit'
 SUMMARY_KEY = 'summary'
+OPTIONS_KEY = 'options'
 
 # RAG keys
 IDX_KEY = TEXTID_KEY
