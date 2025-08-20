@@ -9,9 +9,8 @@ Main functions:
     remove_messages: removes message content from metadata
 """
 
-# pyright: basic
-
 from pathlib import Path
+from pydantic import validate_call
 
 # LM markdown
 from lmm.markdown.parse_markdown import (
@@ -49,7 +48,7 @@ from .scan_keys import (
     EDIT_KEY,
     SUMMARY_KEY,
 )
-from .scan import scan
+from .scan import scan, markdown_scan, post_order_aggregation
 
 from requests.exceptions import ConnectionError
 
@@ -102,7 +101,7 @@ def _fetch_summary(node: MarkdownNode) -> str:
         ConnectionError
     """
     model = _fetch_kernel(kernel_name="summarizer")
-    scan.post_order_aggregation(
+    post_order_aggregation(
         node,
         lambda x: model.invoke({'text': "\n".join(x)}),
         SUMMARY_KEY,
@@ -304,6 +303,7 @@ def remove_messages(blocks: list[Block]) -> list[Block]:
     return blocklist
 
 
+@validate_call
 def markdown_messages(
     sourcefile: str | Path, save: bool | str | Path = False
 ) -> list[Block]:
@@ -321,7 +321,7 @@ def markdown_messages(
         it does not alter the source file.
     """
 
-    blocks = scan.markdown_scan(sourcefile, False)
+    blocks = markdown_scan(sourcefile, False)
     if not blocks:
         return []
     if blocklist_haserrors(blocks):

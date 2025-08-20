@@ -11,6 +11,7 @@ Main functions:
 
 from pathlib import Path
 from typing import Callable
+from pydantic import validate_call
 
 import lmm.utils.ioutils as iou
 from lmm.markdown.parse_markdown import (
@@ -87,6 +88,7 @@ def scan(blocks: list[Block]) -> list[Block]:
     return blocks
 
 
+@validate_call
 def markdown_scan(
     sourcefile: str | Path, save: bool | str | Path = False
 ) -> list[Block]:
