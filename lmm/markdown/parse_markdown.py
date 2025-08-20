@@ -163,8 +163,10 @@ class MetadataBlock(BaseModel):
 
         Args:
             key: the key (a string)
-            value_type: the type of the value
-            default (of type value_type) a default return type.
+            value_type: the type of the value. Due to the limitations
+                of the Python type system, no algebraic or parametric
+                type may be used here.
+            default (of type value_type) a default return value.
 
         Returns:
             a value of type value_type.
