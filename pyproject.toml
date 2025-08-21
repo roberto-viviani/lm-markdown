@@ -26,4 +26,5 @@ mkdocs = "^1.6.1"
 mkdocstrings = {extras = ["python"], version = "^0.30.0"}
 pytest = "^8.4.1"
 pyright = "^1.1.404"
+mypy = "^1.17.1"
 
