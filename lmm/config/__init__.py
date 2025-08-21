@@ -1,6 +1,7 @@
-# pyright: basic
+# pyright: reportUnusedImport=false
+# flake8: noqa
 
-from lmm.config.config import (  # noqa
+from .config import (
     Settings,
     LanguageModelSettings,
     EmbeddingSettings,
