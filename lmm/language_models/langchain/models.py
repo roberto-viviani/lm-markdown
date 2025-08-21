@@ -47,7 +47,7 @@ from langchain_core.embeddings import Embeddings
 
 from ..lazy_dict import LazyLoadingDict
 
-from lmm.config import LanguageModelSettings, EmbeddingSettings
+from lmm.config.config import LanguageModelSettings, EmbeddingSettings
 from lmm.markdown.parse_yaml import MetadataPrimitive
 
 
