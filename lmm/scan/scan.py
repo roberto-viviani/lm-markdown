@@ -88,9 +88,11 @@ def scan(blocks: list[Block]) -> list[Block]:
     return blocks
 
 
-@validate_call
+@validate_call(config={'arbitrary_types_allowed': True})
 def markdown_scan(
-    sourcefile: str | Path, save: bool | str | Path = False
+    sourcefile: str | Path,
+    save: bool | str | Path = False,
+    logger: ILogger = logger,
 ) -> list[Block]:
     """General check that the markdown is suitable for work,
     returning a list of blocks with a header block first.

@@ -360,6 +360,10 @@ def markdown_rag(
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
+    opts defines what operations are conducted on the document,
+    but if the header of the document contains an opts field,
+    the specifications in the header are used.
+
     Args:
         sourcefile: the file to load the markdown from
         save: if False, does not save; if True, saves back to
@@ -383,11 +387,11 @@ def markdown_rag(
         it does not alter the source file.
     """
 
-    blocks = markdown_scan(sourcefile, False)
+    blocks = markdown_scan(sourcefile, False, logger)
     if not blocks:
         return []
     if blocklist_haserrors(blocks):
-        save_markdown(sourcefile, blocks)
+        save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
         return []
 
@@ -398,6 +402,7 @@ def markdown_rag(
         header: HeaderBlock = blocks[0]
         options = header.get_key_type(OPTIONS_KEY, dict, {})
         if bool(options):
+            logger.info("Reading opts specifications from header")
             try:
                 # types checked and coerced by the pydantic model
                 opts = ScanOpts(**options)  # type: ignore
@@ -409,7 +414,7 @@ def markdown_rag(
             "Unreachable code reached: header block missing"
         )
 
-    blocks = scan_rag(blocks, opts)
+    blocks = scan_rag(blocks, opts, logger)
     if not blocks:
         return []
 
@@ -417,9 +422,9 @@ def markdown_rag(
         case False:
             pass
         case True:
-            save_markdown(sourcefile, blocks)
+            save_markdown(sourcefile, blocks, logger)
         case str() | Path():
-            save_markdown(save, blocks)
+            save_markdown(save, blocks, logger)
 
     return blocks
 
@@ -618,6 +623,8 @@ if __name__ == "__main__":
     import sys
     from lmm.utils.ioutils import create_interface
 
+    # this will not be used if the document has an options field
+    # in the header
     opts = ScanOpts(questions=True, summaries=True)
 
     def main_f(x, y):  # type: ignore
