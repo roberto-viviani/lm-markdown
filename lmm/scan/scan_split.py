@@ -17,6 +17,7 @@ Main functions:
 """
 
 from pathlib import Path
+from pydantic import validate_call
 
 from .scan_keys import TEXTID_KEY, UUID_KEY
 
@@ -119,6 +120,7 @@ def scan_split(
     return blocks_to_splitted_blocks(blocks, text_splitter)
 
 
+@validate_call(config={'arbitrary_types_allowed': True})
 def markdown_split(
     sourcefile: str | Path,
     save: bool | str | Path = False,

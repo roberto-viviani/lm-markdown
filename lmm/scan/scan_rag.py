@@ -22,7 +22,7 @@ Main functions:
 
 from pathlib import Path
 from typing import Callable
-from pydantic import BaseModel, ConfigDict, validate_call
+from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 # LM markdwon
 from lmm.markdown.ioutils import save_markdown
@@ -96,15 +96,55 @@ class ScanOpts(BaseModel):
         UUID: adds a UUID to text blocks
     """
 
-    titles: bool = False  # add hierarchical titles to headings
-    questions: bool = False  # add questions to headings
-    questions_threshold: int = 15  # ignored in questions == False
-    summaries: bool = False  # add summaries to headings
-    summary_threshold: int = 50  # ignored if summaries == False
-    remove_messages: bool = False  # remove llm messages from document
-    textid: bool = False  # add textid to text blocks
-    headingid: bool = False  # add headingid to headings
-    UUID: bool = False  # add UUID to text blocks
+    titles: bool = Field(
+        default=False,
+        description="Enable generation of hierarchical titles for "
+        + "heading blocks based on document structure",
+    )
+    questions: bool = Field(
+        default=False,
+        description="Enable generation of potential questions that "
+        + "text sections answer using language models",
+    )
+    questions_threshold: int = Field(
+        default=15,
+        gt=10,
+        description="Minimum word count threshold to trigger question"
+        + " generation (ignored if questions=False)",
+    )
+    summaries: bool = Field(
+        default=False,
+        description="Enable generation of content summaries for "
+        + "heading blocks using language models",
+    )
+    summary_threshold: int = Field(
+        default=50,
+        gt=20,
+        description="Minimum word count threshold to trigger summary "
+        + "generation (ignored if summaries=False)",
+    )
+    remove_messages: bool = Field(
+        default=False,
+        description="Remove language model messages and metadata from"
+        + " the processed document. Cleans up irrelevant metadata"
+        + "created during interaction with the language model prior"
+        + " to ingesting",
+    )
+    textid: bool = Field(
+        default=False,
+        description="Add unique text identifiers to text blocks for "
+        + "tracking and reference in the vector database",
+    )
+    headingid: bool = Field(
+        default=False,
+        description="Add unique heading identifiers to heading blocks"
+        + " for tracking and reference in the vector database",
+    )
+    UUID: bool = Field(
+        default=False,
+        description="Add universally unique identifiers (UUIDs) to "
+        + "text blocks for creation of id's in vector database",
+    )
 
     model_config = ConfigDict(extra='forbid')
 
@@ -138,7 +178,7 @@ def scan_rag(
         TypeError, ValueError, ValidationError
     """
 
-    # Validate boolean parameters
+    # Validation
     build_titles = bool(opts.titles)
     build_questions = bool(opts.questions)
     build_summaries = bool(opts.summaries)
@@ -172,7 +212,7 @@ def scan_rag(
     if opts.remove_messages:
         blocks = remove_messages(blocks)
 
-    # Transform blocklist into the tree representation.
+    # Process directives
     root: MarkdownTree = blocks_to_tree(blocks)
     if not root:
         return []
@@ -334,6 +374,7 @@ def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
     save: bool | str | Path = False,
+    logger: ILogger = logger,
 ) -> list[Block]:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
@@ -369,18 +410,23 @@ def markdown_rag(
         logger.warning("Problems in markdown, fix before continuing")
         return []
 
-    # Check options specified in header.
+    # Take over options if specified in header. The isinstance check
+    # will always be true since markdown_scan provides a default
+    # header if it is missing, but we check for pyright's benefit
     if isinstance(blocks[0], HeaderBlock):
-        # This will always be true as scan returns a header first
         header: HeaderBlock = blocks[0]
         options = header.get_key_type(OPTIONS_KEY, dict, {})
         if bool(options):
             try:
-                # type checked and coerced by the pydantic model
+                # types checked and coerced by the pydantic model
                 opts = ScanOpts(**options)  # type: ignore
             except Exception as e:
                 logger.error(f"Invalid scan specification:\n{e}")
                 return []
+    else:
+        raise RuntimeError(
+            "Unreachable code reached: header block missing"
+        )
 
     blocks = scan_rag(blocks, opts)
     if not blocks:
@@ -393,8 +439,6 @@ def markdown_rag(
             save_markdown(sourcefile, blocks)
         case str() | Path():
             save_markdown(save, blocks)
-        case _:  # ignore
-            pass
 
     return blocks
 
