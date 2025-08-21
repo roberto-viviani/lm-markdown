@@ -1,21 +1,34 @@
 """
 Operations on markdown blocks to prepare it for RAG (Retrieval
-Augmented Generation) by enhancing it with metadata:
+Augmented Generation) by enhancing it with metadata. This module
+exmplifies how to use functions to change the markdown document
+using its tree representation and higher-order traversal functions.
+
+The operation that are supported by the module are
 
 1. Validating the markdown structure and ensuring a proper header
     block
 2. Adding unique IDs to blocks for tracking
 3. Building hierarchical titles for headings based on document
     structure
-4. Adding potential questions that sections of text answer
-5. Adding summaries to heading nodes based on their content
-6. Pooling text blocks that are short, or constitute equations
-    or code blocks.
+4. Adding potential questions that sections of text answer using a
+    language model
+5. Adding summaries to heading nodes based on their content using
+    a language model
 
-This module makes use of a language model to create questions
-and summaries.
+This functionality is implemented by the utility functions:
+    add_titles_to_headings
+    add_id_to_nodes
+    add_questions
+    add_summaries
 
-Main functions:
+The functions scan_rag and markdown_rag use these functions to
+carry out the operations as specified by an options record, ScanOpts.
+The advantage of gathering these functions together in a superordinate
+function is that this latter can be sure that the specifications are
+consistent, and the functions are used in the right order.
+
+Main superordinate functions:
     scan_rag: processes a blocklist adding metadata annotations
     markdown_rag: applies scan_rag to file
 """
@@ -81,9 +94,8 @@ logger: ILogger = get_logger(__name__)
 class ScanOpts(BaseModel):
     """
     This options structure gathers the parameters for annotating
-    the markdown (represented as a list of markdown blocks),
-    or for pooling text blocks together. All options default
-    to no-op.
+    the markdown (represented as a list of markdown blocks).
+    All options default to no-op.
 
     Options:
         titles: add hierarchical titles to heading blocks
@@ -94,6 +106,12 @@ class ScanOpts(BaseModel):
         textid: adds a text id to text blocks
         headingid: adds a heading id to headings
         UUID: adds a UUID to text blocks
+
+    Example of use:
+        ```python
+        opts = ScanOpts(titles = True) # add titles
+        blocks = scan_rag(blocks, opts)
+        ```
     """
 
     titles: bool = Field(
@@ -173,9 +191,20 @@ def scan_rag(
         - questions: Potential questions answered by the text
         - summary: Content summaries for heading blocks
 
+        The function will return an empty list if the input block
+        list contains error blocks. It will add a default header
+        if the header is missing, and a docid field to the header
+        if this is missing.
+
     Raises:
         ConnectionError,
         TypeError, ValueError, ValidationError
+
+    Example of use:
+        ```python
+        opts = ScanOpts(titles = True) # add titles
+        blocks = scan_rag(blocks, opts)
+        ```
     """
 
     # Validation
@@ -203,7 +232,7 @@ def scan_rag(
         logger.error("Load failed:\n" + blocks[0].content)
         return []
     if blocklist_haserrors(blocks):
-        logger.warning("Errors in markdown. Fix before continuing.")
+        logger.error("Errors in markdown. Fix before continuing.")
         return []
 
     # Preproc text blocks prior to annotations
@@ -231,10 +260,10 @@ def scan_rag(
     # Add titles to headings
     if build_titles:
         logger.info("Adding titles to heading metadata.")
-        _add_heading_paths(root, TITLES_KEY)
+        add_titles_to_headings(root, TITLES_KEY)
 
     # Add an id to all heading and text blocks
-    _add_id_to_nodes(
+    add_id_to_nodes(
         root,
         build_textids,
         build_headingids,
@@ -270,64 +299,16 @@ def scan_rag(
     pre_order_traversal(root, add_source_func)
 
     # Add questions that the text answers, recomputed if text changes
-    quest_func: Callable[[str], str] = lambda x: (
-        "Questions this text answers" if x else ""
-    )
-
-    def llm_quest_func(text: str) -> str:  # type: ignore[reportUnusedFunction]
-        # TODO: Error checks
-        if len(text.split()) < opts.questions_threshold:
-            return ""
-        response: str = ""
-        try:
-            kernel: KernelType = create_kernel("question_generator")
-            response = kernel.invoke({'text': text})
-        except ConnectionError:
-            logger.error(
-                "Could not connect to language models.\n"
-                + "Check the internet connection."
-            )
-        except Exception:
-            logger.error(
-                "Error in using the language model to create questions."
-            )
-        return response
-
     if build_questions:
         # Replace with actual question generation implementation
         logger.info("Adding questions about text.")
-        post_order_aggregation(root, quest_func, QUESTIONS_KEY, True)
+        add_questions(root, opts, logger)
 
     # Add a summary to heading nodes that is recomputed after changes
-    summary_func: Callable[[str], str] = lambda x: (
-        f"Accumulated {len(x.split())} words."
-        if len(x.split()) >= opts.summary_threshold
-        else ""
-    )
-
-    def llm_summary_func(text: str) -> str:  # type: ignore[reportUnusedFunction]
-        if len(text.split()) < opts.summary_threshold:
-            return ""
-        response: str = ""
-        try:
-            kernel: KernelType = create_kernel("summarizer")
-            response = kernel.invoke({'text': text})
-        except ConnectionError:
-            logger.error(
-                "Could not connect to language models.\n"
-                + "Check the internet connection."
-            )
-        except Exception:
-            logger.error(
-                "Error in using the language model to create summaries."
-            )
-
-        return response
-
     if build_summaries:
-        # Replace with final accumulator function
+        # Replace with final accumulator function add_summary
         logger.info("Adding summaries about text.")
-        post_order_aggregation(root, summary_func, SUMMARY_KEY, True)
+        add_summaries(root, opts, logger)
 
     # check meta-data without text
     def _warn_empty_text(node: MarkdownNode) -> None:
@@ -369,7 +350,7 @@ def scan_rag(
     return blocks
 
 
-@validate_call
+@validate_call(config={'arbitrary_types_allowed': True})
 def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
@@ -443,9 +424,9 @@ def markdown_rag(
     return blocks
 
 
-def _add_heading_paths(
+def add_titles_to_headings(
     root: MarkdownNode, key: str = TITLES_KEY
-) -> MarkdownNode:
+) -> None:
     """Recursively add titles to heading blocks in a markdown tree.
 
     This function maps nodes a markdown tree in a pre-order manner,
@@ -463,7 +444,7 @@ def _add_heading_paths(
         - The titles are added to the key field in the node's metadata
     """
 
-    def map_func(node: MarkdownNode) -> MarkdownNode:
+    def map_func(node: MarkdownNode) -> None:
         # recursively add content of headings to key in metadata
         if isinstance(node, HeadingNode):
             if node.parent:
@@ -479,24 +460,26 @@ def _add_heading_paths(
                 + (" - " if titles else "")
                 + (title if title else ""),
             )
-        return node
+        return
 
-    return pre_order_map_tree(root, map_func)
+    return pre_order_traversal(root, map_func)
 
 
-def _add_id_to_nodes(
+def add_id_to_nodes(
     root_node: MarkdownNode,
     textid: bool,
     headingid: bool,
     base_hash: str | None = None,
 ) -> None:
     """Add unique identifiers to text and heading blocks in a markdown
-    tree.
+    tree. These identifiers may be used when ingesting the document,
+    to create the id's used by the vector database, such that new
+    versions of the same blocks are overwritten in the database.
 
     This function traverses the markdown tree and assigns unique
     identifiers to TextBlock and HeadingBlock nodes. The identifiers
     are constructed using:
-    1. A base hash derived from the document's content or provided
+    1. A base hash derived from the document's title or a provided
         base_hash
     2. A sequential counter for text and heading blocks
 
@@ -518,8 +501,8 @@ def _add_id_to_nodes(
       Example: "abc123.h1", "abc123.h2"
 
     Note:
-        - Identifiers are only added if they don't already exist in
-            the node's metadata
+        - Identifiers are always added irrespective of whether they
+            already exist in the node's metadata
     """
 
     textid = bool(textid)
@@ -553,6 +536,81 @@ def _add_id_to_nodes(
         return node
 
     pre_order_map_tree(root_node, _add_id)
+
+
+def add_questions(
+    root: MarkdownNode, opts: ScanOpts, logger: ILogger
+) -> None:
+    """Add questions anwered by text using a language model.
+
+    Args:
+        root: a markdown node to start the traversal
+        opts: options defining thresholds for computing summaries
+        logger: a logger object
+    """
+
+    def llm_questions(text: str) -> str:  # type: ignore[reportUnusedFunction]
+        if len(text.split()) < opts.questions_threshold:
+            return ""
+        response: str = ""
+        try:
+            kernel: KernelType = create_kernel("question_generator")
+            response = kernel.invoke({'text': text})
+        except ConnectionError:
+            logger.error(
+                "Could not connect to language models.\n"
+                + "Check the internet connection."
+            )
+        except Exception:
+            logger.error(
+                "Error in using the language model to create questions."
+            )
+        return response
+
+    quest_func: Callable[[str], str] = lambda x: (
+        "Questions this text answers" if x else ""
+    )
+
+    post_order_aggregation(root, quest_func, QUESTIONS_KEY, True)
+
+
+def add_summaries(
+    root: MarkdownNode, opts: ScanOpts, logger: ILogger
+):
+    """Add summaries of text using a language model.
+
+    Args:
+        root: a markdown node to start the traversal
+        opts: options defining thresholds for computing questions
+        logger: a logger object
+    """
+
+    def llm_add_summary(text: str) -> str:  # type: ignore
+        if len(text.split()) < opts.summary_threshold:
+            return ""
+        response: str = ""
+        try:
+            kernel: KernelType = create_kernel("summarizer")
+            response = kernel.invoke({'text': text})
+        except ConnectionError:
+            logger.error(
+                "Could not connect to language models.\n"
+                + "Check the internet connection."
+            )
+        except Exception:
+            logger.error(
+                "Error in using the language model to create summaries."
+            )
+
+        return response
+
+    summary_func: Callable[[str], str] = lambda x: (
+        f"Accumulated {len(x.split())} words."
+        if len(x.split()) >= opts.summary_threshold
+        else ""
+    )
+
+    post_order_aggregation(root, summary_func, SUMMARY_KEY, True)
 
 
 if __name__ == "__main__":
