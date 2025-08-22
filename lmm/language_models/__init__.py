@@ -6,4 +6,5 @@ from .lazy_dict import LazyLoadingDict
 from .kernels import (
     KernelNames,
     KernelModel,
+    EmbeddingModel,
 )

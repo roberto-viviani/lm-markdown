@@ -165,13 +165,6 @@ class EmbeddingSettings(BaseSettings):
         description="Model specification in the form "
         + "'model_provider/model' (e.g., 'OpenAI/text-embedding-3-small')"
     )
-    # source: EmbSource = Field(
-    #     default="OpenAI", description="The embedding source provider"
-    # )
-    # name_model: str = Field(
-    #     default="text-embedding-3-small",
-    #     description="The specific embedding model name",
-    # )
     sparse_model: SparseModel = Field(
         default="Qdrant/bm25",  # multilingual
         description="Sparse embedding model for hybrid search",
@@ -184,6 +177,9 @@ class EmbeddingSettings(BaseSettings):
 
     def get_model_name(self) -> str:
         return self.dense_model.split('/')[1]
+
+    def get_sparse_model_name(self) -> str:
+        return str(self.sparse_model)
 
     @field_validator('dense_model', mode='after')
     @classmethod

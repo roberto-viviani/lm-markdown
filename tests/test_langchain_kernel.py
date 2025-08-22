@@ -2,8 +2,19 @@
 
 import unittest
 
-from lmm.language_models.langchain.kernel import create_kernel
-from lmm.config.config import Settings, LanguageModelSettings
+
+from langchain_core.embeddings import Embeddings
+from pydantic import ValidationError
+
+from lmm.language_models.langchain.kernel import (
+    create_kernel,
+    create_embeddings,
+)
+from lmm.config.config import (
+    Settings,
+    LanguageModelSettings,
+    EmbeddingSettings,
+)
 
 base_settings = Settings()
 
@@ -121,6 +132,69 @@ class TestDefaultModels(unittest.TestCase):
                 },
             )
             model.get_name()
+
+
+class TestEmbeddingModel(unittest.TestCase):
+
+    def test_embedding_default(self) -> None:
+        embmodel = create_embeddings()
+        self.assertIsInstance(embmodel, Embeddings)
+
+    def test_spec_embedding(self) -> None:
+        embmodel = create_embeddings(
+            EmbeddingSettings(
+                **{'dense_model': "OpenAI/text-embedding-3-small"}
+            )
+        )
+        self.assertIsInstance(embmodel, Embeddings)
+
+    def test_spec_embedding_dict(self) -> None:
+        embmodel = create_embeddings(
+            {'dense_model': "OpenAI/text-embedding-3-small"}
+        )
+        self.assertIsInstance(embmodel, Embeddings)
+
+    def test_spec_embedding_import(self) -> None:
+        with self.assertRaises(ImportError):
+            create_embeddings(
+                {
+                    'dense_model': "SentenceTransformers/all-mpnet-base-v2"
+                }
+            )
+
+    def test_invalid_spec_embedding(self) -> None:
+        with self.assertRaises(ValidationError):
+            create_embeddings(
+                EmbeddingSettings(**{'dense_model': "Pippo/this"})
+            )
+
+    def test_invalid_spec_embedding_dict(self) -> None:
+        with self.assertRaises(ValidationError):
+            create_embeddings({'dense_model': "Pippo/this"})
+
+    def test_invalid_spec_embedding2(self) -> None:
+        with self.assertRaises(ValidationError):
+            create_embeddings(
+                EmbeddingSettings(
+                    **{'densest': "OpenAI/text-embedding-3-small"}
+                )
+            )
+
+    def test_invalid_spec_embedding2_dict(self) -> None:
+        with self.assertRaises(ValidationError):
+            create_embeddings(
+                {'densest': "OpenAI/text-embedding-3-small"}
+            )
+
+    def test_create_embedding(self) -> None:
+        emodel: Embeddings = create_embeddings(
+            {'dense_model': "OpenAI/text-embedding-3-small"}
+        )
+        emodel
+        # this tests ok, de-comment to reactivate
+        # vect = emodel.embed_query("This sentence to embed")
+        # self.assertIsInstance(vect, list)
+        # self.assertIsInstance(vect[0], float)
 
 
 if __name__ == "__main__":

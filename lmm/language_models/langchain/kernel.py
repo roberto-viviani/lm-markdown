@@ -23,12 +23,20 @@ from langchain_core.runnables.base import (
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.embeddings import (
+    Embeddings as LangchainEmbeddings,
+)
+
 
 from lmm.config.config import (
     Settings,
     LanguageModelSettings,
+    EmbeddingSettings,
 )
-from .models import create_model_from_settings
+from .models import (
+    create_model_from_settings,
+    create_embedding_model_from_settings,
+)
 
 from ..lazy_dict import LazyLoadingDict
 from ..kernels import KernelNames, kernel_prompts, KernelModel
@@ -37,7 +45,7 @@ from ..kernels import KernelNames, kernel_prompts, KernelModel
 KernelType = RunnableSerializable[dict[str, str], str]
 
 
-# The factory function
+# The factory functions
 def _create_kernel(
     model: KernelModel,
 ) -> RunnableSerializable[dict[str, str], str]:
@@ -55,8 +63,16 @@ def _create_kernel(
     return kernel  # type: ignore
 
 
+def _create_embedding(
+    settings: EmbeddingSettings,
+) -> LangchainEmbeddings:
+    """Assembles a Langchain embedding object from specs"""
+    return create_embedding_model_from_settings(settings)
+
+
 # global project-wide repository of kernels
 kernel_factory = LazyLoadingDict(_create_kernel)
+embeddings_factory = LazyLoadingDict(_create_embedding)
 
 
 # Provides the shunting of the model to the major, minor, or aux
@@ -104,6 +120,9 @@ def create_kernel(
             stage that the model names are correct (as they frequently
             change); instead, failure occurs when the .invoke member function
             is called.
+        ValidationError, TypeError: alternative errors raised in the same
+            circumstances as above.
+        ImportError: for not installed libraries.
 
     Examples:
         Create kernel with default settings:
@@ -170,3 +189,36 @@ def create_kernel(
                     settings=settings.minor,
                 )
             ]
+
+
+def create_embeddings(
+    settings: dict[str, str] | EmbeddingSettings | None = None,
+) -> LangchainEmbeddings:
+    """
+    Creates a Langchain embeddings kernel from a configuration
+    object.
+
+    Args:
+        settings: an EmbeddingSettings object with the following
+        fields:
+          - dense_model: a specification in the form provider/
+            model, for example 'OpenAI/text-embedding-3-small'
+          - sparse_model: a sparse model specification
+
+    Returns:
+        a Langchain that embeds text by calling embed_documents
+            or embed_query.
+
+    Raises:
+        ValidationError, TypeError for invalid spec
+        ImportError for missing libraries
+        requests.ConnectionError if not online
+    """
+    if not bool(settings):  # includes empty dict
+        sets = Settings()
+        settings = sets.embeddings
+    elif isinstance(settings, dict):
+        # checked by pydantic model
+        settings = EmbeddingSettings(**settings)  # type: ignore
+
+    return embeddings_factory[settings]

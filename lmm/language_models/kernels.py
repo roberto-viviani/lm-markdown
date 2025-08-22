@@ -13,7 +13,7 @@ Note:
 
 from typing import Literal
 from pydantic import BaseModel, ConfigDict
-from lmm.config.config import LanguageModelSettings
+from lmm.config.config import LanguageModelSettings, EmbeddingSettings
 from .lazy_dict import LazyLoadingDict
 
 # Define here the kernel supported by the package.
@@ -34,6 +34,10 @@ class KernelModel(BaseModel):
     settings: LanguageModelSettings
 
     model_config = ConfigDict(frozen=True, extra='forbid')
+
+
+# Defines the embedding model
+EmbeddingModel = EmbeddingSettings
 
 
 # A functional returning the prompts for these kernels.
