@@ -23,9 +23,7 @@ from langchain_core.runnables.base import (
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.embeddings import (
-    Embeddings as LangchainEmbeddings,
-)
+from langchain_core.embeddings import Embeddings
 
 
 from lmm.config.config import (
@@ -65,7 +63,7 @@ def _create_kernel(
 
 def _create_embedding(
     settings: EmbeddingSettings,
-) -> LangchainEmbeddings:
+) -> Embeddings:
     """Assembles a Langchain embedding object from specs"""
     return create_embedding_model_from_settings(settings)
 
@@ -193,7 +191,7 @@ def create_kernel(
 
 def create_embeddings(
     settings: dict[str, str] | EmbeddingSettings | None = None,
-) -> LangchainEmbeddings:
+) -> Embeddings:
     """
     Creates a Langchain embeddings kernel from a configuration
     object.
