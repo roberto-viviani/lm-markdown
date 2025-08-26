@@ -243,6 +243,7 @@ def dump_yaml(x: Any) -> str:
             encoding="utf-8",
             allow_unicode=True,
             indent=1,
+            sort_keys=False,
         )
         .decode("utf-8")
         .replace("'''", "'")
