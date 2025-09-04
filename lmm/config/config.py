@@ -316,7 +316,7 @@ class Settings(BaseSettings):
         )
 
 
-def serialize_settings(sets: Settings) -> str:
+def serialize_settings(sets: BaseSettings) -> str:
     """Transform the settings into a string in TOML format.
 
     Args:
@@ -362,7 +362,7 @@ def serialize_settings(sets: Settings) -> str:
 
 
 def export_settings(
-    settings: Settings, file_path: str | Path | None = None
+    settings: BaseSettings, file_path: str | Path | None = None
 ) -> None:
     """Save settings to file in TOML format.
 
@@ -424,7 +424,7 @@ def create_default_config_file(
     export_settings(settings, file_path)
 
 
-def print_settings(settings: Settings) -> None:
+def print_settings(settings: BaseSettings) -> None:
     """Print settings in TOML format to stdout.
 
     Args:
