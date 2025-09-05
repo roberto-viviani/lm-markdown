@@ -12,7 +12,7 @@ from .parse_markdown import (
     Block,
     TextBlock,
 )
-from .parse_markdown import serialize_blocks
+from .parse_markdown import serialize_blocks, parse_markdown_text
 from .tree import HeadingNode, TextNode
 
 # type of functions that process block lists
@@ -95,6 +95,19 @@ def merge_textblocks(blocks: list[Block]) -> list[Block]:
     return blocklist
 
 
+def unmerge_textblocks(blocks: list[Block]) -> list[Block]:
+    """Unmerge textblocks separated by blank lines. This
+    function is the inverse of merge_textblocks."""
+
+    blocklist: list[Block] = []
+    for b in blocks:
+        if isinstance(b, TextBlock):
+            blocklist.extend(parse_markdown_text(b.get_content()))
+        else:
+            blocklist.append(b)
+    return blocklist
+
+
 def merge_textblocks_if(
     blocks: list[Block], test_func: Callable[[TextBlock], bool]
 ) -> list[Block]:
@@ -127,8 +140,10 @@ def merge_textblocks_if(
     if not blocks:
         return []
 
-    test_func_withnone: Callable[[TextBlock | None], bool] = (  # noqa: E731
-        lambda x: test_func(x) if x is not None else False
+    test_func_withnone: Callable[[TextBlock | None], bool] = (
+        lambda x: (  # noqa: E731
+            test_func(x) if x is not None else False
+        )
     )
 
     blocklist: list[Block] = []

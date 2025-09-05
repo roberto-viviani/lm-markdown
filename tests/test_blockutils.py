@@ -15,6 +15,7 @@ from lmm.markdown.blockutils import (
     compose,
     clear_metadata,
     merge_textblocks,
+    unmerge_textblocks,
     merge_textblocks_if,
     merge_equation_blocks,
     merge_short_textblocks,
@@ -1011,6 +1012,19 @@ and final text.
         self.assertEqual(
             1, len([b for b in blocks if isinstance(b, TextBlock)])
         )
+
+    def test_unmerge_textblocks(self):
+        text = (
+            "First paragraph\n\nSecond paragraph\n\nThird paragraph"
+        )
+        blocklist = parse_markdown_text(text)
+        self.assertEqual(len(blocklist), 3)
+        blocks = merge_textblocks(blocklist)
+        self.assertEqual(len(blocks), 1)
+        blocks = unmerge_textblocks(blocks)
+        self.assertEqual(len(blocks), 3)
+        for b, c in zip(blocklist, blocks):
+            self.assertEqual(b.get_content(), c.get_content())
 
 
 class TestPoolShortTextblocks(unittest.TestCase):
