@@ -229,6 +229,67 @@ class FileConsoleLogger(ILogger):
         self.logger.critical(msg, exc_info=True, stack_info=True)
         self.console_logger.critical(msg)
 
+class LoglistLogger(ILogger):
+    """
+    Maintains a list of logged errors and warnings that can be
+    inspected by the object creator.
+    """
+    def __init__(self) -> None:
+        """
+        Initialize the logger.
+        """
+        self.logs: list[dict[str, str]] = []
+
+    def set_level(self, level: int) -> None:
+        """Set the logging level for the logger."""
+        pass
+
+    def info(self, msg: str) -> None:
+        """Log an informational message."""
+        self.logs.append({'info': msg})
+
+    def error(self, msg: str) -> None:
+        """Log an error message."""
+        self.logs.append({'error': msg})
+
+    def warning(self, msg: str) -> None:
+        """Log a warning message."""
+        self.logs.append({'warning': msg})
+
+    def critical(self, msg: str) -> None:
+        """Log a critical message."""
+        self.logs.append({'critical': msg})
+
+    def get_logs(self, level: int = 0) -> list[str]:
+        """ 
+        Returns a list of strings with the log messages.
+
+        Args:
+            A filter on the logs. Posible values: 
+            0 or less: returns all messages
+            1 or less: omit info
+            2 or less: omit warning
+            3 or more: only errors and critical
+        """
+        logs: list[str] = []
+        for entry in self.logs:
+            match entry:
+                case {'info': msg}:
+                    if level < 1:
+                        logs.append("info: " + msg)
+                case {'warning': msg}:
+                    if level < 2:
+                        logs.append("warning: " + msg)
+                case {'error': msg}:
+                    logs.append("error: " + msg)
+                case {'critical': msg}:
+                    logs.append("critical: " + msg)
+                case _:
+                    logs.append(str(entry))
+        return logs
+
+    def clear_log(self) -> None:
+        self.logs.clear()
 
 class ExceptionConsoleLogger(ILogger):
     """
