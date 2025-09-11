@@ -33,9 +33,9 @@ from lmm.markdown.tree import (
 from lmm.markdown.ioutils import save_markdown
 from .scan_keys import TXTHASH_KEY
 
-from lmm.utils.logging import ILogger, get_logger
+from lmm.utils.logging import LoggerBase, get_logger
 
-logger: ILogger = get_logger(__name__)
+logger: LoggerBase = get_logger(__name__)
 
 
 def scan(blocks: list[Block]) -> list[Block]:
@@ -92,7 +92,7 @@ def scan(blocks: list[Block]) -> list[Block]:
 def markdown_scan(
     sourcefile: str | Path,
     save: bool | str | Path = False,
-    logger: ILogger = logger,
+    logger: LoggerBase = logger,
 ) -> list[Block]:
     """General check that the markdown is suitable for work,
     returning a list of blocks with a header block first.

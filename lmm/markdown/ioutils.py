@@ -10,13 +10,13 @@ from .parse_markdown import Block, ErrorBlock
 from .parse_markdown import serialize_blocks, blocklist_errors
 
 # Set up default logger
-from lmm.utils.logging import get_logger, ILogger  # fmt: skip
-logger: ILogger = get_logger(__name__)
+from lmm.utils.logging import get_logger, LoggerBase  # fmt: skip
+logger: LoggerBase = get_logger(__name__)
 
 
 # Load markdown
 def load_markdown(
-    source: str | Path, logger: ILogger = logger
+    source: str | Path, logger: LoggerBase = logger
 ) -> str:
     # loads the markdown file. No error thrown, instead
     # message printed to console and empty string returned.
@@ -62,7 +62,7 @@ def load_markdown(
 def save_markdown(
     dest: str | Path,
     content: list[Block] | str,
-    logger: ILogger = logger,
+    logger: LoggerBase = logger,
 ) -> bool:
     """Save markdown blocks to a file. Returns success or failure."""
     if not content:
@@ -102,7 +102,7 @@ def save_markdown(
 
 # Print error blocks
 def report_error_blocks(
-    blocks: list[Block], logger: ILogger = logger
+    blocks: list[Block], logger: LoggerBase = logger
 ) -> list[Block]:
     """Checks the existence of error blocks. If there are any,
     they are printed to the console.

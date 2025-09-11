@@ -11,8 +11,8 @@ from pydantic import validate_call
 from lmm.markdown.parse_markdown import Block
 
 # Set up default logger
-from .logging import get_logger, ILogger  # fmt: skip
-logger: ILogger = get_logger(__name__)
+from .logging import get_logger, LoggerBase  # fmt: skip
+logger: LoggerBase = get_logger(__name__)
 
 
 def string_to_path_or_string(input_string: str) -> Path | str:
@@ -50,7 +50,7 @@ def string_to_path_or_string(input_string: str) -> Path | str:
 
 # Validate file name
 def validate_file(
-    source: str | Path, logger: ILogger = logger
+    source: str | Path, logger: LoggerBase = logger
 ) -> None | Path:
     """Returns: None for failure, Path object otherwise"""
     if not source:

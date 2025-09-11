@@ -24,7 +24,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 
 
-class ILogger(ABC):
+class LoggerBase(ABC):
     """
     Abstract interface for logging functionality.
     """
@@ -55,7 +55,7 @@ class ILogger(ABC):
         pass
 
 
-class ConsoleLogger(ILogger):
+class ConsoleLogger(LoggerBase):
     """
     A console logger implementation that uses logging.Logger as a 
     delegate. Logs messages to the console using Python's built-in 
@@ -103,7 +103,7 @@ class ConsoleLogger(ILogger):
         self.logger.critical(msg, exc_info=True, stack_info=True)
 
 
-class FileLogger(ILogger):
+class FileLogger(LoggerBase):
     """
     A file logger implementation that uses logging.Logger as a 
     delegate. Logs messages to a specified file using Python's 
@@ -161,7 +161,7 @@ class FileLogger(ILogger):
         self.logger.critical(msg, exc_info=True, stack_info=True)
 
 
-class FileConsoleLogger(ILogger):
+class FileConsoleLogger(LoggerBase):
     """
     A file logger implementation that uses logging.Logger as a 
     delegate. Logs messages to a specified file using Python's 
@@ -169,7 +169,7 @@ class FileConsoleLogger(ILogger):
     as well.
     """
 
-    console_logger: ILogger
+    console_logger: LoggerBase
 
     def __init__(
         self, name: str = "", log_file: str | Path = "app.log"
@@ -229,7 +229,7 @@ class FileConsoleLogger(ILogger):
         self.logger.critical(msg, exc_info=True, stack_info=True)
         self.console_logger.critical(msg)
 
-class LoglistLogger(ILogger):
+class LoglistLogger(LoggerBase):
     """
     Maintains a list of logged errors and warnings that can be
     inspected by the object creator.
@@ -288,10 +288,11 @@ class LoglistLogger(ILogger):
                     logs.append(str(entry))
         return logs
 
-    def clear_log(self) -> None:
+    def clear_logs(self) -> None:
+        """Clear the logs from the cache"""
         self.logs.clear()
 
-class ExceptionConsoleLogger(ILogger):
+class ExceptionConsoleLogger(LoggerBase):
     """
     A console logger implementation that raises exceptions on error 
     and critical calls.
@@ -346,7 +347,7 @@ class ExceptionConsoleLogger(ILogger):
         raise RuntimeError(f"Critical error: {msg}")
 
 
-def get_logger(name: str) -> ILogger:
+def get_logger(name: str) -> LoggerBase:
     """
     Get a logger with the specified name.
 

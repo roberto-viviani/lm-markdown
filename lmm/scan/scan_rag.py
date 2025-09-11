@@ -85,10 +85,10 @@ from lmm.scan.scan_keys import (
     OPTIONS_KEY,
 )
 
-from lmm.utils.logging import ILogger, get_logger
+from lmm.utils.logging import LoggerBase, get_logger
 
 # Set up logger
-logger: ILogger = get_logger(__name__)
+logger: LoggerBase = get_logger(__name__)
 
 
 class ScanOpts(BaseModel):
@@ -170,7 +170,7 @@ class ScanOpts(BaseModel):
 def scan_rag(
     blocks: list[Block],
     opts: ScanOpts = ScanOpts(),
-    logger: ILogger = logger,
+    logger: LoggerBase = logger,
 ) -> list[Block]:
     """Prepare the blocklist structure for RAG (Retrieval Augmented
     Generation) by enhancing it with metadata.
@@ -355,7 +355,7 @@ def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
     save: bool | str | Path = False,
-    logger: ILogger = logger,
+    logger: LoggerBase = logger,
 ) -> list[Block]:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
@@ -544,7 +544,7 @@ def add_id_to_nodes(
 
 
 def add_questions(
-    root: MarkdownNode, opts: ScanOpts, logger: ILogger
+    root: MarkdownNode, opts: ScanOpts, logger: LoggerBase
 ) -> None:
     """Add questions anwered by text using a language model.
 
@@ -580,7 +580,7 @@ def add_questions(
 
 
 def add_summaries(
-    root: MarkdownNode, opts: ScanOpts, logger: ILogger
+    root: MarkdownNode, opts: ScanOpts, logger: LoggerBase
 ):
     """Add summaries of text using a language model.
 
