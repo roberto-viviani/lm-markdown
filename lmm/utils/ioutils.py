@@ -17,8 +17,8 @@ logger: LoggerBase = get_logger(__name__)
 
 def string_to_path_or_string(input_string: str) -> Path | str:
     """
-    Takes a string as argument. If the string is one line, checks 
-    that the string codes for an existing file. If so, it returns a 
+    Takes a string as argument. If the string is one line, checks
+    that the string codes for an existing file. If so, it returns a
     Path object for that file. Otherwise, it returns the string.
 
     A string is considered one line if it contains no newlines, or if
@@ -28,7 +28,7 @@ def string_to_path_or_string(input_string: str) -> Path | str:
         input_string: The input string to check
 
     Returns:
-        Path object if the string represents an existing file, 
+        Path object if the string represents an existing file,
         otherwise the original string
     """
     # Check if string is a single line (allowing for trailing \n)
@@ -52,7 +52,7 @@ def string_to_path_or_string(input_string: str) -> Path | str:
 # Validate file name
 def validate_file(
     source: str | Path, logger: LoggerBase = logger
-) -> None | Path:
+) -> Path | None:
     """Returns: None for failure, Path object otherwise"""
     if not source:
         logger.warning("No file given")
