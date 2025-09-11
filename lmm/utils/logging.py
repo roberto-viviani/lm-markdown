@@ -62,7 +62,7 @@ class ConsoleLogger(LoggerBase):
     logging module.
     """
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(self, name: str | None = None) -> None:
         """
         Initialize the ConsoleLogger with a specific logger name.
 
@@ -70,7 +70,10 @@ class ConsoleLogger(LoggerBase):
             name: The name of the logger, typically __name__ to use 
             the module name
         """
-        self.logger = logging.getLogger(name)
+        if name is not None or not bool(name):
+            self.logger = logging.getLogger(name)
+        else:
+            self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
 
         # Ensure we have a console handler if none exists
