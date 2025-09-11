@@ -198,19 +198,20 @@ def create_embeddings(
 
     Args:
         settings: an EmbeddingSettings object with the following
-        fields:
-          - dense_model: a specification in the form provider/
+            fields:
+
+            - dense_model: a specification in the form provider/
             model, for example 'OpenAI/text-embedding-3-small'
-          - sparse_model: a sparse model specification
+            - sparse_model: a sparse model specification
 
     Returns:
         a Langchain that embeds text by calling embed_documents
             or embed_query.
 
     Raises:
-        ValidationError, TypeError for invalid spec
-        ImportError for missing libraries
-        requests.ConnectionError if not online
+        ValidationError, TypeError: for invalid spec
+        ImportError: for missing libraries
+        requests.ConnectionError: if not online
     """
     if not bool(settings):  # includes empty dict
         sets = Settings()

@@ -2,9 +2,9 @@
 Utilities to read/write markdown files to/from disc and handle errors
 consistently for the lmm package.
 
-This module provides robust I/O operations for markdown files with comprehensive
-error handling, file size validation, encoding detection, and integration with
-the lmm logging system.
+The module `ioutils`provides robust I/O operations for markdown files
+with comprehensiv error handling, file size validation, encoding
+detection, and integration with the lm makrdown logging system.
 
 Key Features:
 - Automatic encoding detection with fallback strategies
@@ -205,7 +205,7 @@ def load_markdown(
 
     Args:
         source (str | Path): the source file. If the source is a
-            multiline string, or if its not a file, returns the
+            multiline string, or if it is not a file, returns the
             string itself.
         logger (LoggerBase): a logger object (defaults to console).
         max_size_mb (float): maximum file size in MB (default: 50.0).
@@ -215,7 +215,8 @@ def load_markdown(
         auto_detect_encoding (bool): whether to automatically detect file encoding
             (default: True).
 
-    Note: I/O errors will be conveyed to the logger object. Use an
+    Note:
+        I/O errors will be conveyed to the logger object. Use an
         ExceptionConsoleLogger object to raise errors.
     """
 
@@ -296,7 +297,8 @@ def save_markdown(
     Returns:
         a boolean indicating success or failure.
 
-    Note: I/O errors are conveyed through the logger object. Use an
+    Note:
+        I/O errors are conveyed through the logger object. Use an
         ExceptionConsoleLogger object to raise errors.
     """
     if not content:
@@ -354,7 +356,8 @@ def report_error_blocks(
     Returns:
         a list without error blocks.
 
-    Note: I/O errors are conveyed through the logger object. Use an
+    Note:
+        I/O errors are conveyed through the logger object. Use an
         ExceptionConsoleLogger object to raise errors.
         Use blocklist_errors to filter the block list for error
         blocks.

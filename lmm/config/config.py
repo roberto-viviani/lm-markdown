@@ -39,7 +39,17 @@ DEFAULT_PORT_RANGE = (
 
 
 class LanguageModelSettings(BaseModel):
-    """Specification of language sources and models."""
+    """
+    Specification of language sources and models.
+
+    Attributes:
+        model: model specificaion
+        temperature: float between 0.0 and 2.0
+        max_tokens: max number of generated tokens
+        max_retries: max number retries attempts
+        timmeout: timeout when waiting for response
+        provider_params: provider-specific parameters
+    """
 
     # Required
     model: str = Field(
@@ -159,7 +169,13 @@ class LanguageModelSettings(BaseModel):
 
 
 class EmbeddingSettings(BaseSettings):
-    """Specification of embeddings object."""
+    """
+    Specification of embeddings object.
+
+    Attributes:
+        dense_model: embedding model specification
+        sparse_model: sparse embeddings
+    """
 
     dense_model: str = Field(
         description="Model specification in the form "
@@ -208,13 +224,20 @@ class EmbeddingSettings(BaseSettings):
 
 
 class ServerSettings(BaseSettings):
-    """Server configuration settings."""
+    """
+    Server configuration settings.
+
+    Attributes:
+        mode: one of 'local' or 'remote'
+        port: port number (only if mode is 'remote')
+        host: server host address (defaults to 'localhost')
+    """
 
     mode: Literal["local", "remote"] = Field(
         default="local", description="Server deployment mode"
     )
     port: int = Field(
-        default=0,
+        default=61543,
         ge=0,
         le=65535,
         description="Server port (0 for auto-assignment)",
@@ -320,7 +343,7 @@ def serialize_settings(sets: BaseSettings) -> str:
     """Transform the settings into a string in TOML format.
 
     Args:
-        settings: The settings object to serialize
+        sets: The settings object to serialize
 
     Returns:
         TOML formatted string representation of settings
@@ -393,7 +416,6 @@ def create_default_config_file(
     """Create a default settings file.
 
     Args:
-        settings: Custom settings object (defaults to Settings())
         file_path: Target file path (defaults to config.toml)
 
     Raises:

@@ -1,12 +1,13 @@
-"""This module contains a parser for a simplified version of Pandoc
-Markdown, converting it into a list of blocks.
+"""The `parse_markdown` module contains a parser for a simplified
+version of Pandoc Markdown, converting it into a list of blocks.
 
 The parser creates a parse list of blocks defined by the following
-types: HeaderBlock, MetadataBlock, HeadingBlock, TextBlock, and
-ErrorBlock. Everything that is not parsed as a HeaderBlock,
+types: `HeaderBlock`, `MetadataBlock`, `HeadingBlock`, `TextBlock`,
+and `ErrorBlock`. Everything that is not parsed as a HeaderBlock,
 MetadataBlock or HeadingBlock becomes a TextBlock.
 
 Example:
+
     ```python
     text = \"""
     ---
@@ -26,6 +27,7 @@ Example:
 
 The supported markdown is the same as in the pandoc specification
 with the following exceptions:
+
 - when used in the rest of the library, the document should start
     with a metadata block, which is parsed as a header
 - title blocks marked by '%' are not supported (will be parsed as
@@ -166,7 +168,7 @@ class MetadataBlock(BaseModel):
             value_type: the type of the value. Due to the limitations
                 of the Python type system, no algebraic or parametric
                 type may be used here.
-            default (of type value_type) a default return value.
+            default: (of type value_type) a default return value.
 
         Returns:
             a value of type value_type.
@@ -599,7 +601,7 @@ class ErrorBlock(BaseModel):
 
     def serialize(self) -> str:
         """A textual representation of the error. When parsed, it will
-        reconstitute the markdown text taht gave rise to the error."""
+        reconstitute the markdown text that gave rise to the error."""
         content = "** ERROR: " + self.content + "**\n"
         if self.errormsg:
             content += self.errormsg + "\n"
@@ -918,6 +920,7 @@ def blocklist_copy(
         ```
     Notes:
         To copy by reference, stardard Python syntax may be used:
+
         ```python
         blockscopy = [b for b in blocks if isinstance(b, TextBlock)]
         ```

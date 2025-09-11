@@ -1,7 +1,7 @@
 """
 Operations on markdown blocks to prepare it for RAG (Retrieval
 Augmented Generation) by enhancing it with metadata. This module
-exmplifies how to use functions to change the markdown document
+exemplifies how to use functions to change the markdown document
 using its tree representation and higher-order traversal functions.
 
 The operation that are supported by the module are
@@ -37,7 +37,7 @@ from pathlib import Path
 from typing import Callable
 from pydantic import BaseModel, ConfigDict, Field, validate_call
 
-# LM markdwon
+# LM markdown
 from lmm.markdown.ioutils import save_markdown
 from lmm.utils.hash import generate_uuid
 from lmm.markdown.parse_markdown import (
@@ -172,12 +172,14 @@ def scan_rag(
     opts: ScanOpts = ScanOpts(),
     logger: LoggerBase = logger,
 ) -> list[Block]:
-    """Prepare the blocklist structure for RAG (Retrieval Augmented
+    """
+    Prepares the blocklist structure for RAG (Retrieval Augmented
     Generation) by enhancing it with metadata.
 
     Args:
         blocks: a markdown block list
         opts: a ScanOpts object
+        logger: a logger object (defaults to console logging)
 
     Returns:
         list[Block]: List of enhanced markdown blocks, or empty list
@@ -185,6 +187,7 @@ def scan_rag(
 
     Note:
         The function adds several metadata fields to blocks:
+
         - docid: Unique document identifier
         - titles: Hierarchical heading path
         - textid/headingid: Unique block identifiers
@@ -196,9 +199,7 @@ def scan_rag(
         if the header is missing, and a docid field to the header
         if this is missing.
 
-    Raises:
-        ConnectionError,
-        TypeError, ValueError, ValidationError
+    Raises ConnectionError, TypeError, ValueError, ValidationError
 
     Example of use:
         ```python
@@ -546,7 +547,7 @@ def add_id_to_nodes(
 def add_questions(
     root: MarkdownNode, opts: ScanOpts, logger: LoggerBase
 ) -> None:
-    """Add questions anwered by text using a language model.
+    """Add questions answered by text using a language model.
 
     Args:
         root: a markdown node to start the traversal

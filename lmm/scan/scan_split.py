@@ -48,7 +48,7 @@ logger = get_logger(__name__)
 
 
 class NullTextSplitter(TextSplitter):
-    """ " A langchain text splitter that does not split"""
+    """A langchain text splitter that does not split"""
 
     def split_text(self, text: str) -> list[str]:
         return [text]
@@ -66,10 +66,12 @@ def blocks_to_splitted_blocks(
     block prior to ingestion. Metadata are inherited from the original
     block.
 
-    Args:   blocklist, a list of markdown blocks
-            text_splitter a langchain text splitter
+    Args:
+        blocks: a list of markdown blocks
+        text_splitter: a langchain text splitter
 
-    Returns:    a list of markdown blocks
+    Returns:
+        a list of markdown blocks
     """
 
     if isinstance(text_splitter, NullTextSplitter):
@@ -109,13 +111,15 @@ def scan_split(
 ) -> list[Block]:
     """Scan syntax for splitter
 
-    Args:   blocklist, a list of markdown blocks
-            text_splitter (opt), a langchain text splitter
-                (defaults to a character text splitter, chunk size
-                1000, overlap 200). To switch off splitting, use
-                NullTextSplitter
+    Args:
+        blocks: a list of markdown blocks
+        text_splitter (opt): a langchain text splitter
+            (defaults to a character text splitter, chunk size
+            1000, overlap 200). To switch off splitting, use
+            NullTextSplitter
 
-    Returns:    a list of markdown blocks
+    Returns:
+        a list of markdown blocks
     """
     return blocks_to_splitted_blocks(blocks, text_splitter)
 
@@ -128,13 +132,17 @@ def markdown_split(
 ) -> list[Block]:
     """Interface to apply split to documents (interactive use)
 
-    Args:   blocklist, a list of markdown blocks
-            text_splitter (opt), a langchain text splitter
-                (defaults to a character text splitter, chunk size
-                1000, overlap 200). To switch off splitting, use
-                NullTextSplitter
+    Args:
+        sourcefile: the file containing the markdown document to split
+        save: a boolean value indicating whether the split document
+            should be saved to disk
+        text_splitter (opt): a langchain text splitter
+            (defaults to a character text splitter, chunk size
+            1000, overlap 200). To switch off splitting, use
+            NullTextSplitter
 
-    Note: if an error occurs and the blocklist becomes empty,
+    Note:
+        if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
     """
 

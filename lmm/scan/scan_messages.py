@@ -310,14 +310,17 @@ def markdown_messages(
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
-    Args: source: the file to load the markdown from
-          save: if False, does not save; if True, saves back to
+    Args:
+        sourcefile: the file to load the markdown from
+        save: if False, does not save; if True, saves back to
             original markdown file; if a filename, saves to
             file.
 
-    Returns: the processed list of blocks.
+    Returns:
+        the processed list of blocks.
 
-    Note: if an error occurs and the blocklist becomes empty,
+    Note:
+        if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
     """
 

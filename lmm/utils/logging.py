@@ -1,12 +1,13 @@
 """
 Centralized logging configuration for the ML Markdown project.
 
-This module provides a standardized way to configure and use Python's 
-logging module across the entire project. It ensures consistent log 
+This module provides a standardized way to configure and use Python's
+logging module across the entire project. It ensures consistent log
 formatting, appropriate log levels, and centralized configuration.
 
 Usage:
-    from library.lm_logging import get_logger, ConsoleLogger, 
+    ```python
+    from library.lm_logging import get_logger, ConsoleLogger,
         FileLogger, ExceptionConsoleLogger
 
     # Use the abstract interface implementations
@@ -16,6 +17,7 @@ Usage:
 
     # Or use the traditional logger
     logger = get_logger(__name__)
+    ```
 """
 
 import logging
@@ -57,18 +59,15 @@ class LoggerBase(ABC):
 
 class ConsoleLogger(LoggerBase):
     """
-    A console logger implementation that uses logging.Logger as a 
-    delegate. Logs messages to the console using Python's built-in 
+    A console logger implementation that uses logging.Logger as a
+    delegate. Logs messages to the console using Python's built-in
     logging module.
     """
 
     def __init__(self, name: str | None = None) -> None:
         """
-        Initialize the ConsoleLogger with a specific logger name.
-
-        Args:
-            name: The name of the logger, typically __name__ to use 
-            the module name
+        Initialize the ConsoleLogger with a specific logger name,
+        typically __name__ to use the module name
         """
         if name is not None or not bool(name):
             self.logger = logging.getLogger(name)
@@ -108,8 +107,8 @@ class ConsoleLogger(LoggerBase):
 
 class FileLogger(LoggerBase):
     """
-    A file logger implementation that uses logging.Logger as a 
-    delegate. Logs messages to a specified file using Python's 
+    A file logger implementation that uses logging.Logger as a
+    delegate. Logs messages to a specified file using Python's
     built-in logging module.
     """
 
@@ -117,13 +116,13 @@ class FileLogger(LoggerBase):
         self, name: str = "", log_file: str | Path = "app.log"
     ) -> None:
         """
-        Initialize the FileLogger with a specific logger name and 
+        Initialize the FileLogger with a specific logger name and
         file path.
 
         Args:
-            name: The name of the logger, typically __name__ to use 
+            name: The name of the logger, typically __name__ to use
                 the module name
-            log_file: Path to the log file where messages will be 
+            log_file: Path to the log file where messages will be
                 written
         """
         self.logger = logging.getLogger(f"{name}_file")
@@ -166,9 +165,9 @@ class FileLogger(LoggerBase):
 
 class FileConsoleLogger(LoggerBase):
     """
-    A file logger implementation that uses logging.Logger as a 
-    delegate. Logs messages to a specified file using Python's 
-    built-in logging module, and relays the messages to the console 
+    A file logger implementation that uses logging.Logger as a
+    delegate. Logs messages to a specified file using Python's
+    built-in logging module, and relays the messages to the console
     as well.
     """
 
@@ -178,13 +177,13 @@ class FileConsoleLogger(LoggerBase):
         self, name: str = "", log_file: str | Path = "app.log"
     ) -> None:
         """
-        Initialize the FileLogger with a specific logger name and 
+        Initialize the FileLogger with a specific logger name and
         file path.
 
         Args:
-            name: The name of the logger, typically __name__ to use 
+            name: The name of the logger, typically __name__ to use
                 the module name
-            log_file: Path to the log file where messages will be 
+            log_file: Path to the log file where messages will be
                 written
         """
         self.logger = logging.getLogger(f"{name}_file")
@@ -232,11 +231,13 @@ class FileConsoleLogger(LoggerBase):
         self.logger.critical(msg, exc_info=True, stack_info=True)
         self.console_logger.critical(msg)
 
+
 class LoglistLogger(LoggerBase):
     """
     Maintains a list of logged errors and warnings that can be
     inspected by the object creator.
     """
+
     def __init__(self) -> None:
         """
         Initialize the logger.
@@ -264,15 +265,15 @@ class LoglistLogger(LoggerBase):
         self.logs.append({'critical': msg})
 
     def get_logs(self, level: int = 0) -> list[str]:
-        """ 
+        """
         Returns a list of strings with the log messages.
 
         Args:
-            A filter on the logs. Posible values: 
-            0 or less: returns all messages
-            1 or less: omit info
-            2 or less: omit warning
-            3 or more: only errors and critical
+           level: a filter on the logs. Possible values:
+                0 or less: returns all messages
+                1 or less: omit info
+                2 or less: omit warning
+                3 or more: only errors and critical
         """
         logs: list[str] = []
         for entry in self.logs:
@@ -295,24 +296,25 @@ class LoglistLogger(LoggerBase):
         """Clear the logs from the cache"""
         self.logs.clear()
 
+
 class ExceptionConsoleLogger(LoggerBase):
     """
-    A console logger implementation that raises exceptions on error 
+    A console logger implementation that raises exceptions on error
     and critical calls.
 
-    This logger behaves like ConsoleLogger for info, warning, and 
-    set_level methods, but raises exceptions when error() or 
+    This logger behaves like ConsoleLogger for info, warning, and
+    set_level methods, but raises exceptions when error() or
     critical() methods are called.
     The message is still logged before the exception is raised.
     """
 
     def __init__(self, name: str = "") -> None:
         """
-        Initialize the ExceptionConsoleLogger with a specific logger 
+        Initialize the ExceptionConsoleLogger with a specific logger
         name.
 
         Args:
-            name: The name of the logger, typically __name__ to use 
+            name: The name of the logger, typically __name__ to use
                 the module name
         """
         self.logger = logging.getLogger(f"{name}_exception")
@@ -355,7 +357,7 @@ def get_logger(name: str) -> LoggerBase:
     Get a logger with the specified name.
 
     Args:
-        name: The name of the logger, typically __name__ to use the 
+        name: The name of the logger, typically __name__ to use the
             module name
 
     Returns:
@@ -383,7 +385,7 @@ def get_logging_logger(name: str) -> logging.Logger:
     Get a logger with the specified name.
 
     Args:
-        name: The name of the logger, typically __name__ to use the 
+        name: The name of the logger, typically __name__ to use the
             module name
 
     Returns:

@@ -4,7 +4,7 @@ Definition of language models kernels and respective prompts.
 Example:
     ```python
     from lmm.language_models.kernels import kernel_prompts
-    prompt_template: str = kernel_promts["summarizer"]
+    prompt_template: str = kernel_prompts["summarizer"]
     ```
 
 Note:

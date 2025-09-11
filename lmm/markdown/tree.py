@@ -2,7 +2,7 @@
 This module provides functionality to represent a Markdown document
 as a tree. The headings constitute the nodes of the tree
 (`HeadingNode`) and the text blocks constitute the leafs (`TextNode`).
-Metadata in the markdown document are converted to metdata properties
+Metadata in the markdown document are converted to metadata properties
 of nodes. The metadata blocks are interpreted as annotations for the
 metadata of the block that follows, be it a heading or a text block.
 
@@ -52,8 +52,9 @@ root node is a heading from the title property of the header metadata
 block.
 
 Note:
-    the tree is a blocklist in a different representation, and is
-    used to operate on the markdown data through side effects.
+    the tree is a representation of the blocks in the blocklist, and
+    not a copy of them. It is used to operate on the markdown data
+    through side effects.
 """
 
 # using protected members
@@ -346,7 +347,7 @@ class MarkdownNode(ABC):
         Returns the string representation of the value of a specific
         metadata key by traversing up the tree if necessary to find
         inherited metadata. If the key is not present, return a
-        dafault value. If the key is a dict or list, return None. If
+        default value. If the key is a dict or list, return None. If
         include_header is False, the header node is not considered.
 
         This function extends the concept of metadata inheritance to
@@ -486,7 +487,11 @@ class HeadingNode(MarkdownNode):
                     "Unreachable code reached: "
                     + "unrecognized block type in node"
                 )
-                return str(self.block.get_key('title', ""))
+            case _:
+                raise RuntimeError(
+                    "Unreachable code reached: "
+                    + "unrecognized block type in node"
+                )
 
     def set_content(self, content: str) -> None:
         match self.block:
@@ -716,9 +721,9 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
     Note:
         conversion to tree of a non-empty block list adds a
         metadata blocks in front, if missing, and an empty text
-        block after metadatata blocks without following text or
+        block after metadata blocks without following text or
         heading block, to the original list of markdown blocks.
-        If the block list startes with a heading, adds a header
+        If the block list starts with a heading, adds a header
         with the content of the heading.
 
     Note:
@@ -961,7 +966,7 @@ def pre_order_traversal(
         visit_func: The function to apply to each node
 
     Note:
-        this function may be used with side-effects on the tree
+        this function may be used with side effects on the tree
     """
     visit_func(node)
     for child in node.children:
@@ -980,7 +985,7 @@ def post_order_traversal(
         visit_func: The function to apply to each node
 
     Note:
-        this function may be used with side-effects on the tree
+        this function may be used with side effects on the tree
     """
     for child in node.children:
         post_order_traversal(child, visit_func)
@@ -1115,7 +1120,7 @@ def fold_tree(
     return result[0]
 
 
-# exchange informtation between metadata and content---------------
+# exchange information between metadata and content---------------
 def extract_content(
     root_node: HeadingNode,
     output_key: str,
@@ -1299,7 +1304,7 @@ def load_tree(source: str | Path) -> MarkdownTree:
     if not blocks:
         return None
 
-    # Enforce contraint on first block
+    # Enforce constraint on first block
     if not isinstance(blocks[0], HeaderBlock):
         header = HeaderBlock.from_default(str(source))
         blocks = [header] + blocks

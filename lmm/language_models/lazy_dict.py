@@ -1,9 +1,9 @@
 """
-A utility class LazyLoadingDict to store memoized language model
+The utility class `LazyLoadingDict` stores memoized language model
 class objects, or indeed objects of any class, produced by a factory
 function.
 
-The LazyLoadingDict class has three main uses that may be combined.
+The `LazyLoadingDict` class has three main uses that may be combined.
 
 - the first is to create objects based on a definition using a
 dictionary interface. The key of the dictionary is the definition that
@@ -118,6 +118,7 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
     factory function, because literals do not give rise to runtime
     errors in themselves.
 
+    ```python
     ModelSource = Literal["OpenAI", "Cohere"]
 
     def _model_factory(src: ModelSource) -> ModelClass:

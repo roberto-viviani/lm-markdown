@@ -97,14 +97,18 @@ def markdown_scan(
     """General check that the markdown is suitable for work,
     returning a list of blocks with a header block first.
 
-    Args: source: the file to load the markdown from
-          save: if False, does not save; if True, saves back to
+    Args:
+        sourcefile: the file to load the markdown from
+        save: if False, does not save; if True, saves back to
             original markdown file; if a filename, saves to
             file.
+        logger: a logger object (defaults to console logging)
 
-    Returns: the processed list of blocks.
+    Returns:
+        the processed list of blocks.
 
-    Note: if an error occurs and the blocklist becomes empty,
+    Note:
+        if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
     """
 
@@ -189,11 +193,10 @@ def post_order_aggregation(
 ) -> None:
     """
     Executes a post-order traversal on the markdown tree, with bottom-
-    -up aggregation of the synthetised attributes in the parent nodes
-    from the content data member of children text nodes. The
-    synthetised attribute is computed by aggregate_func and recursi-
-    vely stored in the output_key field of the metadata member of the
-    parent node.
+    -up aggregation of the synthetic attributes in the parent nodes
+    from the content data member of children text nodes. The synthetic
+    attribute is computed by aggregate_func and recursively stored in
+    the output_key field of the metadata member of the parent node.
 
     Note: this function differs from tree.extract_content in that a
     hash is computed to verify that the content was changed before
@@ -204,7 +207,7 @@ def post_order_aggregation(
         aggregate_func: Function to process the collected content
             before storing. The collected content is provided as a
             string list. The function may return an empty string if
-            there is no/not enough material to sythetise, leaving
+            there is no/not enough material to synthetise, leaving
             it for synthesis at the next level.
         output_key: the key in the metadata where the sythetised
             attributes should be stored
@@ -305,7 +308,7 @@ def post_order_aggregation(
 
     post_order_traversal(root_node, _process_node)
     # TODO: verify what happens to header
-    # TODO: verify what happends to document without text
+    # TODO: verify what happens to document without text
 
 
 if __name__ == "__main__":

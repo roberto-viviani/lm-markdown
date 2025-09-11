@@ -237,8 +237,7 @@ def create_model_from_spec(
     Returns:
         a Langchain model object.
 
-    Raises:
-        ValuationError, TypeError, ValidationError
+    Raises ValuationError, TypeError, ValidationError
 
     Example:
         ```python
@@ -270,8 +269,7 @@ def create_model_from_settings(
     Returns:
         a Langchain model object.
 
-    Raises:
-        ValuationError, TypeError, ValidationError
+    Raises ValuationError, TypeError, ValidationError
 
     Example:
         ```python
@@ -300,8 +298,7 @@ def create_embedding_model_from_spec(
     Returns:
         a Langchain embeddings model object.
 
-    Raises:
-        ValuationError, TypeError, ValidationError
+    Raises ValuationError, TypeError, ValidationError
 
     Example:
         ```python
@@ -328,8 +325,7 @@ def create_embedding_model_from_settings(
     Returns:
         a Langchain embeddings model object.
 
-    Raises:
-        ValuationError, TypeError, ValidationError
+    Raises ValuationError, TypeError, ValidationError
 
     Example:
         ```python

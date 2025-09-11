@@ -20,7 +20,7 @@ def base_hash(input_string: str) -> str:
     md5_hasher = hashlib.md5()
     md5_hasher.update(encoded_string)
 
-    # Convert to human readable
+    # Convert to human-readable
     byte_digest_md5 = md5_hasher.digest()
     base64_digest_md5 = base64.b64encode(byte_digest_md5).decode(
         'utf-8'

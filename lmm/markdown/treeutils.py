@@ -54,7 +54,7 @@ from .parse_markdown import (
 )
 
 
-# inheritcance------------------------------------------------------
+# inheritance------------------------------------------------------
 
 
 def inherit_metadata(
@@ -161,7 +161,6 @@ def collect_text(
 
     Args:
         root: The root node of the tree, or a heading node
-        sep: a separator string
         filter_func: an optional filter on the node
 
     Returns:
@@ -184,7 +183,6 @@ def collect_headings(
 
     Args:
         root: The root node of the tree, or a heading node
-        sep: a separator string
         filter_func: an optional filter on the node
 
     Returns:
