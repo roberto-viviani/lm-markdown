@@ -11,24 +11,25 @@ from pydantic import validate_call
 from lmm.markdown.parse_markdown import Block
 
 # Set up default logger
-from .logging import get_logger, ILogger  # fmt: skip
-logger: ILogger = get_logger(__name__)
+from .logging import get_logger, LoggerBase  # fmt: skip
+logger: LoggerBase = get_logger(__name__)
 
 
 def string_to_path_or_string(input_string: str) -> Path | str:
     """
-    Takes a string as argument. If the string is one line, checks that the
-    string codes for an existing file. If so, it returns a Path object for
-    that file. Otherwise, it returns the string.
+    Takes a string as argument. If the string is one line, checks 
+    that the string codes for an existing file. If so, it returns a 
+    Path object for that file. Otherwise, it returns the string.
 
-    A string is considered one line if it contains no newlines, or if it
-    only has a single trailing newline character.
+    A string is considered one line if it contains no newlines, or if
+    it only has a single trailing newline character.
 
     Args:
         input_string: The input string to check
 
     Returns:
-        Path object if the string represents an existing file, otherwise the original string
+        Path object if the string represents an existing file, 
+        otherwise the original string
     """
     # Check if string is a single line (allowing for trailing \n)
     stripped_string = input_string.rstrip('\n\r')
@@ -50,7 +51,7 @@ def string_to_path_or_string(input_string: str) -> Path | str:
 
 # Validate file name
 def validate_file(
-    source: str | Path, logger: ILogger = logger
+    source: str | Path, logger: LoggerBase = logger
 ) -> None | Path:
     """Returns: None for failure, Path object otherwise"""
     if not source:

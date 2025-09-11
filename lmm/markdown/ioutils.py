@@ -1,6 +1,6 @@
 """
-Utilities to read/write to/from disc and print errors to console.
-Errors are not propagated, but functions return null value.
+Utilities to read/write markdown files to/from disc and handle errors
+consistently for the lmm package.
 """
 
 from pathlib import Path
@@ -10,21 +10,34 @@ from .parse_markdown import Block, ErrorBlock
 from .parse_markdown import serialize_blocks, blocklist_errors
 
 # Set up default logger
-from lmm.utils.logging import get_logger, ILogger  # fmt: skip
-logger: ILogger = get_logger(__name__)
+from lmm.utils.logging import get_logger, LoggerBase  # fmt: skip
+logger: LoggerBase = get_logger(__name__)
 
 
 # Load markdown
 def load_markdown(
-    source: str | Path, logger: ILogger = logger
+    source: str | Path, logger: LoggerBase = logger
 ) -> str:
-    # loads the markdown file. No error thrown, instead
-    # message printed to console and empty string returned.
+    """
+    Loads a text file (intended for markdown files).
+    The purpose of this function is to catch errors through
+    a LoggerBase object, instead of raising errors in the I/O.
 
+    Args:
+        source (str | Path): the source file. If the source is a
+            multiline string, or if its not a file, returns the
+            string itself.
+        logger (LoggerBase): a looger object (defaults to console).
+
+    Note: I/O errors will be conveyed to the logger object. Use an
+        ExceptionConsoleLogger object to raise errors.
+    """
+
+    # Make the source a Path object if it points to file
     if isinstance(source, str):
         source = string_to_path_or_string(source)
 
-    # Check if the input is a Path object
+    # Load if Path object, or return
     if isinstance(source, Path):
         if not validate_file(source):
             return ""
@@ -34,37 +47,30 @@ def load_markdown(
             logger.error(f"I/O error reading file {source}: {e}")
             return ""
     else:
-        # # Check if the string is a single line
-        # if '\n' not in source:
-        #     # Treat it as a file path
-        #     path = validate_file(source)
-        #     if not path:
-        #         return ""
-        #     if path.is_file():  # type
-        #         try:
-        #             content = path.read_text(encoding='utf-8')
-        #         except IOError as e:
-        #             logger.error(
-        #                 f"I/O error reading file {source}: " + f"{e}"
-        #             )
-        #             return ""
-        #     else:
-        #         logger.error(f"File not found: {source}")
-        #         return ""
-        # else:
-        # Treat it as raw content
         content = source
 
     return content
 
 
-# Save markdown
 def save_markdown(
     dest: str | Path,
     content: list[Block] | str,
-    logger: ILogger = logger,
+    logger: LoggerBase = logger,
 ) -> bool:
-    """Save markdown blocks to a file. Returns success or failure."""
+    """
+    Save markdown blocks to a file. 
+
+    Args:
+        dest (str | Path): the file to save the markdown to.
+        logger (LoggerBase): a logger object, defaulting to
+            a console logger.
+
+    Returns:
+        a boolean indicating success or failure.
+
+    Note: I/O errors are conveyed through the logger object. Use an
+        ExceptionConsoleLogger object to raise errors. 
+    """
     if not content:
         return False
 
@@ -100,14 +106,26 @@ def save_markdown(
     return True
 
 
-# Print error blocks
 def report_error_blocks(
-    blocks: list[Block], logger: ILogger = logger
+    blocks: list[Block], logger: LoggerBase = logger
 ) -> list[Block]:
-    """Checks the existence of error blocks. If there are any,
-    they are printed to the console.
-    Returns: A list without error blocks."""
+    """
+    Checks the existence of error blocks. If there are any, they are
+    reported to the logger object.
 
+    Args:
+        blocks: the block list to check for error blocks
+        logger (LoggerBase): a logger object, defaulting to
+            a console logger, which reports the errors.
+
+    Returns:
+        a list without error blocks.
+
+    Note: I/O errors are conveyed through the logger object. Use an
+        ExceptionConsoleLogger object to raise errors. 
+        Use blocklist_errors to filter the block list for error 
+        blocks.
+    """
     if not blocks:
         return []
 

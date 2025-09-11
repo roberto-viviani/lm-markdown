@@ -23,11 +23,11 @@ save_markdown("my_markdown.md", blocks)
 ```
 
 The first block in the list must be a header or a metadata block, from
-which the root node of the tree is built. If no header block is present
-at the beginning of the list, one is created with default values.
-Other parent nodes are built from the heading blocks, and the leaf
-nodes from the text blocks. Except for the first block, metadata blocks
-are used annotate the nodes with properties saved as metadata.
+which the root node of the tree is built. If no header block is
+present at the beginning of the list, one is created with default 
+values. Other parent nodes are built from the heading blocks, and the 
+leaf nodes from the text blocks. Except for the first block, metadata 
+blocks are used annotate the nodes with properties saved as metadata.
 
 ```markdown
 ---  # This will become the metadata of the root node
@@ -361,8 +361,8 @@ class MarkdownNode(ABC):
         Returns:
             The value for the specified key, or a default value if not
             found in the node or any of its ancestors (or None if no
-            default was specified). If the value is not a primitive value
-            of the int, float, str, or bool type returns None.
+            default was specified). If the value is not a primitive
+            value of the int, float, str, or bool type returns None.
         """
 
         if not key:
@@ -552,9 +552,9 @@ class HeadingNode(MarkdownNode):
 
         Note:
             one cannot add a heading node with a level equal or higher
-            than that of the parent node. The level of the heading node
-            is adjusted downwards automatically. Beyond level 6, a text
-            node is added.
+            than that of the parent node. The level of the heading
+            node is adjusted downwards automatically. Beyond level 6, 
+            a text node is added.
 
         TODO:
             Add testing
@@ -571,21 +571,17 @@ class HeadingNode(MarkdownNode):
                 )
                 return
             elif child_node.heading_level() <= self.heading_level():
-                if child_node.is_header_node():
-                    new_node = HeadingNode(
-                        block=HeadingBlock(
-                            level=self.heading_level() + 1,
-                            content=child_node.get_content(),
-                        )
+                new_node = HeadingNode(
+                    block=HeadingBlock(
+                        level=self.heading_level() + 1,
+                        content=child_node.get_content(),
                     )
-                    new_node.metadata = child_node.metadata
-                    new_node.metadata_block = MetadataBlock(
-                        content=child_node.metadata
-                    )
-                    child_node = new_node
-                else:
-                    # it is a header block now
-                    child_node.block.level = self.heading_level() + 1  # type: ignore
+                )
+                new_node.metadata = child_node.metadata
+                new_node.metadata_block = MetadataBlock(
+                    content=child_node.metadata
+                )
+                child_node = new_node
 
         child_node.parent = self
         self.children.append(child_node)
@@ -756,18 +752,6 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         case TextBlock() | ErrorBlock():
             header_block = HeaderBlock.from_default()
             blocks = [header_block] + blocks
-
-    # if isinstance(header_block, ErrorBlock):
-    #     # TODO: that header_block can be an ErrorBlock depends on the
-    #     # HeaderBlock._from_metadata_block(bl) call above. It is not
-    #     # clear that this case can occur. See note at the call code.
-    #     errblock = header_block
-    #     header_block = HeaderBlock.from_default()
-    #     header_block.comment = (
-    #         "Error when forming metadata for header. "
-    #         + "See following ErrorBlock."
-    #     )
-    #     blocks = [header_block, errblock] + blocks[1:]
 
     # Create root node as containing a HeadingBlock with the
     # document title as content.
@@ -1179,7 +1163,7 @@ def extract_content(
                         case TextNode():
                             buff.append(d.get_content())
                         case HeadingNode():
-                            value = str(d.get_metadata_for_key(KEY, ""))
+                            value=str(d.get_metadata_for_key(KEY, ""))
                             if value:
                                 buff.append(value)
                         case _:

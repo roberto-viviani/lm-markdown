@@ -179,14 +179,13 @@ def split_yaml_parse(
             )
 
     if mapped_keys is not None and bool(part):
-        # need a copy of the keys
-        keys: list[str] = [k for k in part.keys()]
-        for key in keys:
-            for new_key in mapped_keys:
-                if key == new_key:
-                    val: MetadataValue = part.pop(key)
-                    part[mapped_keys[new_key]] = val
-                    break
+        newpart: MetadataDict = {}
+        for key in part.keys():
+            if key in mapped_keys:
+                newpart[mapped_keys[key]] = part[key]
+            else:
+                newpart[key] = part[key]
+        part = newpart
 
     return part, whole
 
