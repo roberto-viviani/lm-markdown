@@ -41,7 +41,7 @@ from langchain_text_splitters import (
 )
 from langchain_core.documents import Document
 
-from lmm.utils.logging import get_logger
+from lmm.utils.logging import LoggerBase, get_logger
 
 # Set up logger
 logger = get_logger(__name__)
@@ -129,6 +129,7 @@ def markdown_split(
     sourcefile: str | Path,
     save: bool | str | Path = False,
     text_splitter: TextSplitter = defaultSplitter,
+    logger: LoggerBase = logger,
 ) -> list[Block]:
     """Interface to apply split to documents (interactive use)
 
