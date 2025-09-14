@@ -75,7 +75,8 @@ def _is_metadata_type(value: object) -> TypeGuard[MetadataValue]:
 
 
 def _is_primitive_type(value: object) -> bool:
-    """Test if the argument is in the MetadataPrimitive union type"""
+    """Test if the argument is a primitive type (not necessarily
+    MetadataPrimitive)"""
     return isinstance(value, (int, float, str, bool, complex, bytes))
 
 
