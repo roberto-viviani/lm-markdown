@@ -26,9 +26,12 @@ whole YAML object is reconstituted.
 YAML objects consisting of literals only will raise an exception,
 since it is conceivable that the user intended something different.
 Byte/imaginary literals are put in whole.
+
+Expected behavious: raises exception for yaml data that are not
+parsable or that contain stuctures other than MetadataDict
 """
 
-# note: unknown types introduced from pyyaml
+# unknown types introduced from pyyaml
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false
 
@@ -38,9 +41,9 @@ import re
 
 # The parsed yaml object. ParsedYaml is a tuple with the first
 # member being a dictionary with which we can work, and the
-# rest a list of things we cannot. The MetadataValue restricts the
-# values in the dictionary. We allow only one level of recursion in
-# the type definition, because , but defining recursive types is a
+# rest a list of things we cannot. The MetadataValue type restricts
+# the values in the dictionary. We allow only one level of recursion
+# in the type definition, because , but defining recursive types is a
 # challenge with Pydantic and python versions
 MetadataPrimitive = str | int | bool | float
 
@@ -55,9 +58,11 @@ ParsedYaml = tuple[dict[str, MetadataValue], list[object]]
 
 
 def _is_metadata_type(value: object) -> TypeGuard[MetadataValue]:
-    """Alas, required to match on MetadataValue. This is completely
-    recursive, unlike the MetadataValue type. Also lists end up
-    being nestable."""
+    """
+    Utility function to represent type information when matching
+    """
+    # This is completely recursive, unlike the MetadataValue type,
+    # which is not to avoid issues with pydantic type checks.
     match value:
         case str() | int() | bool() | float() | None:
             return True
@@ -70,16 +75,23 @@ def _is_metadata_type(value: object) -> TypeGuard[MetadataValue]:
 
 
 def _is_primitive_type(value: object) -> bool:
+    """Test if the argument is in the MetadataPrimitive union type"""
     return isinstance(value, (int, float, str, bool, complex, bytes))
 
 
 def is_metadata_primitive(
     value: object,
 ) -> TypeGuard[MetadataPrimitive]:
+    """
+    Utility function to represent type information when matching
+    """
     return isinstance(value, (int, float, str, bool))
 
 
 def _is_string_dict(data: object) -> TypeGuard[dict[str, object]]:
+    """
+    Utility function to represent type information when matching
+    """
     if not isinstance(data, dict):
         return False
     if not all([isinstance(k, str) for k in data.keys()]):
@@ -88,6 +100,9 @@ def _is_string_dict(data: object) -> TypeGuard[dict[str, object]]:
 
 
 def is_metadata_dict(data: object) -> TypeGuard[MetadataDict]:
+    """
+    Utility function to represent type information when matching
+    """
     if not _is_string_dict(data):
         return False
     return all([_is_metadata_type(value) for value in data.values()])
@@ -96,8 +111,18 @@ def is_metadata_dict(data: object) -> TypeGuard[MetadataDict]:
 def _split_metadata_dict(
     values: dict[str, object],
 ) -> tuple[MetadataDict, list[object]]:
-    """Eliminate all values in yaml header that are not in
-    the conformant value set"""
+    """
+    Eliminate all values in yaml header that are not in
+    the conformant value set.
+
+    Args:
+        values: a dictionary
+
+    Returns:
+        a tuple with the first element being a conformant dictionary,
+        and the second a list of object containing the non-conformant
+        elements.
+    """
     newdict: MetadataDict = {}
     buff = {}
     for v in values.keys():
@@ -128,6 +153,9 @@ def split_yaml_parse(
         dictionary with strings as keys and values of conformant
         types. The second member of the tuple is a list of yaml
         data that could not be parsed.
+
+    Behaviour: raises error if the yaml object contains data,
+        such as listerals, that are not dictionaries.
     """
 
     part: MetadataDict = {}
@@ -231,6 +259,16 @@ def serialize_yaml_parse(
 
 
 def dump_yaml(x: Any) -> str:
+    """
+    Takes a parsed yaml object and serializes it to a string.
+    Delegates to yaml.safe_dump.
+
+    Args:
+        x: a parsed yaml object.
+
+    Returns:
+        the string serialization of the object.
+    """
     if x is None:
         return ""
 
