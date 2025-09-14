@@ -24,9 +24,9 @@ save_markdown("my_markdown.md", blocks)
 
 The first block in the list must be a header or a metadata block, from
 which the root node of the tree is built. If no header block is
-present at the beginning of the list, one is created with default 
-values. Other parent nodes are built from the heading blocks, and the 
-leaf nodes from the text blocks. Except for the first block, metadata 
+present at the beginning of the list, one is created with default
+values. Other parent nodes are built from the heading blocks, and the
+leaf nodes from the text blocks. Except for the first block, metadata
 blocks are used annotate the nodes with properties saved as metadata.
 
 ```markdown
@@ -80,12 +80,10 @@ from .parse_markdown import (
 )
 from .parse_markdown import serialize_blocks, load_blocks
 from .ioutils import report_error_blocks
+from lmm.utils.logging import LoggerBase, get_logger
 
 
-# defines the type of the dictionary that can represent a node
 from typing import TypedDict  # fmt: skip
-
-
 class NodeDict(TypedDict):
     """A dictionary representation of a node.
 
@@ -558,7 +556,7 @@ class HeadingNode(MarkdownNode):
         Note:
             one cannot add a heading node with a level equal or higher
             than that of the parent node. The level of the heading
-            node is adjusted downwards automatically. Beyond level 6, 
+            node is adjusted downwards automatically. Beyond level 6,
             a text node is added.
 
         TODO:
@@ -708,7 +706,9 @@ class TextNode(MarkdownNode):
 MarkdownTree = HeadingNode | None
 
 
-def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
+def blocks_to_tree(
+    blocks: list[Block], logger: LoggerBase = get_logger(__name__)
+) -> MarkdownTree:
     """
     Builds a tree representation of a list of markdown blocks.
 
@@ -737,7 +737,7 @@ def blocks_to_tree(blocks: list[Block]) -> MarkdownTree:
         return None
 
     # Report error blocks in logger
-    report_error_blocks(blocks)
+    report_error_blocks(blocks, logger)
 
     # Enforce the first block being header
     header_block: HeaderBlock

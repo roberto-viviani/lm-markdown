@@ -10,8 +10,8 @@ Main functions:
 # pyright: reportPrivateUsage=false
 
 from pathlib import Path
-from typing import Callable
-from pydantic import validate_call
+from typing import Callable, Annotated
+from pydantic import validate_call, Field
 
 import lmm.utils.ioutils as iou
 from lmm.markdown.parse_markdown import (
@@ -92,7 +92,7 @@ def scan(blocks: list[Block]) -> list[Block]:
 def markdown_scan(
     sourcefile: str | Path,
     save: bool | str | Path = False,
-    logger: LoggerBase = logger,
+    logger: Annotated[LoggerBase, Field(exclude=True)] = logger,
 ) -> list[Block]:
     """General check that the markdown is suitable for work,
     returning a list of blocks with a header block first.

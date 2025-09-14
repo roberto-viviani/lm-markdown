@@ -11,6 +11,7 @@ Main functions:
 
 from pathlib import Path
 from pydantic import validate_call
+from requests.exceptions import ConnectionError
 
 # LM markdown
 from lmm.markdown.parse_markdown import (
@@ -32,6 +33,7 @@ from lmm.markdown.treeutils import (
     pre_order_map_tree,
 )
 from lmm.markdown.ioutils import save_markdown
+from lmm.utils.logging import LoggerBase, get_logger
 
 from lmm.config.config import LanguageModelSettings
 from lmm.language_models.kernels import KernelNames
@@ -49,10 +51,6 @@ from .scan_keys import (
     SUMMARY_KEY,
 )
 from .scan import scan, markdown_scan, post_order_aggregation
-
-from requests.exceptions import ConnectionError
-
-from lmm.utils.logging import get_logger
 
 # Set up logger
 logger = get_logger(__name__)
@@ -252,7 +250,9 @@ def _process_chain(root: MarkdownNode) -> MarkdownNode:
     return root
 
 
-def scan_messages(blocks: list[Block]) -> list[Block]:
+def scan_messages(
+    blocks: list[Block], logger: LoggerBase = logger
+) -> list[Block]:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
@@ -270,7 +270,7 @@ def scan_messages(blocks: list[Block]) -> list[Block]:
         logger.warning("Problems in markdown, fix before continuing")
         return blocks
 
-    root = blocks_to_tree(blocklist_copy(blocks))
+    root = blocks_to_tree(blocklist_copy(blocks), logger)
     if not root:
         return []
 
@@ -303,9 +303,11 @@ def remove_messages(blocks: list[Block]) -> list[Block]:
     return blocklist
 
 
-@validate_call
+@validate_call(config={'arbitrary_types_allowed': True})
 def markdown_messages(
-    sourcefile: str | Path, save: bool | str | Path = False
+    sourcefile: str | Path,
+    save: bool | str | Path = False,
+    logger: LoggerBase = logger,
 ) -> list[Block]:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
@@ -333,7 +335,7 @@ def markdown_messages(
         logger.warning("Problems in markdown, fix before continuing")
         return blocks
 
-    root = blocks_to_tree(blocklist_copy(blocks))
+    root = blocks_to_tree(blocklist_copy(blocks), logger)
     if not root:
         return []
 

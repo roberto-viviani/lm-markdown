@@ -34,7 +34,7 @@ Main superordinate functions:
 """
 
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Annotated
 from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 # LM markdown
@@ -243,7 +243,7 @@ def scan_rag(
         blocks = remove_messages(blocks)
 
     # Process directives
-    root: MarkdownTree = blocks_to_tree(blocks)
+    root: MarkdownTree = blocks_to_tree(blocks, logger)
     if not root:
         return []
     logger.info("Processing " + root.get_content())
@@ -356,7 +356,7 @@ def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
     save: bool | str | Path = False,
-    logger: LoggerBase = logger,
+    logger: Annotated[LoggerBase, Field(exclude=True)] = logger,
 ) -> list[Block]:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
