@@ -292,6 +292,12 @@ class LoglistLogger(LoggerBase):
                     logs.append(str(entry))
         return logs
 
+    def has_logs(self, level: int = 0) -> int:
+        """The number of recorded logs. Zero means there
+        were no recorded logs."""
+        logs = self.get_logs(level)
+        return len(logs)
+
     def clear_logs(self) -> None:
         """Clear the logs from the cache"""
         self.logs.clear()

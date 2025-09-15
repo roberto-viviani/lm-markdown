@@ -147,11 +147,11 @@ def markdown_split(
         it does not alter the source file.
     """
 
-    blocks = load_blocks(sourcefile)
+    blocks = load_blocks(sourcefile, logger)
     if not blocks:
         return []
     if blocklist_haserrors(blocks):
-        save_blocks(sourcefile, blocks)
+        save_blocks(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
         return []
 
@@ -163,9 +163,9 @@ def markdown_split(
         case False:
             pass
         case True:
-            save_blocks(sourcefile, blocks)
+            save_blocks(sourcefile, blocks, logger)
         case str() | Path():
-            save_blocks(save, blocks)
+            save_blocks(save, blocks, logger)
         case _:  # ignore
             pass
 

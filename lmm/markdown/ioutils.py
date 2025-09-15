@@ -71,10 +71,7 @@ from lmm.utils.ioutils import validate_file
 from lmm.utils.ioutils import string_to_path_or_string
 from .parse_markdown import Block, ErrorBlock
 from .parse_markdown import serialize_blocks, blocklist_errors
-
-# Set up default logger
-from lmm.utils.logging import get_logger, LoggerBase  # fmt: skip
-logger: LoggerBase = get_logger(__name__)
+from lmm.utils.logging import LoggerBase
 
 
 def _check_file_size(
@@ -192,7 +189,7 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
 # Load markdown
 def load_markdown(
     source: str | Path,
-    logger: LoggerBase = logger,
+    logger: LoggerBase,
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
     encoding: str | None = None,
@@ -284,7 +281,7 @@ def load_markdown(
 def save_markdown(
     dest: str | Path,
     content: list[Block] | str,
-    logger: LoggerBase = logger,
+    logger: LoggerBase,
 ) -> bool:
     """
     Save markdown blocks to a file.
@@ -342,7 +339,7 @@ def save_markdown(
 
 
 def report_error_blocks(
-    blocks: list[Block], logger: LoggerBase = logger
+    blocks: list[Block], logger: LoggerBase
 ) -> list[Block]:
     """
     Checks the existence of error blocks. If there are any, they are

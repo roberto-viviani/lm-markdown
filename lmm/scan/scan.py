@@ -121,7 +121,7 @@ def markdown_scan(
 
     # load_blocks is guaranteed to return an empty list or a list
     # of blocks.
-    blocks = mkd.load_blocks(source)
+    blocks = mkd.load_blocks(source, logger)
     if not blocks:  # Empty list check
         logger.warning(f"No blocks found in file: {source}")
         return []
@@ -175,9 +175,9 @@ def markdown_scan(
         case False:
             pass
         case True:
-            save_markdown(source, blocks)
+            save_markdown(source, blocks, logger)
         case str() | Path():
-            save_markdown(save, blocks)
+            save_markdown(save, blocks, logger)
         case _:  # ignore
             pass
 

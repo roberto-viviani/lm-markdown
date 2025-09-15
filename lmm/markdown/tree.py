@@ -1284,7 +1284,7 @@ def propagate_content(
 
 
 # utilities to load and save to file ------------------------------
-def load_tree(source: str | Path) -> MarkdownTree:
+def load_tree(source: str | Path, logger: LoggerBase) -> MarkdownTree:
     """Load a pandoc markdown file or string into a tree.
 
     This function wraps blocks_to_tree and adds console logging for
@@ -1300,7 +1300,7 @@ def load_tree(source: str | Path) -> MarkdownTree:
     """
 
     # Pure parsing function  (no exceptions raised)
-    blocks = load_blocks(source)
+    blocks = load_blocks(source, logger)
     if not blocks:
         return None
 
@@ -1309,7 +1309,7 @@ def load_tree(source: str | Path) -> MarkdownTree:
         header = HeaderBlock.from_default(str(source))
         blocks = [header] + blocks
 
-    return blocks_to_tree(blocks)
+    return blocks_to_tree(blocks, logger)
 
 
 def serialize_tree(node: MarkdownTree) -> str:
@@ -1331,5 +1331,6 @@ def save_tree(file_name: str | Path, tree: MarkdownTree) -> None:
     """
     content = serialize_tree(tree)
     from .ioutils import save_markdown
+    from lmm.utils import logger
 
-    save_markdown(file_name, content)
+    save_markdown(file_name, content, logger)

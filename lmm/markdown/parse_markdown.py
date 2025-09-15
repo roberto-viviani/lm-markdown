@@ -73,6 +73,7 @@ import re
 
 from . import parse_yaml as pya
 from .parse_yaml import MetadataDict, MetadataValue
+from lmm.utils.logging import LoggerBase
 import yaml
 
 from typing import TypeVar, Type
@@ -995,7 +996,9 @@ def blocklist_get_info(blocks: list[Block]) -> str:
 # utilities-----------------------------------------------------
 
 
-def load_blocks(source: str | Path) -> list[Block]:
+def load_blocks(
+    source: str | Path, logger: LoggerBase
+) -> list[Block]:
     """Load a pandoc markdown file into structured blocks. Used in
     development.
 
@@ -1011,7 +1014,7 @@ def load_blocks(source: str | Path) -> list[Block]:
     # Load the markdown
     from .ioutils import load_markdown
 
-    content = load_markdown(source)
+    content = load_markdown(source, logger)
     if not content:
         return []
 
@@ -1021,13 +1024,15 @@ def load_blocks(source: str | Path) -> list[Block]:
     # Check for errors in the block list and log them to console
     from .ioutils import report_error_blocks
 
-    report_error_blocks(blocks)
+    report_error_blocks(blocks, logger)
 
     # Returns all blocks, also error blocks
     return blocks
 
 
-def save_blocks(file_name: str | Path, blocks: list[Block]) -> None:
+def save_blocks(
+    file_name: str | Path, blocks: list[Block], logger: LoggerBase
+) -> None:
     """Write a list of Block objects to a markdown file. Used in
     development.
 
@@ -1038,7 +1043,7 @@ def save_blocks(file_name: str | Path, blocks: list[Block]) -> None:
     from .ioutils import save_markdown
 
     content = serialize_blocks(blocks)
-    save_markdown(file_name, content)
+    save_markdown(file_name, content, logger)
 
 
 def save_blocks_debug(
@@ -1049,6 +1054,7 @@ def save_blocks_debug(
     development."""
 
     from .ioutils import save_markdown
+    from lmm.utils import logger
 
     content = ""
     for b in blocks:
@@ -1057,4 +1063,4 @@ def save_blocks_debug(
             content += sep + "\n"
         content += "\n"
 
-    save_markdown(file_name, content)
+    save_markdown(file_name, content, logger)

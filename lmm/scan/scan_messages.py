@@ -331,7 +331,7 @@ def markdown_messages(
         return []
     if blocklist_haserrors(blocks):
         # markdown_scan(sourcefile, True)
-        save_markdown(sourcefile, blocks)
+        save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
         return blocks
 
@@ -348,9 +348,9 @@ def markdown_messages(
         case False:
             pass
         case True:
-            save_markdown(sourcefile, blocks)
+            save_markdown(sourcefile, blocks, logger)
         case str() | Path():
-            save_markdown(save, blocks)
+            save_markdown(save, blocks, logger)
         case _:  # ignore
             pass
 
