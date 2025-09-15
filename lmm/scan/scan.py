@@ -113,7 +113,7 @@ def markdown_scan(
     """
 
     # Source validation
-    source = iou.validate_file(sourcefile)
+    source = iou.validate_file(sourcefile, logger)
     if not source:
         return []
     # For type-checking
