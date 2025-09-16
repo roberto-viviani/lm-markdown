@@ -32,6 +32,7 @@ from lmm.markdown.tree import (
     post_order_traversal,
     pre_order_traversal,
 )
+from lmm.utils.logging import LoglistLogger
 
 
 class TestNodeConstruction(unittest.TestCase):
@@ -44,7 +45,9 @@ second: [1, 2, 3]
             'first': 1,
             'second': [1, 2, 3],
         }
-        node = load_tree(src)
+        logger = LoglistLogger()
+        node = load_tree(src, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if node is None:
             raise RuntimeError("Could not parse tree")
         self.assertTrue(node.is_header_node())
@@ -176,12 +179,16 @@ second: [1, 2, 3]
 class TestTreeConstruction(unittest.TestCase):
     def test_construction_text_empty(self):
         text = ""
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         self.assertIsNone(root)
 
     def test_construction_text_regular(self):
         text = "Content of text block\non two lines"
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -189,7 +196,9 @@ class TestTreeConstruction(unittest.TestCase):
 
     def test_construction_heading(self):
         text = "# A heading"
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -197,7 +206,9 @@ class TestTreeConstruction(unittest.TestCase):
 
     def test_construction_heading_empty(self):
         text = "# "
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) > 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -208,14 +219,18 @@ class TestTreeConstruction(unittest.TestCase):
 
     def test_construction_metadata(self):
         data = "---\ntitle: Title\n---"
-        root = load_tree(data)
+        logger = LoglistLogger()
+        root = load_tree(data, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
 
     def test_construction_metadata_empty(self):
         data = "---\n---"
-        root = load_tree(data)
+        logger = LoglistLogger()
+        root = load_tree(data, logger)
+        self.assertTrue(logger.count_logs(level=1) > 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -228,7 +243,9 @@ class TestTreeConstruction(unittest.TestCase):
         text = "---\n1: first line\n---"
         # expected behaviour: invalid dict is set to private_,
         # default dict created for header
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -237,7 +254,9 @@ class TestTreeConstruction(unittest.TestCase):
         text = "---\n1: first block\n---\n\n---\n2: second block\n---"
         # expected behaviour: invalid dict is set to private,
         # empty dict in metadata replaced with default
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -246,7 +265,9 @@ class TestTreeConstruction(unittest.TestCase):
         text = "---\n[1, 2, 3]\n---"
         # expected behaviour: invalid dict is set to private,
         # empty dict in metadata replaced with default
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -257,7 +278,9 @@ class TestTreeConstruction(unittest.TestCase):
     def test_construction_metadata_error(self):
         text = "---\nfirst\nsecond\n---"
         # expected behaviour: ErrorBlock instead of MetadataBlock
-        root = load_tree(text)
+        logger = LoglistLogger()
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs(level=1) > 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -271,7 +294,9 @@ class TestTreeConstruction(unittest.TestCase):
             "---\ntitle: MyTitle\ndata:\n  token:\n    nested: 1\n---"
         )
         # expected behaviour: over-nested dict goes in private_
-        root = load_tree(data)
+        logger = LoglistLogger()
+        root = load_tree(data, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)

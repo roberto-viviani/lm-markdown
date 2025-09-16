@@ -72,7 +72,7 @@ class TestFileSizeLimits(unittest.TestCase):
             self.assertTrue(result)  # Should still pass
             logs = self.logger.get_logs()
             self.assertEqual(len(logs), 1)
-            self.assertIn("warning", logs[0])
+            self.assertIn("WARNING", logs[0])
             self.assertIn("large", logs[0])
         finally:
             temp_file.unlink()
@@ -94,7 +94,7 @@ class TestFileSizeLimits(unittest.TestCase):
             self.assertFalse(result)  # Should fail
             logs = self.logger.get_logs()
             self.assertEqual(len(logs), 1)
-            self.assertIn("error", logs[0])
+            self.assertIn("ERROR", logs[0])
             self.assertIn("too large", logs[0])
         finally:
             temp_file.unlink()
@@ -107,7 +107,7 @@ class TestFileSizeLimits(unittest.TestCase):
         self.assertFalse(result)
         logs = self.logger.get_logs()
         self.assertEqual(len(logs), 1)
-        self.assertIn("error", logs[0])
+        self.assertIn("ERROR", logs[0])
         self.assertIn("Could not check file size", logs[0])
 
     def test_load_markdown_file_size_integration(self):
@@ -767,7 +767,7 @@ class TestErrorBlockReporting(unittest.TestCase):
         self.assertEqual(result, [])
         logs = self.logger.get_logs()
         self.assertEqual(len(logs), 1)
-        self.assertIn("error", logs[0])
+        self.assertIn("ERROR", logs[0])
         self.assertIn("Could not load file", logs[0])
         self.assertIn("File not found", logs[0])
 
@@ -795,7 +795,7 @@ class TestErrorBlockReporting(unittest.TestCase):
 
         # Should log warnings for each error
         logs = self.logger.get_logs()
-        warning_logs = [log for log in logs if "warning" in log]
+        warning_logs = [log for log in logs if "WARNING" in log]
         self.assertEqual(len(warning_logs), 2)
 
         # Check content of warnings - the error block content is not included, only error messages and origins
@@ -833,7 +833,7 @@ class TestErrorBlockReporting(unittest.TestCase):
 
         # Should log warnings for errors
         logs = self.logger.get_logs()
-        warning_logs = [log for log in logs if "warning" in log]
+        warning_logs = [log for log in logs if "WARNING" in log]
         self.assertEqual(len(warning_logs), 2)
 
     def test_error_block_without_message(self):

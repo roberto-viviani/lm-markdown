@@ -10,6 +10,7 @@ import unittest
 from lmm.markdown.parse_markdown import blocklist_copy
 from lmm.markdown.tree import *
 from lmm.markdown.treeutils import *
+from lmm.utils.logging import LoglistLogger
 
 header = HeaderBlock(content={"title": "Test blocklist"})
 metadata = MetadataBlock(
@@ -28,7 +29,9 @@ class TestCollectTextBlocks(unittest.TestCase):
     def test_header_plus_text(self):
         """A simple conformant document"""
         document = "---\ntitle: 'The title'\n---\n\nSome text here.\n"
-        root = load_tree(document)
+        logger = LoglistLogger()
+        root = load_tree(document, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         blocks = collect_annotated_textblocks(root, inherit=True)
 
         self.assertEqual(len(blocks), 2)
@@ -41,7 +44,9 @@ class TestCollectTextBlocks(unittest.TestCase):
             "---\ntitle: 'The title'\n---\n\n# Level 1\n"
             + "\n## Level 2\n\nSome text here.\n"
         )
-        root = load_tree(document)
+        logger = LoglistLogger()
+        root = load_tree(document, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise ValueError("Could not form tree")
         blocks = collect_annotated_textblocks(
@@ -59,7 +64,9 @@ class TestCollectTextBlocks(unittest.TestCase):
             "---\ntitle: 'The title'\n---\n\n# Level 1\n"
             + "\n## Level 2\n\nSome text here.\n"
         )
-        root = load_tree(document)
+        logger = LoglistLogger()
+        root = load_tree(document, logger)
+        self.assertTrue(logger.count_logs(level=1) == 0)
         if root is None:
             raise ValueError("Could not form tree")
         blocks = collect_annotated_textblocks(
