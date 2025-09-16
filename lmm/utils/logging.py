@@ -292,7 +292,7 @@ class LoglistLogger(LoggerBase):
                     logs.append(str(entry))
         return logs
 
-    def has_logs(self, level: int = 0) -> int:
+    def count_logs(self, level: int = 0) -> int:
         """The number of recorded logs. Zero means there
         were no recorded logs."""
         logs = self.get_logs(level)
