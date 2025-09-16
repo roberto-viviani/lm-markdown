@@ -103,7 +103,7 @@ class ConsoleLogger(LoggerBase):
 
     def error(self, msg: str) -> None:
         """Log an error message."""
-        self.logger.error(msg, exc_info=True)
+        self.logger.error(msg)
 
     def warning(self, msg: str) -> None:
         """Log a warning message."""
@@ -111,7 +111,7 @@ class ConsoleLogger(LoggerBase):
 
     def critical(self, msg: str) -> None:
         """Log a critical message."""
-        self.logger.critical(msg, exc_info=True, stack_info=True)
+        self.logger.critical(msg, stack_info=True)
 
 
 class FileLogger(LoggerBase):
@@ -165,7 +165,7 @@ class FileLogger(LoggerBase):
 
     def error(self, msg: str) -> None:
         """Log an error message."""
-        self.logger.error(msg, exc_info=True)
+        self.logger.error(msg)
 
     def warning(self, msg: str) -> None:
         """Log a warning message."""
@@ -173,7 +173,7 @@ class FileLogger(LoggerBase):
 
     def critical(self, msg: str) -> None:
         """Log a critical message."""
-        self.logger.critical(msg, exc_info=True, stack_info=True)
+        self.logger.critical(msg, stack_info=True)
 
 
 class FileConsoleLogger(LoggerBase):
@@ -235,7 +235,7 @@ class FileConsoleLogger(LoggerBase):
 
     def error(self, msg: str) -> None:
         """Log an error message."""
-        self.logger.error(msg, exc_info=True)
+        self.logger.error(msg)
         self.console_logger.error(msg)
 
     def warning(self, msg: str) -> None:
@@ -245,7 +245,7 @@ class FileConsoleLogger(LoggerBase):
 
     def critical(self, msg: str) -> None:
         """Log a critical message."""
-        self.logger.critical(msg, exc_info=True, stack_info=True)
+        self.logger.critical(msg, stack_info=True)
         self.console_logger.critical(msg)
 
 
