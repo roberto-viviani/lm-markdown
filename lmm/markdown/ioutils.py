@@ -66,6 +66,7 @@ Performance Characteristics:
     - Monitoring memory usage in production environments
 """
 
+import io
 from pathlib import Path
 from lmm.utils.ioutils import validate_file
 from lmm.utils.ioutils import string_to_path_or_string
@@ -279,7 +280,7 @@ def load_markdown(
 
 
 def save_markdown(
-    dest: str | Path,
+    dest: str | Path | io.TextIOBase,
     content: list[Block] | str,
     logger: LoggerBase,
 ) -> bool:
@@ -299,30 +300,30 @@ def save_markdown(
         ExceptionConsoleLogger object to raise errors.
     """
     if not content:
+        logger.warning("Empty markdown")
         return False
 
+    # Serialize content if it is a list of blocks
+    match content:
+        case str():
+            pass
+        case list():
+            content = serialize_blocks(content)
+        case _:
+            logger.critical('Invalid object given to serialize')
+            return False
+
     try:
-        # Check save path
-        save_path = Path(dest)
-        # Create parent directories if they don't exist
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(dest, io.TextIOBase):
+            dest.write(content)
+        else:
+            # Check save path
+            save_path = Path(dest)
+            # Create parent directories if they don't exist
+            save_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Serialize content if it is a list of blocks
-        match content:
-            case str():
-                pass
-            case list():
-                content = serialize_blocks(content)
-            case _:
-                logger.critical('Invalid object given to serialize')
-                return False
-
-        if not content:
-            logger.warning("Empty markdown")
-            return False  # no file created
-
-        with open(save_path, 'w', encoding='utf-8') as file:
-            file.write(content)
+            with open(save_path, 'w', encoding='utf-8') as file:
+                file.write(content)
 
     except (IOError, OSError) as e:
         logger.error(f"I/O error saving markdown to {dest}: {str(e)}")

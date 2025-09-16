@@ -369,7 +369,7 @@ It has multiple paragraphs.
 
         try:
             # Test with minimal parameters (should use defaults)
-            result = load_markdown(temp_file)
+            result = load_markdown(temp_file, logger=self.logger)
             self.assertEqual(result, content)
 
             # Test with logger only
@@ -876,6 +876,30 @@ class TestErrorBlockReporting(unittest.TestCase):
         self.assertEqual(result, [])
         logs = self.logger.get_logs()
         self.assertEqual(len(logs), 0)
+
+
+class TestSaveMarkdown(unittest.TestCase):
+
+    def test_save_markdown(self):
+        from lmm.markdown.parse_markdown import (
+            Block,
+            parse_markdown_text,
+        )
+        import io
+
+        text = """
+---
+title: my document
+---
+
+This is some text in a markdown document.
+"""
+        blocks: list[Block] = parse_markdown_text(text)
+        string_stream = io.StringIO()
+        logger = LoglistLogger()
+        save_markdown(string_stream, blocks, logger)
+        self.assertTrue(logger.count_logs(1) == 0)
+        self.assertEqual(string_stream.getvalue(), text.strip())
 
 
 if __name__ == '__main__':
