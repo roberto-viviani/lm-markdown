@@ -280,14 +280,14 @@ class LoglistLogger(LoggerBase):
             match entry:
                 case {'info': msg}:
                     if level < 1:
-                        logs.append("info: " + msg)
+                        logs.append("INFO - " + msg)
                 case {'warning': msg}:
                     if level < 2:
-                        logs.append("warning: " + msg)
+                        logs.append("WARNING - " + msg)
                 case {'error': msg}:
-                    logs.append("error: " + msg)
+                    logs.append("ERROR - " + msg)
                 case {'critical': msg}:
-                    logs.append("critical: " + msg)
+                    logs.append("CRITICAL - " + msg)
                 case _:
                     logs.append(str(entry))
         return logs
