@@ -37,6 +37,11 @@ class LoggerBase(ABC):
         pass
 
     @abstractmethod
+    def get_level(self) -> int:
+        """Get the current logging level"""
+        pass
+
+    @abstractmethod
     def info(self, msg: str) -> None:
         """Log an informational message."""
         pass
@@ -87,6 +92,10 @@ class ConsoleLogger(LoggerBase):
     def set_level(self, level: int) -> None:
         """Set the logging level for the logger."""
         self.logger.setLevel(level)
+
+    def get_level(self) -> int:
+        """Get the current logging level"""
+        return self.logger.level
 
     def info(self, msg: str) -> None:
         """Log an informational message."""
@@ -145,6 +154,10 @@ class FileLogger(LoggerBase):
     def set_level(self, level: int) -> None:
         """Set the logging level for the logger."""
         self.logger.setLevel(level)
+
+    def get_level(self) -> int:
+        """Get the current logging level"""
+        return self.logger.level
 
     def info(self, msg: str) -> None:
         """Log an informational message."""
@@ -211,6 +224,10 @@ class FileConsoleLogger(LoggerBase):
         self.logger.setLevel(level)
         self.console_logger.set_level(level)
 
+    def get_level(self) -> int:
+        """Get the current logging level"""
+        return self.logger.level
+
     def info(self, msg: str) -> None:
         """Log an informational message."""
         self.logger.info(msg)
@@ -247,6 +264,10 @@ class LoglistLogger(LoggerBase):
     def set_level(self, level: int) -> None:
         """Set the logging level for the logger."""
         pass
+
+    def get_level(self) -> int:
+        """Get the current logging level"""
+        return 0
 
     def info(self, msg: str) -> None:
         """Log an informational message."""
@@ -338,6 +359,10 @@ class ExceptionConsoleLogger(LoggerBase):
     def set_level(self, level: int) -> None:
         """Set the logging level for the logger."""
         self.logger.setLevel(level)
+
+    def get_level(self) -> int:
+        """Get the current logging level"""
+        return self.logger.level
 
     def info(self, msg: str) -> None:
         """Log an informational message."""
