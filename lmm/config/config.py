@@ -380,8 +380,6 @@ def serialize_settings(sets: BaseSettings) -> str:
                 doc[key] = value
 
     return str(tomlkit.dumps(doc))  # type: ignore
-    # except Exception as e:
-    #     raise ValueError(f"Failed to serialize settings: {e}") from e
 
 
 def export_settings(
