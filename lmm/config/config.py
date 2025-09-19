@@ -130,7 +130,7 @@ class LanguageModelSettings(BaseModel):
         if model_spec not in ModelSource.__args__:
             raise ValueError(
                 f"Invalid model provider: '{model_spec}'. "
-                + "Must be one of {ModelSource.__args__}."
+                + f"Must be one of {ModelSource.__args__}."
             )
         return model_spec + '/' + tokens[1].strip()
 
@@ -218,7 +218,7 @@ class EmbeddingSettings(BaseSettings):
         if model_spec not in EmbeddingSource.__args__:
             raise ValueError(
                 f"Invalid model provider: '{model_spec}'. "
-                + "Must be one of {EmbeddingSource.__args__}."
+                + f"Must be one of {EmbeddingSource.__args__}."
             )
         return model_spec + '/' + tokens[1].strip()
 
