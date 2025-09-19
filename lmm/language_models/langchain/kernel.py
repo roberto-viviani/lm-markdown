@@ -1,12 +1,20 @@
 """
-Creates Langchain kernels.
+Creates Langchain kernel  objects. These objects may be used in
+Langchain concatentations.
+
+In langchain, objects are invoked with a dictionary that contains
+the parameters for the prompt template.
 
 Example:
     ```python
     from lmm.language_models.langchain.kernel import create_kernel
     model_query = create_kernel("query")
-    model_summary = create_kernel("summarizer",
-                                {'source': "OpenAI", 'name_model': "gpt-4o"})
+    model_questions = create_kernel("question_generator",
+                                {'model': "OpenAI/gpt-4o"})
+    response = model_questions.invoke({
+        'text': "Logistic regression is typically used when the "
+            + "outcome variable is binary."
+    })
     ```
 
 Note:
@@ -82,12 +90,13 @@ def create_kernel(
     ) = None,
 ) -> RunnableSerializable[dict[str, str], str]:
     """
-    Creates a Langchain kernel by combining configuration from config.toml
-    with optional override settings. The kernel factory uses lazy loading
-    to cache and reuse kernel instances based on their configuration.
+    Creates a Langchain kernel by combining configuration from
+    config.toml with optional override settings. The kernel factory
+    uses lazy loading to cache and reuse kernel instances based on
+    their configuration.
 
-    The function maps different kernel types to their appropriate language
-    model settings categories. For example,
+    The function maps different kernel types to their appropriate
+    language model settings categories. For example,
     - 'query', 'query_with_context' -> major model settings
     - 'question_generator', 'summarizer' -> minor model settings
     - 'check_content' -> aux model settings
@@ -98,19 +107,21 @@ def create_kernel(
     3. Default settings from Settings class
 
     Args:
-        kernel_name: The name of the kernel to create. Must be one of the
-            supported kernel names defined in KernelNames literal type.
+        kernel_name: The name of the kernel to create. Must be one of
+            the supported kernel names defined in the KernelNames
+            literal type.
         user_settings: Optional settings to override the default
             configuration. Can be either:
-            - dict[str, str]: Dictionary with 'source' and 'name_model' keys
+            - dict[str, str]: Dictionary with 'model' key
             - LanguageModelSettings: Pydantic model instance
             - None: Use settings from config.toml or defaults
 
     Returns:
-        RunnableSerializable[dict[str, str], str]: A Langchain runnable
-        chain that combines a prompt template, language model, and string
-        output parser. The chain accepts a dictionary of template variables
-        and returns a string response.
+        RunnableSerializable[dict[str, str], str]: A Langchain
+        runnable chain that combines a prompt template, language
+        model, and string output parser. The chain accepts a
+        dictionary of template variables and returns a string
+        response.
 
     Raises:
         ValueError: If kernel_name is not supported or if user_settings
@@ -123,22 +134,25 @@ def create_kernel(
         ImportError: for not installed libraries.
 
     Examples:
-        Create kernel with default settings:
+        Create kernel with default settings read from configuration
+        file:
         ```python
-        >>> kernel = create_kernel("query")
+        kernel = create_kernel("query")
         ```
 
         Override with dictionary:
         ```python
-        >>> kernel = create_kernel("summarizer",
-        ...     {"source": "OpenAI", "name_model": "gpt-4o"})
+        kernel = create_kernel("summarizer",
+            {"model": "OpenAI/gpt-4o"})
         ```
 
         Override with settings object:
         ```python
-        >>> settings = LanguageModelSettings(source="Mistral",
-        ...     name_model="mistral-small-latest")
-        >>> kernel = create_kernel("question_generator", settings)
+        from lmm.config.config import LanguageModelSettings
+        settings = LanguageModelSettings(
+            model="Mistral/mistral-small-latest"
+        )
+        kernel = create_kernel("question_generator", settings)
         ```
     """
     match kernel_name:
@@ -202,10 +216,16 @@ def create_embeddings(
 
             - dense_model: a specification in the form provider/
             model, for example 'OpenAI/text-embedding-3-small'
-            - sparse_model: a sparse model specification
+            - sparse_model: a sparse model specification.
+
+            Alternatively, a dictionary with the same fields and
+            text. If None (default), the settings will be read
+            from the configuration file. If no configuration file
+            exists, a settings object will be created with default
+            parameters.
 
     Returns:
-        a Langchain that embeds text by calling embed_documents
+        a Langchain object that embeds text by calling embed_documents
             or embed_query.
 
     Raises:

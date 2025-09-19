@@ -47,7 +47,11 @@ from langchain_core.embeddings import Embeddings
 
 from ..lazy_dict import LazyLoadingDict
 
-from lmm.config.config import LanguageModelSettings, EmbeddingSettings
+from lmm.config.config import (
+    LanguageModelSettings,
+    EmbeddingSettings,
+    ModelSource,
+)
 from lmm.markdown.parse_yaml import MetadataPrimitive
 
 
@@ -59,7 +63,7 @@ def _create_model_instance(
     Factory function to create Langchain models while checking permissible
     sources.
     """
-    model_source: str = model.get_model_source()
+    model_source: ModelSource = model.get_model_source()
     model_name: str = model.get_model_name()
     match model_source:
         case 'Anthropic':
@@ -167,6 +171,11 @@ def _create_model_instance(
 
             return ChatOpenAI(**kwargs)
 
+        case _:
+            raise ValueError(
+                f"Unreachable code reached: invalid source {model_source}"
+            )
+
 
 # Langchain model type specified here.
 def _create_embedding_instance(
@@ -273,12 +282,19 @@ def create_model_from_settings(
 
     Example:
         ```python
-        settings = LanguageModelSettings(
+        # Create settings explicitly.
+        config = LanguageModelSettings(
             model="OpenAI/gpt-4o-mini",
             temperature=0.7,
             max_tokens=1000
         )
-        model = create_model_from_settings(settings)
+        model = create_model_from_settings(config)
+        response = model.invoke("Why is the sky blue?")
+
+        # Load settings from config.toml.
+        settings = Settings()
+        model = create_model_from_settings(settings.minor)
+        response = model.invoke("Why is the grass green?")
         ```
     """
     return langchain_factory[settings]

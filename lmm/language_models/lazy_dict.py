@@ -38,29 +38,30 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
 
     Example:
     ```python
-    # We define here permissible keys in the lazy dict, with base StrEnum
+    # We define here permissible keys by inheriting from StrEnum
     class LMSource(StrEnum):
         Anthropic = 'Anthropic'
         Gemini = 'Gemini'
         OpenAI = 'OpenAI'
 
-
-    # A factory function that creates a model class using the permissible key
-    # as an info for its creation. ModelClass is the concrete type stored in
-    # the dictionary (code not included):
+    # We then define a factory function that creates a model object
+    # designated by the key, i.e. a function that maps the possible
+    # keys to instances that are memoized. In the example, ModelClass
+    # objects are stored in the dictionary (code not included):
     def create_model_instance(model_name: LMSource) -> ModelClass:
         print(f"Created instance of {model_name}")
         return ModelClass(model_name=model_name)
 
-
-    # The lazy dictionary is created thus
+    # The lazy dictionary is created by giving the factory function
+    # in the constructor.
     lazy_dict = LazyLoadingDict(create_model_instance)
 
-    # The objects are retrieved so:
-    openai_model = lazy_dict[LMSource("OpenAI")]
+    # The objects are created or retrieved as the value of the key:
+    openai_model = lazy_dict['OpenAI']
 
-    # This will throw a ValueError:
-    model = lazy_dict[LMSource("OpenX")]
+    # If the argument of the factory is derived from StrEnum, calling
+    # the dictionary with an invalid key will throw a ValueError:
+    model = lazy_dict[LMSource('OpenX')]
     ```
 
     This is a more elaborate example, where a whole specification is
@@ -81,7 +82,8 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
         source_name: LanguageModelSource
         model_name: str
 
-        # This required to make it hashable
+        # This required to make instances hashable, so that they can
+        # be used as keys in the dictionary
         model_config = ConfigDict(frozen=True)
 
 
@@ -89,8 +91,8 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
     def _create_model_instance(
         model: LanguageModelSpecification,
     ) -> BaseLM[BaseMsg]:
-        # Factory function to create Langchain models while checking permissible
-        # sources.
+        # Factory function to create Langchain models while checking
+        # permissible sources, provided as key values:
 
         match model.source_name:
             case LanguageModelSource.OpenAI:
@@ -104,7 +106,8 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
                 )
         ... (rest of code not shown)
 
-    # The memoized dictionary
+    # The memoized dictionary. langchain_factory is parametrized like
+    # a dict[LanguageModelSpecification, BaseLM[BaseMSg]]
     langchain_factory = LazyLoadingDict(_create_model_instance)
 
     # Example of use
