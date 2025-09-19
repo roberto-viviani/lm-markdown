@@ -59,5 +59,69 @@ class TestLazyDict(unittest.TestCase):
             model.info()
 
 
+class CreateNewDictionary(unittest.TestCase):
+
+    def test_create_dict(self):
+        from typing import Literal
+        from pydantic import BaseModel, ConfigDict, ValidationError
+        from lmm.language_models.lazy_dict import LazyLoadingDict
+
+        LanguageModelSource = Literal[
+            'Anthropic', 'Gemini', 'Mistral', 'OpenAI'
+        ]
+
+        # This defines source + model
+        class LanguageModelSpecification(BaseModel):
+            source_name: LanguageModelSource
+            model_name: str
+
+            # This required to make instances hashable, so that they can
+            # be used as keys in the dictionary
+            model_config = ConfigDict(frozen=True)
+
+        # Langchain model type specified here.
+        def _create_model_instance(
+            src: LanguageModelSource,
+        ) -> LanguageModelSpecification:
+            return LanguageModelSpecification(
+                source_name=src, model_name="test"
+            )
+
+        lzd = LazyLoadingDict(_create_model_instance)
+
+        obj = lzd['Anthropic']
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        with self.assertRaises(ValidationError):
+            obj = lzd['Kntropix']
+
+    def test_create_unconstrained_dict(self):
+        from pydantic import BaseModel, ConfigDict
+        from lmm.language_models.lazy_dict import LazyLoadingDict
+
+        # This defines model
+        class LanguageModelSpecification(BaseModel):
+            source_name: str
+            model_name: str
+
+            # This required to make instances hashable, so that they can
+            # be used as keys in the dictionary
+            model_config = ConfigDict(frozen=True)
+
+        # Langchain model type specified here.
+        def _create_model_instance(
+            src: str,
+        ) -> LanguageModelSpecification:
+            return LanguageModelSpecification(
+                source_name=src, model_name="test"
+            )
+
+        lzd = LazyLoadingDict(_create_model_instance)
+
+        obj = lzd['Anthropic']
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        obj = lzd['Kntropix']
+        self.assertIsInstance(obj, LanguageModelSpecification)
+
+
 if __name__ == "__main__":
     unittest.main()

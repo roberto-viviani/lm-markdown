@@ -70,6 +70,9 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
     ```python
     # This defines the supported model sources. Runtime errors
     # provided by BaseModel below
+    from typing import Literal
+    from pydantic import BaseModel, ConfigDict
+
     LanguageModelSource = Literal[
             'Anthropic',
             'Gemini',
@@ -116,6 +119,16 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
         LanguageModelSpecification(**model_spec)
     ]
     ```
+
+    A Pydantic model class may also be used to create a more flexible
+    dictionary. In the previous example, only the models specified in
+    LanguageModel source can be specified without raising exceptions.
+    However, a Pydantic model class may be used to constrain the
+    objects saved in the dictionary without limiting them to a finite
+    sets, i.e. by a validation that does not constrain the instances
+    to that set. Thus, if source_name was a str in the above example,
+    then any LanguageModelSpecification constructed with any string
+    will be accepted.
 
     In the following example, the runtime error is generated in the
     factory function, because literals do not give rise to runtime
