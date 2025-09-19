@@ -1,19 +1,44 @@
 """
-Definition of language models kernels and respective prompts.
+Definition of language models chat kernels prompts.
 
-Example:
+This module contains a set of predefined prompt templates,
+
+    - "summarizer"
+    - "question_generator"
+    - "query"
+    - "query_with_context"
+    - "check_content"
+
+These prompts may be retrieved from a module-level dictionary, as
+shown in the example below.
+
+**Example**:
+
     ```python
     from lmm.language_models.kernels import kernel_prompts
     prompt_template: str = kernel_prompts["summarizer"]
     ```
 
-Note:
-    Support for new kernels should be added here.
+New prompt templates may be added dynamically to the dictionary.
+
+**Example**:
+
+    ```python
+    from lmm.language_models.kernels import (
+        kernel_prompts,
+        create_prompt,
+    )
+    create_prompt("Provide the questions the following text answers:\\n"
+        + "\\nTEXT:\\n{text}", name = "question_creation")
+    prompt_template: str = kernel_prompts["question_creation"]
+    ```
+
+The reason to store the prompt template in this dictionary, as shown
+above, is that the prompt template is now available to other functions
+in the library, like the `create_kernel` functions.
 """
 
 from typing import Literal
-from pydantic import BaseModel, ConfigDict
-from lmm.config.config import LanguageModelSettings, EmbeddingSettings
 from .lazy_dict import LazyLoadingDict
 
 # Define here the kernel supported by the package.
@@ -24,20 +49,6 @@ KernelNames = Literal[
     "query_with_context",
     "check_content",
 ]
-
-
-# Defines the kernel/model combinations
-class KernelModel(BaseModel):
-    """Kernel definition"""
-
-    kernel_name: KernelNames
-    settings: LanguageModelSettings
-
-    model_config = ConfigDict(frozen=True, extra='forbid')
-
-
-# Defines the embedding model
-EmbeddingModel = EmbeddingSettings
 
 
 # A functional returning the prompts for these kernels.
@@ -106,3 +117,10 @@ TEXT CONTENT:
 
 # a global object store to get the prompts
 kernel_prompts = LazyLoadingDict(_get_prompts)
+
+
+def create_prompt(prompt_template: str, prompt_name: str) -> None:
+    """
+    Adds a custom prompt template to the prompt dictionary.
+    """
+    kernel_prompts[prompt_name] = prompt_template  # type: ignore

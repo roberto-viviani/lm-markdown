@@ -2,7 +2,7 @@
 
 import unittest
 
-from lmm.language_models.kernels import kernel_prompts
+from lmm.language_models.kernels import kernel_prompts, create_prompt
 
 
 class TestKernelPrompts(unittest.TestCase):
@@ -15,6 +15,20 @@ class TestKernelPrompts(unittest.TestCase):
         with self.assertRaises(ValueError):
             prompt: str = kernel_prompts["bonobo"]
             prompt
+
+
+class TestCustomPrompt(unittest.TestCase):
+
+    def test_custorm_prompt(self):
+        prompt_template = """
+Provide the questions to which the text answers.
+
+TEXT:
+{text}
+"""
+        create_prompt(prompt_template, "questioner")
+        prompt = kernel_prompts["questioner"]
+        self.assertEqual(prompt, prompt_template)
 
 
 if __name__ == "__main__":

@@ -133,6 +133,53 @@ class TestDefaultModels(unittest.TestCase):
             )
             model.get_name()
 
+    def test_custom_model(self):
+        from lmm.language_models.kernels import (
+            kernel_prompts,
+            create_prompt,
+        )
+
+        prompt_template = """
+Provide the questions to which the text answers.
+
+TEXT:
+{text}
+"""
+        create_prompt(prompt_template, "questioner")
+        prompt = kernel_prompts["questioner"]
+        self.assertEqual(prompt, prompt_template)
+
+        settings = Settings()
+        model = create_kernel("questioner", settings.major)
+        self.assertIn(
+            f"{base_settings.major.get_model_source()}/"
+            + f"{base_settings.major.get_model_name()}",
+            model.get_name(),
+        )
+
+    def test_custom_model_from_config(self):
+        from lmm.language_models.kernels import (
+            kernel_prompts,
+            create_prompt,
+        )
+
+        prompt_template = """
+Provide the questions to which the text answers.
+
+TEXT:
+{text}
+"""
+        create_prompt(prompt_template, "questioner")
+        prompt = kernel_prompts["questioner"]
+        self.assertEqual(prompt, prompt_template)
+
+        model = create_kernel("questioner")
+        self.assertIn(
+            f"{base_settings.minor.get_model_source()}/"
+            + f"{base_settings.minor.get_model_name()}",
+            model.get_name(),
+        )
+
 
 class TestEmbeddingModel(unittest.TestCase):
 

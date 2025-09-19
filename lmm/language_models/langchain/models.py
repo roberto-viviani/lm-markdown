@@ -1,5 +1,12 @@
-"""This module implements creation of Langchain models from
-a dictionary specification.
+"""
+This module implements creation of Langchain language model objects
+("runnables") from specifications given as a LanguageModelSettings
+object, a dictionary, or a spec given as argument to the
+create_model_from_spec function. The LanguageModelSettings is also
+a member of the Settings object that is read from the config file.
+
+The "runnable" object allow interacting with the language models
+directly, abstracting from vendor details.
 
 The 'model' parameter must be provided. All other parameters
 are initialized to defaults.
@@ -35,9 +42,12 @@ model = create_model_from_spec(**spec)
 ```
 
 Note:
-    Support for new model sources should be added here.
-    All methods support configurable parameters like temperature, max_tokens,
-    max_retries, and timeout through LanguageModelSettings.
+    Support for new model sources should be added here by extending
+    the match ... case statement in _create_model_instance.
+
+    All methods support configurable parameters like temperature,
+    max_tokens, max_retries, and timeout through
+    LanguageModelSettings.
 """
 
 # pyright: reportArgumentType=false
