@@ -93,6 +93,82 @@ class CreateNewDictionary(unittest.TestCase):
         self.assertIsInstance(obj, LanguageModelSpecification)
         with self.assertRaises(ValidationError):
             obj = lzd['Kntropix']
+        # adding object directly
+        with self.assertRaises(ValidationError):
+            obj = lzd['Kntropix'] = LanguageModelSpecification(
+                source_name="Kntropix", model_name="test"
+            )
+        # Kntropix raises validation error here
+        with self.assertRaises(ValidationError):
+            obj = lzd['Gemini'] = LanguageModelSpecification(
+                source_name="Kntropix", model_name="test"
+            )
+        # this, however, is ok
+        obj = lzd['Mistral'] = LanguageModelSpecification(
+            source_name="Gemini", model_name="test"
+        )
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        # this is also ok because python per se does not constrain
+        # literals here
+        obj = lzd['Zntropix'] = LanguageModelSpecification(
+            source_name="Anthropic", model_name="test"
+        )
+        self.assertIsInstance(obj, LanguageModelSpecification)
+
+    def test_create_constrained_dict(self):
+        from pydantic import BaseModel, ConfigDict, ValidationError
+        from lmm.language_models.lazy_dict import LazyLoadingDict
+        from enum import StrEnum
+
+        class LanguageModelSource(StrEnum):
+            Anthropic = "Anthropic"
+            Gemini = "Gemini"
+            Mistral = "Mistral"
+            OpenAI = "OpenAI"
+
+        # This defines source + model
+        class LanguageModelSpecification(BaseModel):
+            source_name: LanguageModelSource
+            model_name: str
+
+            # This required to make instances hashable, so that they can
+            # be used as keys in the dictionary
+            model_config = ConfigDict(frozen=True)
+
+        # Langchain model type specified here.
+        def _create_model_instance(
+            src: LanguageModelSource,
+        ) -> LanguageModelSpecification:
+            return LanguageModelSpecification(
+                source_name=src, model_name="test"
+            )
+
+        lzd = LazyLoadingDict(_create_model_instance)
+
+        obj = lzd['Anthropic']
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        with self.assertRaises(ValidationError):
+            obj = lzd['Kntropix']
+        # adding object directly
+        with self.assertRaises(ValidationError):
+            obj = lzd['Kntropix'] = LanguageModelSpecification(
+                source_name="Kntropix", model_name="test"
+            )
+        # Kntropix raises validation error here
+        with self.assertRaises(ValidationError):
+            obj = lzd['Gemini'] = LanguageModelSpecification(
+                source_name="Kntropix", model_name="test"
+            )
+        # this, however, is ok
+        obj = lzd['Mistral'] = LanguageModelSpecification(
+            source_name="Gemini", model_name="test"
+        )
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        # this is also ok
+        obj = lzd['Zntropix'] = LanguageModelSpecification(
+            source_name="Anthropic", model_name="test"
+        )
+        self.assertIsInstance(obj, LanguageModelSpecification)
 
     def test_create_unconstrained_dict(self):
         from pydantic import BaseModel, ConfigDict
@@ -120,6 +196,15 @@ class CreateNewDictionary(unittest.TestCase):
         obj = lzd['Anthropic']
         self.assertIsInstance(obj, LanguageModelSpecification)
         obj = lzd['Kntropix']
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        # test adding object directly
+        obj = lzd['Fututropic'] = LanguageModelSpecification(
+            source_name="Fututropic", model_name="test"
+        )
+        self.assertIsInstance(obj, LanguageModelSpecification)
+        obj = lzd['Zntropix'] = LanguageModelSpecification(
+            source_name="Anthropic", model_name="test"
+        )
         self.assertIsInstance(obj, LanguageModelSpecification)
 
 

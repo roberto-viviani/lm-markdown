@@ -149,6 +149,13 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
 
     model_factory = LazyLoadingDict(_model_factory)
     ```
+
+    It is also possible to assign to the dictionary directly, thus
+    bypassing the factory function. In this case, the only checks
+    are those that are possibly computed by Pydantic when the object
+    is assigned.
+
+    Expected behaviour: may raise ValidationError and ValueErrors.
     """
 
     def __init__(
@@ -165,5 +172,14 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
 
         # Lazy-load the data, cache it, and return
         value: ValueT = self._key_creator_func(key)
-        self[key] = value
+        super().__setitem__(key, value)
         return value
+
+    def __setitem__(self, key: KeyT, value: ValueT) -> None:
+        """Allow direct setting of key/value pairs.
+
+        This bypasses the factory function for the given key.
+        Once set directly, the factory function will not be called
+        for this key unless the key is deleted first.
+        """
+        super().__setitem__(key, value)
