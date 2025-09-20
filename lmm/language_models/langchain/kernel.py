@@ -1,10 +1,10 @@
 """
 Creates Langchain kernel objects. These objects may be used in
-Langchain concatentations.
+Langchain chains.
 
 This module currently supports chat kernel objects. The objects
-may be obtained from one of the predefined templates from the
-kernel_prompts dictionary, or
+are based on the predefined templates from the kernel_prompts
+dictionary in the lmm.language_models.prompts module.
 
 In langchain, objects are invoked with a dictionary that contains
 the parameters for the prompt template.
@@ -12,7 +12,7 @@ the parameters for the prompt template.
 Example of a predefined kernel:
     ```python
     from lmm.language_models.langchain.kernel import create_kernel
-    model_query = create_kernel("query")
+    model_query = create_kernel("query")  # uses config.toml for model
     model_questions = create_kernel("question_generator",
                                 {'model': "OpenAI/gpt-4o"})
     response = model_questions.invoke({
@@ -34,7 +34,8 @@ Example of a dynamically created chat kernel:
         '''
         create_prompt(prompt_template, "question_generator")
 
-        # create a kernel from the major model in config.toml
+        # create a kernel from the major model in config.toml with
+        # this prompts
         settings = Settings()
         model = create_kernel("question_generator", settings.major)
 
@@ -147,7 +148,7 @@ def create_kernel(
             the supported kernel names defined in the KernelNames
             literal type, returns a cached kernel object. Otherwise,
             looks up in the kernel_prompts dictionary if there is
-            a prompot with that kernel_name, and returns a kernel
+            a prompt with that kernel_name, and returns a kernel
             object for a chat with that prompt.
         user_settings: Optional settings to override the default
             configuration. Can be either:

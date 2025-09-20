@@ -15,12 +15,12 @@ These prompts may be retrieved from the module-level dictionary
 **Example**:
 
     ```python
-    from lmm.language_models.kernels import kernel_prompts
+    from lmm.language_models.prompts import kernel_prompts
     prompt_template: str = kernel_prompts["summarizer"]
     ```
 
 Note that the prompot template text may be to be adapted to the
-framework to be used. For example, for Lanchain,
+framework to be used. For example, for Langchain,
 
     ```python
     from langchain_core.prompts import PromptTemplate
@@ -30,11 +30,12 @@ framework to be used. For example, for Lanchain,
     ```
 
 New prompt text templates may be added dynamically to the dictionary.
+To do this, one can use the `create_prompt` function.
 
 **Example**:
 
     ```python
-    from lmm.language_models.kernels import (
+    from lmm.language_models.prompts import (
         kernel_prompts,
         create_prompt,
     )
@@ -43,9 +44,16 @@ New prompt text templates may be added dynamically to the dictionary.
     prompt_template: str = kernel_prompts["question_creation"]
     ```
 
-The reason to store the prompt template in this dictionary, as shown
-above, is that the prompt template is now available to other functions
-in the library, like the `create_kernel` functions.
+There is no much added value in storing the prompt template text in the
+dictionary in these examples. The reason to do it is that the prompt
+template is now available to other functions in the library, like the
+`create_kernel` function (see lmm.language_models.langchain.kernels).
+A language kernel with the prompt can then be obtained directly, e.g.
+
+    ```python
+    from lmm.language_models.langchain.kernels import create_kernel
+    lmm = create_kernel("question_creation") # langchain runnable
+    ```
 """
 
 from typing import Literal
