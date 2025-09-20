@@ -1,48 +1,66 @@
 """
-Creates Langchain kernel objects. These objects may be used in
-Langchain chains.
+Creates Langchain runnable objects or 'kernels'. These objects may be
+used in Langchain chains.
 
-This module currently supports chat kernel objects. The objects
-are based on the predefined templates from the kernel_prompts
-dictionary in the lmm.language_models.prompts module.
+The runnable combine the Lanchain interface with two resources:
 
-In langchain, objects are invoked with a dictionary that contains
-the parameters for the prompt template.
+- a language model, selected via the models module from the
+    specification in a config.toml file
+- a set of tools that specialize the function of the language model,
+    selected from the tool library provided by the tools module.
 
-Example of a predefined kernel:
+The tools module contains a set of predefined tools, allowing one to
+create the specialized runnable/'kernel' from the kernel name.
+
+The runnables are callable objects via the `invoke` member function.
+The Langchain syntax is used with invoke, for example by passing a
+dictionary that contains the parameters for the prompt template.
+
+Example of a runnable created from a predefined tool:
     ```python
-    from lmm.language_models.langchain.kernels import create_kernel
-    model_query = create_kernel("query")  # uses config.toml for model
-    model_questions = create_kernel("question_generator",
+    from lmm.language_models.langchain.runnables import create_runnable
+    query_model = create_runnable("query")  # uses config.toml for model
+
+    # a runnable that specifies the model directly
+    questions_model = create_runnable("question_generator",
                                 {'model': "OpenAI/gpt-4o"})
-    response = model_questions.invoke({
-        'text': "Logistic regression is typically used when the "
-            + "outcome variable is binary."
-    })
+
+    # use Langchain syntax to call the kernel
+    try:
+        response = questions_model.invoke({
+            'text': "Logistic regression is typically used when the "
+                + "outcome variable is binary."
+        })
+    except Exception:
+        print("Could not obtain response from model")
     ```
 
 Example of a dynamically created chat kernel:
     ```python
-        from lmm.language_models.prompts import (
-            kernel_prompts,
+        from lmm.language_models.tools import (
+            tool_library,
             create_prompt,
         )
 
+        # this creates a prompt tool and registers it in the tool library
         prompt_template = '''Provide the questions to which the text answers.
             TEXT:
             {text}
         '''
-        create_prompt(prompt_template, "question_generator")
+        create_prompt(prompt_template, name = "question_generator")
 
         # create a kernel from the major model in config.toml with
-        # this prompts
+        # this prompt
         from lmm.config.config import Settings
-        from lmm.language_models.langchain.kernels import create_kernel
+        from lmm.language_models.langchain.runnables import create_runnable
         settings = Settings()
-        model = create_kernel("question_generator", settings.major)
+        model = create_runnable(
+            "question_generator",
+            settings.major,
+            "You are a helpful teacher")
 
         # if no settings object given, defaults to settings.minor
-        model_minor = create_kernel("question_generator")
+        model_minor = create_runnable("question_generator")
     ```
 """
 
@@ -55,7 +73,6 @@ from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
-    PromptTemplate,
 )
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
@@ -72,17 +89,22 @@ from .models import (
 )
 
 from ..lazy_dict import LazyLoadingDict
-from ..prompts import KernelNames, kernel_prompts
+from ..tools import (
+    ToolDefinition,
+    KernelNames,
+    tool_library,
+)
 
 
-# Defines the kernel/model combinations. We need a class here
-# to use it as a key in a lazy_dict
-class KernelModel(BaseModel):
-    """Kernel definition"""
+# Defines the runnable
+class RunnableDefinition(BaseModel):
+    """Groups together all properties that define the runnable"""
 
     kernel_name: KernelNames
     settings: LanguageModelSettings
+    system_prompt_override: str | None = None
 
+    # required for hashability
     model_config = ConfigDict(frozen=True, extra='forbid')
 
 
@@ -90,20 +112,28 @@ class KernelModel(BaseModel):
 EmbeddingModel = EmbeddingSettings
 
 # Exports the type of the Langchain object
-KernelType = RunnableSerializable[dict[str, str], str]
+RunnableType = RunnableSerializable[dict[str, str], str]
 
 
 # The factory functions
-def _create_kernel(
-    model: KernelModel,
-) -> KernelType:  # RunnableSerializable[dict[str, str], str]
+def _create_runnable(
+    model: RunnableDefinition,
+) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
     """Assembles a Langchain chain with a prompt from kernel_prompts
     and a language model as specified by a LanguageModelSettings."""
 
-    # the system prompt was saved in the model settings, but it is
-    # retrieved here to iinclude it in the chain
-    system_prompt = model.settings.system_prompt
+    # fetch the kernel definition from the library
+    kernel_definition: ToolDefinition = tool_library[
+        model.kernel_name
+    ]
+    system_prompt = (
+        kernel_definition.system_prompt
+        if model.system_prompt_override is None
+        else model.system_prompt_override
+    )
+    human_prompt = kernel_definition.prompt
 
+    # Langchain prompt
     prompt: ChatPromptTemplate
     if system_prompt is not None:
         prompt = ChatPromptTemplate.from_messages(  # type: ignore
@@ -112,21 +142,28 @@ def _create_kernel(
                     system_prompt
                 ),
                 HumanMessagePromptTemplate.from_template(
-                    kernel_prompts[model.kernel_name]
+                    human_prompt
                 ),
             ]
         )
     else:
-        prompt = ChatPromptTemplate.from_template(
-            kernel_prompts[model.kernel_name]
-        )
+        prompt = ChatPromptTemplate.from_template(human_prompt)
+
+    # the base language model
     language_model: BaseChatModel = create_model_from_settings(
         model.settings
     )
-    kernel: KernelType = prompt | language_model | StrOutputParser()  # type: ignore
+
+    # combine into a runnable
+    kernel: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
     # .name is a member function of RunnableSerializable
     # inited to None, which we initialize here
-    kernel.name = f"{model.kernel_name}:{model.settings.get_model_source()}/{model.settings.get_model_name()}"
+    kernel.name = (
+        f"{model.kernel_name}:"
+        + f"{model.settings.get_model_source()}/"
+        + f"{model.settings.get_model_name()}"
+    )
+
     return kernel
 
 
@@ -138,24 +175,23 @@ def _create_embedding(
 
 
 # global project-wide repository of kernels
-kernel_factory = LazyLoadingDict(_create_kernel)
-embeddings_factory = LazyLoadingDict(_create_embedding)
+runnable_library = LazyLoadingDict(_create_runnable)
+embeddings_library = LazyLoadingDict(_create_embedding)
 
 
 # Provides the shunting of the model to the major, minor, or aux
 # specification provided in config.toml
-def create_kernel(
+def create_runnable(
     kernel_name: KernelNames | str,
     user_settings: (
         dict[str, str] | LanguageModelSettings | None
     ) = None,
     system_prompt: str | None = None,
-) -> KernelType:  # RunnableSerializable[dict[str, str], str]
+) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
     """
-    Creates a Langchain kernel by combining configuration from
-    config.toml with optional override settings. The kernel factory
-    uses lazy loading to cache and reuse kernel instances based on
-    their configuration.
+    Creates a Langchain kernel (a 'runnable') by combining tools/prompts
+    created under the kernel_name parameters and configurations from
+    config.toml with optional override settings.
 
     The function maps different kernel types to their appropriate
     language model settings categories. For example,
@@ -172,7 +208,7 @@ def create_kernel(
         kernel_name: The name of the kernel to create. If one of
             the supported kernel names defined in the KernelNames
             literal type, returns a cached kernel object. Otherwise,
-            looks up in the kernel_prompts dictionary if there is
+            looks up in the tools_library dictionary if there is
             a prompt with that kernel_name, and returns a kernel
             object for a chat with that prompt.
         user_settings: Optional settings to override the default
@@ -184,11 +220,11 @@ def create_kernel(
             language model.
 
     Returns:
-        RunnableSerializable[dict[str, str], str]: A Langchain
-        runnable chain that combines a prompt template, language
-        model, and string output parser. The chain accepts a
-        dictionary of template variables and returns a string
-        response.
+        A KernelType object RunnableSerializable[dict[str, str], str],
+            A Langchain runnable chain that combines a prompt template,
+            language model, and string output parser. The chain accepts a
+            dictionary of template variables and returns a string
+            response.
 
     Raises:
         ValueError: If kernel_name is not supported or if user_settings
@@ -204,12 +240,12 @@ def create_kernel(
         Create kernel with default settings read from configuration
         file:
         ```python
-        kernel = create_kernel("query")
+        kernel = create_runnable("query")
         ```
 
         Override with dictionary:
         ```python
-        kernel = create_kernel("summarizer",
+        kernel = create_runnable("summarizer",
             {"model": "OpenAI/gpt-4o"})
         ```
 
@@ -219,7 +255,16 @@ def create_kernel(
         settings = LanguageModelSettings(
             model="Mistral/mistral-small-latest"
         )
-        kernel = create_kernel("question_generator", settings)
+        kernel = create_runnable("question_generator", settings)
+        ```
+
+        The kernel object may be used with Langchain `.invoke` syntax:
+
+        ```python
+        response = kernel.invoke(
+            {'text': "Logistic regression is used when the outcome"
+                + " variable is binary."}
+        )
         ```
     """
 
@@ -227,17 +272,13 @@ def create_kernel(
         settings: LanguageModelSettings,
         kernel_name: KernelNames,
         system_prompt: str | None,
-    ) -> KernelType:
-        if system_prompt is not None:
-            settings = settings.from_instance(
-                system_prompt=system_prompt
-            )
-        return kernel_factory[
-            KernelModel(
-                kernel_name=kernel_name,
-                settings=settings,
-            )
-        ]
+    ) -> RunnableType:
+        model: RunnableDefinition = RunnableDefinition(
+            kernel_name=kernel_name,
+            settings=settings,
+            system_prompt_override=system_prompt,
+        )
+        return runnable_library[model]
 
     match kernel_name:
         case 'query' | 'query_with_context':
@@ -272,28 +313,21 @@ def create_kernel(
             else:
                 settings = Settings()
             language_settings = settings.minor
-            if system_prompt is not None:
-                language_settings = language_settings.from_instance(
-                    system_prompt=system_prompt
-                )
-            if kernel_name not in kernel_prompts.keys():
+            if kernel_name not in tool_library.keys():
                 raise ValueError(
                     f"Invalid kernel name: {kernel_name}"
                 )
-            prompt: PromptTemplate = PromptTemplate.from_template(
-                kernel_prompts[kernel_name]  # type: ignore
+            kernel_definition: ToolDefinition = tool_library[kernel_name]  # type: ignore
+            sys_prompt = (
+                kernel_definition.system_prompt
+                if system_prompt is None
+                else system_prompt
             )
-
-            kernel = create_kernel_from_objects(
-                prompt,
-                language_settings,
+            return create_kernel_from_objects(
+                human_prompt=kernel_definition.prompt,
+                system_prompt=sys_prompt,
+                language_model=language_settings,
             )
-            kernel.name = (
-                f"{kernel_name}:"
-                + f"{language_settings.get_model_source()}/"
-                + f"{language_settings.get_model_name()}"
-            )
-            return kernel
         case _:
             raise ValueError("Unreacheable code reached.")
 
@@ -335,28 +369,31 @@ def create_embeddings(
         # checked by pydantic model
         settings = EmbeddingSettings(**settings)  # type: ignore
 
-    return embeddings_factory[settings]
+    return embeddings_library[settings]
 
 
 def create_kernel_from_objects(
-    prompt: PromptTemplate,
+    human_prompt: str,
+    *,
+    system_prompt: str | None = None,
     language_model: (
         BaseChatModel | LanguageModelSettings | None
     ) = None,
-) -> KernelType:
+) -> RunnableType:
     """
     Creates a Langchain runnable from a prompt template and
     a language settings object.
 
     Args:
-        prompt: a prompt template object
+        human_prompt: prompt text
+        system_prompt: system prompt text
         language_model: either a Langchain BaseChatModel, or
             a LanguageModelSettings object, or None (default). In
             this latter case the language.minor from the config
             file is used to create the model.
 
     Returns:
-        a Langchain runnable, a type aliased as `KernelType`.
+        a Langchain runnable, a type aliased as `RunnableType`.
 
     """
     if language_model is None:
@@ -369,8 +406,25 @@ def create_kernel_from_objects(
     else:  # it's a BaseChatModel
         name = "Custom"
 
-    kernel: KernelType = (  # type: ignore
-        prompt | language_model | StrOutputParser()
-    )
+    # Langchain prompt
+    prompt: ChatPromptTemplate
+    if system_prompt is not None:
+        prompt = ChatPromptTemplate.from_messages(  # type: ignore
+            [
+                SystemMessagePromptTemplate.from_template(
+                    system_prompt
+                ),
+                HumanMessagePromptTemplate.from_template(
+                    human_prompt
+                ),
+            ]
+        )
+    else:
+        prompt = ChatPromptTemplate.from_template(human_prompt)
+
+    # combine into a runnable
+    kernel: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
+    # .name is a member function of RunnableSerializable
+    # inited to None, which we initialize here
     kernel.name = name
     return kernel

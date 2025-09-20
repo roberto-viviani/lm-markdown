@@ -1,8 +1,12 @@
-"""Test language_models.kernels"""
+"""Test language_models.tools"""
 
 import unittest
 
-from lmm.language_models.prompts import kernel_prompts, create_prompt
+from lmm.language_models.tools import (
+    tool_library as kernel_prompts,
+    create_prompt,
+    ToolDefinition,
+)
 
 
 class TestKernelPrompts(unittest.TestCase):
@@ -27,8 +31,8 @@ TEXT:
 {text}
 """
         create_prompt(prompt_template, "questioner")
-        prompt = kernel_prompts["questioner"]
-        self.assertEqual(prompt, prompt_template)
+        prompt: ToolDefinition = kernel_prompts["questioner"]
+        self.assertEqual(prompt.prompt, prompt_template)
 
 
 if __name__ == "__main__":

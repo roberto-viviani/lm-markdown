@@ -36,10 +36,10 @@ from lmm.markdown.ioutils import save_markdown
 from lmm.utils.logging import LoggerBase, get_logger
 
 from lmm.config.config import LanguageModelSettings
-from lmm.language_models.prompts import KernelNames
-from lmm.language_models.langchain.kernels import (
-    create_kernel,
-    KernelType,
+from lmm.language_models.tools import KernelNames
+from lmm.language_models.langchain.runnables import (
+    create_runnable,
+    RunnableType,
 )
 
 # metadata block keys
@@ -58,7 +58,7 @@ logger = get_logger(__name__)
 
 def _fetch_kernel(
     kernel_name: KernelNames, node: MarkdownNode | None = None
-) -> KernelType:
+) -> RunnableType:
     """This function allows to use information from the metadata of a
     node to modify the properties of a language kernel loaded through
     the kernel module.
@@ -72,7 +72,7 @@ def _fetch_kernel(
     assert node is None
 
     if node is None:
-        model = create_kernel(kernel_name=kernel_name)
+        model = create_runnable(kernel_name=kernel_name)
     else:
         INCLUDE_HEADER = True
         model_properties: MetadataValue = node.fetch_metadata_for_key(
@@ -86,7 +86,7 @@ def _fetch_kernel(
 
         # type checks and coertions delegated to pydantic model
         settings = LanguageModelSettings(**model_properties)  # type: ignore
-        model = create_kernel(
+        model = create_runnable(
             kernel_name="summarizer", user_settings=settings
         )
     return model

@@ -6,8 +6,8 @@ import unittest
 from langchain_core.embeddings import Embeddings
 from pydantic import ValidationError
 
-from lmm.language_models.langchain.kernels import (
-    create_kernel,
+from lmm.language_models.langchain.runnables import (
+    create_runnable as create_kernel,
     create_embeddings,
 )
 from lmm.config.config import (
@@ -134,8 +134,8 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name()
 
     def test_custom_model(self):
-        from lmm.language_models.prompts import (
-            kernel_prompts,
+        from lmm.language_models.tools import (
+            tool_library as kernel_prompts,
             create_prompt,
         )
 
@@ -145,9 +145,9 @@ Provide the questions to which the text answers.
 TEXT:
 {text}
 """
-        create_prompt(prompt_template, "questioner")
+        create_prompt(name="questioner", prompt=prompt_template)
         prompt = kernel_prompts["questioner"]
-        self.assertEqual(prompt, prompt_template)
+        self.assertEqual(prompt.prompt, prompt_template)
 
         settings = Settings()
         model = create_kernel("questioner", settings.major)
@@ -158,8 +158,8 @@ TEXT:
         )
 
     def test_custom_model_from_config(self):
-        from lmm.language_models.prompts import (
-            kernel_prompts,
+        from lmm.language_models.tools import (
+            tool_library as kernel_prompts,
             create_prompt,
         )
 
@@ -169,9 +169,9 @@ Provide the questions to which the text answers.
 TEXT:
 {text}
 """
-        create_prompt(prompt_template, "questioner")
+        create_prompt(name="questioner", prompt=prompt_template)
         prompt = kernel_prompts["questioner"]
-        self.assertEqual(prompt, prompt_template)
+        self.assertEqual(prompt.prompt, prompt_template)
 
         model = create_kernel("questioner")
         self.assertIn(

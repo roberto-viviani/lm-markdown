@@ -68,22 +68,30 @@ class TestLazyDict(unittest.TestCase):
         self.assertEqual(len(langchain_factory), model_count)
 
     def test_create_systemprompt(self):
-        model_spec = LanguageModelSettings(
-            model="OpenAI/gpt-4o",
-            system_prompt="You are a helpful assistant",
+        from lmm.language_models.tools import (
+            create_prompt,
         )
-        model = langchain_factory[model_spec]
-        self.assertEqual(model.get_name(), "ChatOpenAI")
-        model_count = len(langchain_factory)
 
-        # previously cached. Note this works if defaults are aligned.
-        model_spec = {
-            'model': "OpenAI/gpt-4o",
-            'system_prompt': "You are a helpful assistant",
-        }
-        model = create_model_from_spec(**model_spec)
-        self.assertEqual(model.get_name(), "ChatOpenAI")
-        self.assertEqual(len(langchain_factory), model_count)
+        prompt_template = '''Provide the questions to which the text answers.
+            TEXT:
+            {text}
+        '''
+        create_prompt(prompt_template, name="question_generator")
+
+        # create a kernel from the major model in config.toml with
+        # this prompts
+        from lmm.config.config import Settings
+        from lmm.language_models.langchain.runnables import (
+            create_runnable as create_kernel,
+        )
+
+        settings = Settings()
+        model = create_kernel(
+            "question_generator",
+            settings.major,
+            "You are a helpful teacher",
+        )
+        self.assertIn("question_generator", model.get_name())
 
     def test_create3(self):
         # previously cached

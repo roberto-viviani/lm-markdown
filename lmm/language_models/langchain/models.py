@@ -3,13 +3,12 @@ This module implements creation of Langchain language model objects
 ("runnables") from specifications given as a LanguageModelSettings
 object, a dictionary, or a spec given as argument to the
 create_model_from_spec function. The LanguageModelSettings is also
-a member of the Settings object that is read from the config file.
+a member of the Settings object that is read from the config file;
+therefore, this module allows implementing a user interface to swap
+language model implementations via the config.toml file.
 
 The "runnable" object allow interacting with the language models
 directly, abstracting from vendor details.
-
-The 'model' parameter must be provided. All other parameters
-are initialized to defaults.
 
 Examples:
 
@@ -65,7 +64,9 @@ from lmm.config.config import (
 from lmm.markdown.parse_yaml import MetadataPrimitive
 
 
-# Factory function to create model.
+# Factory function to create model. Here, the model definition is
+# provided by the settings object that can be read from config.toml,
+# LanguageModelSettings
 def _create_model_instance(
     model: LanguageModelSettings,
 ) -> BaseChatModel:
@@ -187,7 +188,7 @@ def _create_model_instance(
             )
 
 
-# Langchain model type specified here.
+# The specification of the embedding is read from config.toml too
 def _create_embedding_instance(
     model: EmbeddingSettings,
 ) -> Embeddings:
@@ -248,7 +249,6 @@ def create_model_from_spec(
     max_retries: int = 2,
     timeout: float | None = None,
     provider_params: dict[str, MetadataPrimitive] = {},
-    system_prompt: str | None = None,
 ) -> BaseChatModel:
     """Create langchain model from specifications.
 
@@ -274,14 +274,12 @@ def create_model_from_spec(
         max_retries=max_retries,
         timeout=timeout,
         provider_params=provider_params,
-        system_prompt=system_prompt,
     )
     return langchain_factory[spec]
 
 
 def create_model_from_settings(
     settings: LanguageModelSettings,
-    system_prompt: str | None = None,
 ) -> BaseChatModel:
     """Create langchain model from a LanguageModelSettings object.
     Raises a ValueError if the source argument is not supported.
@@ -301,7 +299,6 @@ def create_model_from_settings(
             model="OpenAI/gpt-4o-mini",
             temperature=0.7,
             max_tokens=1000,
-            system_prompt="You are a helpful assistant.",
             max_retries=3,
         )
         model = create_model_from_settings(config)
@@ -312,13 +309,10 @@ def create_model_from_settings(
         system_prompt = "You are a helpful assistant."
         model = create_model_from_settings(
             settings.minor,
-            system_prompt=system_prompt,
         )
         response = model.invoke("Why is the grass green?")
         ```
     """
-    if system_prompt is not None:
-        settings = settings.from_instance(system_prompt=system_prompt)
     return langchain_factory[settings]
 
 

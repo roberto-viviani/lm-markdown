@@ -49,10 +49,6 @@ class LanguageModelSettings(BaseModel):
         max_retries: max number retries attempts
         timmeout: timeout when waiting for response
         provider_params: provider-specific parameters
-        system_prompt: a default system prompt. This is
-            stored in the definition of the model and is
-            used every time an exchange with the model
-            is made. Set to None to remove this prompt.
     """
 
     # Required
@@ -80,10 +76,6 @@ class LanguageModelSettings(BaseModel):
     )
     timeout: float | None = Field(
         default=None, gt=0, description="Request timeout in seconds"
-    )
-    system_prompt: str | None = Field(
-        default=None,
-        description="Default system prompt",
     )
 
     # Provider-specific parameters
@@ -126,7 +118,6 @@ class LanguageModelSettings(BaseModel):
         max_retries: int | None = None,
         timeout: float | None = None,
         provider_params: dict[str, MetadataPrimitive] | None = None,
-        system_prompt: str | None = None,
     ) -> 'LanguageModelSettings':
         return LanguageModelSettings(
             model=model if model is not None else self.model,
@@ -150,11 +141,6 @@ class LanguageModelSettings(BaseModel):
                 provider_params
                 if provider_params is not None
                 else self.provider_params
-            ),
-            system_prompt=(
-                system_prompt
-                if system_prompt is not None
-                else self.system_prompt
             ),
         )
 

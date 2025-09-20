@@ -1,8 +1,8 @@
 # pyright: reportUnusedImport=false
 # flake8: noqa
 
-from .prompts import (
+from .tools import (
     KernelNames,
-    kernel_prompts,
+    tool_library,
     create_prompt,
 )

@@ -64,9 +64,9 @@ from lmm.markdown.treeutils import (
 )
 
 # language models
-from lmm.language_models.langchain.kernels import (
-    KernelType,
-    create_kernel,
+from lmm.language_models.langchain.runnables import (
+    RunnableType,
+    create_runnable,
 )
 from requests.exceptions import ConnectionError
 
@@ -560,7 +560,9 @@ def add_questions(
             return ""
         response: str = ""
         try:
-            kernel: KernelType = create_kernel("question_generator")
+            kernel: RunnableType = create_runnable(
+                "question_generator"
+            )
             response = kernel.invoke({'text': text})
         except ConnectionError:
             logger.error(
@@ -596,7 +598,7 @@ def add_summaries(
             return ""
         response: str = ""
         try:
-            kernel: KernelType = create_kernel("summarizer")
+            kernel: RunnableType = create_runnable("summarizer")
             response = kernel.invoke({'text': text})
         except ConnectionError:
             logger.error(
