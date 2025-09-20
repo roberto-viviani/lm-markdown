@@ -242,11 +242,13 @@ langchain_embeddings = LazyLoadingDict(_create_embedding_instance)
 
 def create_model_from_spec(
     model: str,
+    *,
     temperature: float = 0.1,
     max_tokens: int | None = None,
     max_retries: int = 2,
     timeout: float | None = None,
     provider_params: dict[str, MetadataPrimitive] = {},
+    system_prompt: str = "Your are a helpful assistant.",
 ) -> BaseChatModel:
     """Create langchain model from specifications.
 
@@ -272,12 +274,14 @@ def create_model_from_spec(
         max_retries=max_retries,
         timeout=timeout,
         provider_params=provider_params,
+        system_prompt=system_prompt,
     )
     return langchain_factory[spec]
 
 
 def create_model_from_settings(
     settings: LanguageModelSettings,
+    system_prompt: str = "Your are a helpful assistant",
 ) -> BaseChatModel:
     """Create langchain model from a LanguageModelSettings object.
     Raises a ValueError if the source argument is not supported.
@@ -296,22 +300,29 @@ def create_model_from_settings(
         config = LanguageModelSettings(
             model="OpenAI/gpt-4o-mini",
             temperature=0.7,
-            max_tokens=1000
+            max_tokens=1000,
+            system_prompt="You are a helpful assistant.",
+            max_retries=3,
         )
         model = create_model_from_settings(config)
         response = model.invoke("Why is the sky blue?")
 
         # Load settings from config.toml.
         settings = Settings()
-        model = create_model_from_settings(settings.minor)
+        system_prompt = "You are a helpful assistant."
+        model = create_model_from_settings(
+            settings.minor,
+            system_prompt=system_prompt,
+        )
         response = model.invoke("Why is the grass green?")
         ```
     """
-    return langchain_factory[settings]
+    spec = settings.from_instance(system_prompt=system_prompt)
+    return langchain_factory[spec]
 
 
 def create_embedding_model_from_spec(
-    dense_model: str, sparse_model: str = 'Qdrant/bm25'
+    dense_model: str, *, sparse_model: str = 'Qdrant/bm25'
 ) -> Embeddings:
     """Create langchain embedding model from source_name and
     model_name. Raises a ValueError if the source_name argument

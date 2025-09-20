@@ -6,7 +6,7 @@ import unittest
 from langchain_core.embeddings import Embeddings
 from pydantic import ValidationError
 
-from lmm.language_models.langchain.kernel import (
+from lmm.language_models.langchain.kernels import (
     create_kernel,
     create_embeddings,
 )
@@ -134,7 +134,7 @@ class TestDefaultModels(unittest.TestCase):
             model.get_name()
 
     def test_custom_model(self):
-        from lmm.language_models.kernels import (
+        from lmm.language_models.prompts import (
             kernel_prompts,
             create_prompt,
         )
@@ -158,7 +158,7 @@ TEXT:
         )
 
     def test_custom_model_from_config(self):
-        from lmm.language_models.kernels import (
+        from lmm.language_models.prompts import (
             kernel_prompts,
             create_prompt,
         )

@@ -61,7 +61,7 @@ class TestLazyDict(unittest.TestCase):
         self.assertEqual(model.get_name(), "ChatOpenAI")
         model_count = len(langchain_factory)
 
-        # previously cached
+        # previously cached. Note this works if defaults are aligned.
         model_spec = {'model': "OpenAI/gpt-4o"}
         model = create_model_from_spec(**model_spec)
         self.assertEqual(model.get_name(), "ChatOpenAI")

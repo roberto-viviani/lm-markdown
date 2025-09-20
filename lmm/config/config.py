@@ -49,6 +49,7 @@ class LanguageModelSettings(BaseModel):
         max_retries: max number retries attempts
         timmeout: timeout when waiting for response
         provider_params: provider-specific parameters
+        system_prompt: a default system prompt
     """
 
     # Required
@@ -76,6 +77,10 @@ class LanguageModelSettings(BaseModel):
     )
     timeout: float | None = Field(
         default=None, gt=0, description="Request timeout in seconds"
+    )
+    system_prompt: str | None = Field(
+        default="Your are a helpful assistant.",
+        description="Default system prompt",
     )
 
     # Provider-specific parameters
@@ -108,6 +113,47 @@ class LanguageModelSettings(BaseModel):
 
     def get_model_name(self) -> str:
         return self.model.split('/')[1]
+
+    # A method to create a new instance with some fields modified
+    def from_instance(
+        self,
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        max_retries: int | None = None,
+        timeout: float | None = None,
+        provider_params: dict[str, MetadataPrimitive] | None = None,
+        system_prompt: str | None = None,
+    ) -> 'LanguageModelSettings':
+        return LanguageModelSettings(
+            model=model if model is not None else self.model,
+            temperature=(
+                temperature
+                if temperature is not None
+                else self.temperature
+            ),
+            max_tokens=(
+                max_tokens
+                if max_tokens is not None
+                else self.max_tokens
+            ),
+            max_retries=(
+                max_retries
+                if max_retries is not None
+                else self.max_retries
+            ),
+            timeout=timeout if timeout is not None else self.timeout,
+            provider_params=(
+                provider_params
+                if provider_params is not None
+                else self.provider_params
+            ),
+            system_prompt=(
+                system_prompt
+                if system_prompt is not None
+                else self.system_prompt
+            ),
+        )
 
     @field_validator('model', mode='after')
     @classmethod

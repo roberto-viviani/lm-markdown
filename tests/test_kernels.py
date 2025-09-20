@@ -2,7 +2,7 @@
 
 import unittest
 
-from lmm.language_models.kernels import kernel_prompts, create_prompt
+from lmm.language_models.prompts import kernel_prompts, create_prompt
 
 
 class TestKernelPrompts(unittest.TestCase):
