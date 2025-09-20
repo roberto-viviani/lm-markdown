@@ -51,8 +51,13 @@ from pydantic import BaseModel, ConfigDict
 from langchain_core.runnables.base import (
     RunnableSerializable,
 )
+from langchain.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+    PromptTemplate,
+)
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.embeddings import Embeddings
 
@@ -95,9 +100,26 @@ def _create_kernel(
     """Assembles a Langchain chain with a prompt from kernel_prompts
     and a language model as specified by a LanguageModelSettings."""
 
-    prompt: PromptTemplate = PromptTemplate.from_template(
-        kernel_prompts[model.kernel_name]
-    )
+    # the system prompt was saved in the model settings, but it is
+    # retrieved here to iinclude it in the chain
+    system_prompt = model.settings.system_prompt
+
+    prompt: ChatPromptTemplate
+    if system_prompt is not None:
+        prompt = ChatPromptTemplate.from_messages(  # type: ignore
+            [
+                SystemMessagePromptTemplate.from_template(
+                    system_prompt
+                ),
+                HumanMessagePromptTemplate.from_template(
+                    kernel_prompts[model.kernel_name]
+                ),
+            ]
+        )
+    else:
+        prompt = ChatPromptTemplate.from_template(
+            kernel_prompts[model.kernel_name]
+        )
     language_model: BaseChatModel = create_model_from_settings(
         model.settings
     )
@@ -127,6 +149,7 @@ def create_kernel(
     user_settings: (
         dict[str, str] | LanguageModelSettings | None
     ) = None,
+    system_prompt: str | None = None,
 ) -> KernelType:  # RunnableSerializable[dict[str, str], str]
     """
     Creates a Langchain kernel by combining configuration from
@@ -157,6 +180,8 @@ def create_kernel(
             - dict[str, str]: Dictionary with 'model' key
             - LanguageModelSettings: Pydantic model instance
             - None: Use settings from config.toml or defaults
+        system_prompt: Uses the system prompt in messages with the
+            language model.
 
     Returns:
         RunnableSerializable[dict[str, str], str]: A Langchain
@@ -197,40 +222,48 @@ def create_kernel(
         kernel = create_kernel("question_generator", settings)
         ```
     """
+
+    def _create_or_get(
+        settings: LanguageModelSettings,
+        kernel_name: KernelNames,
+        system_prompt: str | None,
+    ) -> KernelType:
+        if system_prompt is not None:
+            settings = settings.from_instance(
+                system_prompt=system_prompt
+            )
+        return kernel_factory[
+            KernelModel(
+                kernel_name=kernel_name,
+                settings=settings,
+            )
+        ]
+
     match kernel_name:
         case 'query' | 'query_with_context':
             if bool(user_settings):  # disallow empty dictionary
                 settings = Settings(major=user_settings)  # type: ignore
             else:
                 settings = Settings()
-            return kernel_factory[
-                KernelModel(
-                    kernel_name=kernel_name,
-                    settings=settings.major,
-                )
-            ]
+            return _create_or_get(
+                settings.major, kernel_name, system_prompt
+            )
         case 'question_generator' | 'summarizer':
             if bool(user_settings):  # disallow empty dictionary
                 settings = Settings(minor=user_settings)  # type: ignore
             else:
                 settings = Settings()
-            return kernel_factory[
-                KernelModel(
-                    kernel_name=kernel_name,
-                    settings=settings.minor,
-                )
-            ]
+            return _create_or_get(
+                settings.minor, kernel_name, system_prompt
+            )
         case 'check_content':
             if bool(user_settings):  # disallow empty dictionary
                 settings = Settings(aux=user_settings)  # type: ignore
             else:
                 settings = Settings()
-            return kernel_factory[
-                KernelModel(
-                    kernel_name=kernel_name,
-                    settings=settings.aux,
-                )
-            ]
+            return _create_or_get(
+                settings.aux, kernel_name, system_prompt
+            )
         case str():
             # allows custom chat kernels to be constructed from custom
             # prompt templates
@@ -238,6 +271,11 @@ def create_kernel(
                 settings = Settings(minor=user_settings)  # type: ignore
             else:
                 settings = Settings()
+            language_settings = settings.minor
+            if system_prompt is not None:
+                language_settings = language_settings.from_instance(
+                    system_prompt=system_prompt
+                )
             if kernel_name not in kernel_prompts.keys():
                 raise ValueError(
                     f"Invalid kernel name: {kernel_name}"
@@ -248,9 +286,13 @@ def create_kernel(
 
             kernel = create_kernel_from_objects(
                 prompt,
-                settings.minor,
+                language_settings,
             )
-            kernel.name = f"{kernel_name}:{settings.minor}"
+            kernel.name = (
+                f"{kernel_name}:"
+                + f"{language_settings.get_model_source()}/"
+                + f"{language_settings.get_model_name()}"
+            )
             return kernel
         case _:
             raise ValueError("Unreacheable code reached.")

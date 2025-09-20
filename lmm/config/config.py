@@ -49,7 +49,10 @@ class LanguageModelSettings(BaseModel):
         max_retries: max number retries attempts
         timmeout: timeout when waiting for response
         provider_params: provider-specific parameters
-        system_prompt: a default system prompt
+        system_prompt: a default system prompt. This is
+            stored in the definition of the model and is
+            used every time an exchange with the model
+            is made. Set to None to remove this prompt.
     """
 
     # Required
@@ -79,7 +82,7 @@ class LanguageModelSettings(BaseModel):
         default=None, gt=0, description="Request timeout in seconds"
     )
     system_prompt: str | None = Field(
-        default="Your are a helpful assistant.",
+        default=None,
         description="Default system prompt",
     )
 

@@ -65,7 +65,7 @@ from lmm.config.config import (
 from lmm.markdown.parse_yaml import MetadataPrimitive
 
 
-# Langchain model type specified here.
+# Factory function to create model.
 def _create_model_instance(
     model: LanguageModelSettings,
 ) -> BaseChatModel:
@@ -248,7 +248,7 @@ def create_model_from_spec(
     max_retries: int = 2,
     timeout: float | None = None,
     provider_params: dict[str, MetadataPrimitive] = {},
-    system_prompt: str = "Your are a helpful assistant.",
+    system_prompt: str | None = None,
 ) -> BaseChatModel:
     """Create langchain model from specifications.
 
@@ -281,7 +281,7 @@ def create_model_from_spec(
 
 def create_model_from_settings(
     settings: LanguageModelSettings,
-    system_prompt: str = "Your are a helpful assistant",
+    system_prompt: str | None = None,
 ) -> BaseChatModel:
     """Create langchain model from a LanguageModelSettings object.
     Raises a ValueError if the source argument is not supported.
@@ -317,8 +317,9 @@ def create_model_from_settings(
         response = model.invoke("Why is the grass green?")
         ```
     """
-    spec = settings.from_instance(system_prompt=system_prompt)
-    return langchain_factory[spec]
+    if system_prompt is not None:
+        settings = settings.from_instance(system_prompt=system_prompt)
+    return langchain_factory[settings]
 
 
 def create_embedding_model_from_spec(

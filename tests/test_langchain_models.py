@@ -67,6 +67,24 @@ class TestLazyDict(unittest.TestCase):
         self.assertEqual(model.get_name(), "ChatOpenAI")
         self.assertEqual(len(langchain_factory), model_count)
 
+    def test_create_systemprompt(self):
+        model_spec = LanguageModelSettings(
+            model="OpenAI/gpt-4o",
+            system_prompt="You are a helpful assistant",
+        )
+        model = langchain_factory[model_spec]
+        self.assertEqual(model.get_name(), "ChatOpenAI")
+        model_count = len(langchain_factory)
+
+        # previously cached. Note this works if defaults are aligned.
+        model_spec = {
+            'model': "OpenAI/gpt-4o",
+            'system_prompt': "You are a helpful assistant",
+        }
+        model = create_model_from_spec(**model_spec)
+        self.assertEqual(model.get_name(), "ChatOpenAI")
+        self.assertEqual(len(langchain_factory), model_count)
+
     def test_create3(self):
         # previously cached
         model_spec = {'model': "OpenAI/gpt-4o"}
