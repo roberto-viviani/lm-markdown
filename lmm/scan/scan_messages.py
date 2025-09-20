@@ -37,7 +37,7 @@ from lmm.utils.logging import LoggerBase, get_logger
 
 from lmm.config.config import LanguageModelSettings
 from lmm.language_models.prompts import KernelNames
-from lmm.language_models.langchain.kernel import (
+from lmm.language_models.langchain.kernels import (
     create_kernel,
     KernelType,
 )

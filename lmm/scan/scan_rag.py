@@ -64,7 +64,7 @@ from lmm.markdown.treeutils import (
 )
 
 # language models
-from lmm.language_models.langchain.kernel import (
+from lmm.language_models.langchain.kernels import (
     KernelType,
     create_kernel,
 )

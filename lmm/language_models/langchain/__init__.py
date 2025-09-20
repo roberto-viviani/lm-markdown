@@ -1,4 +1,4 @@
 # pyright: reportUnusedImport=false
 # flake8: noqa
 
-from .kernel import create_kernel, create_embeddings
+from .kernels import create_kernel, create_embeddings

@@ -11,7 +11,7 @@ the parameters for the prompt template.
 
 Example of a predefined kernel:
     ```python
-    from lmm.language_models.langchain.kernel import create_kernel
+    from lmm.language_models.langchain.kernels import create_kernel
     model_query = create_kernel("query")  # uses config.toml for model
     model_questions = create_kernel("question_generator",
                                 {'model': "OpenAI/gpt-4o"})
@@ -23,7 +23,7 @@ Example of a predefined kernel:
 
 Example of a dynamically created chat kernel:
     ```python
-        from lmm.language_models.kernels import (
+        from lmm.language_models.prompts import (
             kernel_prompts,
             create_prompt,
         )
@@ -36,6 +36,8 @@ Example of a dynamically created chat kernel:
 
         # create a kernel from the major model in config.toml with
         # this prompts
+        from lmm.config.config import Settings
+        from lmm.language_models.langchain.kernels import create_kernel
         settings = Settings()
         model = create_kernel("question_generator", settings.major)
 
