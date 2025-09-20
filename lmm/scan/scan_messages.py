@@ -36,7 +36,7 @@ from lmm.markdown.ioutils import save_markdown
 from lmm.utils.logging import LoggerBase, get_logger
 
 from lmm.config.config import LanguageModelSettings
-from lmm.language_models.kernels import KernelNames
+from lmm.language_models.prompts import KernelNames
 from lmm.language_models.langchain.kernel import (
     create_kernel,
     KernelType,

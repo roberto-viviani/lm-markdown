@@ -64,7 +64,7 @@ from .models import (
 )
 
 from ..lazy_dict import LazyLoadingDict
-from ..kernels import KernelNames, kernel_prompts
+from ..prompts import KernelNames, kernel_prompts
 
 
 # Defines the kernel/model combinations. We need a class here
@@ -244,7 +244,7 @@ def create_kernel(
             )
 
             kernel = create_kernel_from_objects(
-                prompt,  # type: ignore
+                prompt,
                 settings.minor,
             )
             kernel.name = f"{kernel_name}:{settings.minor}"
