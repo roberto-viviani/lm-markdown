@@ -71,8 +71,8 @@ def _create_model_instance(
     model: LanguageModelSettings,
 ) -> BaseChatModel:
     """
-    Factory function to create Langchain models while checking permissible
-    sources.
+    Factory function to create Langchain models while checking 
+    permissible sources.
     """
     model_source: ModelSource = model.get_model_source()
     model_name: str = model.get_model_name()
@@ -84,7 +84,8 @@ def _create_model_instance(
                 )
             except ImportError as e:
                 raise ImportError(
-                    "Anthropic models require the 'langchain-anthropic' package. "
+                    "Anthropic models require the "
+                    "'langchain-anthropic' package. "
                     "Install it with: pip install langchain-anthropic"
                 ) from e
 
@@ -110,8 +111,10 @@ def _create_model_instance(
                 )
             except ImportError as e:
                 raise ImportError(
-                    "Gemini models require the 'langchain-google-genai' package. "
-                    "Install it with: pip install langchain-google-genai"
+                    "Gemini models require the "
+                    "'langchain-google-genai' package. "
+                    "Install it with: pip install "
+                    "langchain-google-genai"
                 ) from e
 
             # Build kwargs dict to handle optional parameters
@@ -136,8 +139,9 @@ def _create_model_instance(
                 )
             except ImportError as e:
                 raise ImportError(
-                    "Mistral models require the 'langchain-mistralai' package. "
-                    "Install it with: pip install langchain-mistralai"
+                    "Mistral models require the 'langchain-mistralai'"
+                    " package. Install it with: pip install "
+                    "langchain-mistralai"
                 ) from e
 
             # Build kwargs dict to handle optional parameters
@@ -161,8 +165,9 @@ def _create_model_instance(
                 from langchain_openai.chat_models import ChatOpenAI
             except ImportError as e:
                 raise ImportError(
-                    "OpenAI models require the 'langchain-openai' package. "
-                    "Install it with: pip install langchain-openai"
+                    "OpenAI models require the 'langchain-openai'"
+                    " package. Install it with: pip install "
+                    "langchain-openai"
                 ) from e
 
             # Build kwargs dict to handle optional parameters
@@ -184,7 +189,8 @@ def _create_model_instance(
 
         case _:
             raise ValueError(
-                f"Unreachable code reached: invalid source {model_source}"
+                "Unreachable code reached: invalid source "
+                f"{model_source}"
             )
 
 
@@ -193,8 +199,8 @@ def _create_embedding_instance(
     model: EmbeddingSettings,
 ) -> Embeddings:
     """
-    Factory function to create Langchain models while checking permissible
-    sources.
+    Factory function to create Langchain models while checking 
+    permissible sources.
     """
     model_source: str = model.get_model_source()
     model_name: str = model.get_model_name()
@@ -225,7 +231,8 @@ def _create_embedding_instance(
             from langchain_huggingface import HuggingFaceEmbeddings
 
             source_name = "sentence-transformers"
-            # Fix: model_name should remain a string, not converted to tuple
+            # Fix: model_name should remain a string, not converted 
+            # to tuple
             full_model_name = f"{source_name}/{model_name}"
             model_kwargs = {'device': 'cpu'}
             encode_kwargs = {'normalize_embeddings': True}
@@ -253,7 +260,8 @@ def create_model_from_spec(
     """Create langchain model from specifications.
 
     Args:
-        model: the model in the form source/model, such as 'OpenAI/gpt-4o'
+        model: the model in the form source/model, such as 
+            'OpenAI/gpt-4o'
 
     Returns:
         a Langchain model object.
@@ -285,7 +293,8 @@ def create_model_from_settings(
     Raises a ValueError if the source argument is not supported.
 
     Args:
-        settings: a LanguageModelSettings object containing model configuration.
+        settings: a LanguageModelSettings object containing model 
+            configuration.
 
     Returns:
         a Langchain model object.
@@ -352,7 +361,8 @@ def create_embedding_model_from_settings(
     is not supported.
 
     Args:
-        settings: an EmbeddingSettings object containing model configuration.
+        settings: an EmbeddingSettings object containing model 
+            configuration.
 
     Returns:
         a Langchain embeddings model object.
