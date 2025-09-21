@@ -14,7 +14,8 @@ Key Features:
 - Support for both file paths and direct string content
 
 Logger Usage Patterns:
-    The module supports different logger implementations for various use cases:
+    The module supports different logger implementations for various 
+    use cases:
 
     1. ConsoleLogger - For interactive development and debugging:
         >>> from lmm.utils.logging import ConsoleLogger
@@ -38,12 +39,13 @@ Logger Usage Patterns:
     4. LoglistLogger - For testing and programmatic access:
         >>> from lmm.utils.logging import LoglistLogger
         >>> logger = LoglistLogger()
-        >>> content = load_markdown("file.md", logger=logger)
-        >>> errors = logger.get_logs(level=3)  # Get error-level logs only
+        >>> content = load_markdown("file.md", 
+                                    logger=logger)
+        >>> errors = logger.get_logs(level=3)  # Error-level only
 
 Module Relationships:
-    This module serves as the I/O layer between file system operations and the
-    markdown parsing system:
+    This module serves as the I/O layer between file system 
+    operations and the markdown parsing system:
 
     File System ←→ ioutils.py ←→ parse_markdown.py ←→ Application
 
@@ -54,10 +56,12 @@ Module Relationships:
 
 Performance Characteristics:
     - File size checking: O(1) - single stat() call
-    - Encoding detection: O(n) where n is detection sample size (1-10KB)
+    - Encoding detection: O(n) where n is detection sample size 
+        (1-10KB)
     - UTF-8 detection: Fast path with 1KB sample
     - Chardet detection: Slower but more accurate with 10KB sample
-    - Memory usage: Proportional to file size (entire file loaded into memory)
+    - Memory usage: Proportional to file size (entire file loaded 
+        into memory)
     - Recommended limits: 50MB max, 10MB warning (configurable)
 
     For large files, consider:
@@ -82,7 +86,8 @@ def _check_file_size(
     logger: LoggerBase,
 ) -> bool:
     """
-    Check file size against limits and log warnings/errors as appropriate.
+    Check file size against limits and log warnings/errors as 
+    appropriate.
 
     Args:
         file_path: Path to the file to check
@@ -91,23 +96,27 @@ def _check_file_size(
         logger: Logger for reporting issues
 
     Returns:
-        True if file size is acceptable, False if it exceeds max_size_mb
+        True if file size is acceptable, False if it exceeds 
+        max_size_mb
     """
     try:
         file_size_bytes = file_path.stat().st_size
         file_size_mb = file_size_bytes / (1024 * 1024)
 
-        # Skip checks if limits are negative (effectively disables the check)
+        # Skip checks if limits are negative (effectively disables 
+        # the check)
         if max_size_mb > 0 and file_size_mb > max_size_mb:
             logger.error(
-                f"File {file_path} is too large ({file_size_mb:.1f}MB). "
+                f"File {file_path} is too large "
+                f"({file_size_mb:.1f}MB). "
                 f"Maximum allowed size is {max_size_mb}MB."
             )
             return False
         elif warn_size_mb > 0 and file_size_mb > warn_size_mb:
             logger.warning(
                 f"File {file_path} is large ({file_size_mb:.1f}MB). "
-                f"Consider using smaller files for better performance."
+                "Consider using smaller files for better "
+                "performance."
             )
 
         return True
@@ -134,7 +143,8 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
         logger: Logger for reporting detection results
 
     Returns:
-        Detected encoding string (defaults to 'utf-8' if detection fails)
+        Detected encoding string (defaults to 'utf-8' if detection 
+            fails)
     """
     # Try UTF-8 first (most common for markdown files)
     try:
@@ -156,7 +166,8 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
             if result['encoding'] and result['confidence'] > 0.7:
                 detected_encoding = result['encoding']
                 logger.info(
-                    f"File {file_path} detected as {detected_encoding} encoding "
+                    f"File {file_path} detected as "
+                    f"{detected_encoding} encoding "
                     f"(confidence: {result['confidence']:.2f})"
                 )
                 return detected_encoding
@@ -164,7 +175,8 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
             logger.warning(f"Encoding detection failed: {e}")
     else:
         logger.info(
-            "chardet library not available, using fallback encoding detection"
+            "chardet library not available, using fallback "
+            "encoding detection"
         )
 
     # Fallback to common encodings
@@ -174,7 +186,8 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
             with open(file_path, 'r', encoding=encoding) as f:
                 f.read(1024)  # Test read
             logger.info(
-                f"File {file_path} using fallback encoding: {encoding}"
+                f"File {file_path} using fallback encoding: "
+                f"{encoding}"
             )
             return encoding
         except UnicodeDecodeError:
@@ -182,7 +195,8 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
 
     # Last resort - use utf-8 with error handling
     logger.warning(
-        f"Could not detect encoding for {file_path}, using UTF-8 with error replacement"
+        f"Could not detect encoding for {file_path}, using UTF-8 "
+        "with error replacement"
     )
     return 'utf-8'
 
@@ -207,11 +221,13 @@ def load_markdown(
             string itself.
         logger (LoggerBase): a logger object (defaults to console).
         max_size_mb (float): maximum file size in MB (default: 50.0).
-        warn_size_mb (float): file size in MB to trigger warning (default: 10.0).
+        warn_size_mb (float): file size in MB to trigger warning 
+            (default: 10.0).
         encoding (str | None): specific encoding to use. If None and
-            auto_detect_encoding is True, encoding will be detected automatically.
-        auto_detect_encoding (bool): whether to automatically detect file encoding
-            (default: True).
+            auto_detect_encoding is True, encoding will be detected 
+            automatically.
+        auto_detect_encoding (bool): whether to automatically detect 
+            file encoding (default: True).
 
     Note:
         I/O errors will be conveyed to the logger object. Use an
@@ -253,7 +269,8 @@ def load_markdown(
             return ""
         except UnicodeDecodeError as e:
             logger.error(
-                f"Encoding error reading file {source} with {file_encoding}: {e}"
+                f"Encoding error reading file {source} with "
+                f"{file_encoding}: {e}"
             )
             # Try UTF-8 with error replacement as last resort
             try:
@@ -261,11 +278,13 @@ def load_markdown(
                     encoding='utf-8', errors='replace'
                 )
                 logger.warning(
-                    f"Fallback to UTF-8 with error replacement for {source}"
+                    "Fallback to UTF-8 with error replacement "
+                    f"for {source}"
                 )
             except Exception as fallback_e:
                 logger.error(
-                    f"Final fallback failed for {source}: {fallback_e}"
+                    f"Final fallback failed for {source}: "
+                    f"{fallback_e}"
                 )
                 return ""
         except Exception as e:
@@ -380,7 +399,8 @@ def report_error_blocks(
 def _report_single_error_block(
     error_block: ErrorBlock, logger: LoggerBase
 ) -> None:
-    """Report a single error block (typically from file loading failure)."""
+    """Report a single error block (typically from file loading 
+    failure)."""
     error_parts = [
         "Error loading markdown file:",
         error_block.content,
