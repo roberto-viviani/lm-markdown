@@ -71,7 +71,7 @@ def _create_model_instance(
     model: LanguageModelSettings,
 ) -> BaseChatModel:
     """
-    Factory function to create Langchain models while checking 
+    Factory function to create Langchain models while checking
     permissible sources.
     """
     model_source: ModelSource = model.get_model_source()
@@ -187,6 +187,21 @@ def _create_model_instance(
 
             return ChatOpenAI(**kwargs)
 
+        case 'Debug':
+            from .message_iterator import yield_message
+
+            try:
+                from langchain_core.language_models.fake_chat_models import (
+                    GenericFakeChatModel,
+                )
+            except ImportError as e:
+                raise ImportError(
+                    "Could not import GenericFakeChatModel from langchain_core"
+                ) from e
+            return GenericFakeChatModel(
+                name="Langchain fake chat", messages=yield_message()
+            )
+
         case _:
             raise ValueError(
                 "Unreachable code reached: invalid source "
@@ -199,7 +214,7 @@ def _create_embedding_instance(
     model: EmbeddingSettings,
 ) -> Embeddings:
     """
-    Factory function to create Langchain models while checking 
+    Factory function to create Langchain models while checking
     permissible sources.
     """
     model_source: str = model.get_model_source()
@@ -231,7 +246,7 @@ def _create_embedding_instance(
             from langchain_huggingface import HuggingFaceEmbeddings
 
             source_name = "sentence-transformers"
-            # Fix: model_name should remain a string, not converted 
+            # Fix: model_name should remain a string, not converted
             # to tuple
             full_model_name = f"{source_name}/{model_name}"
             model_kwargs = {'device': 'cpu'}
@@ -260,7 +275,7 @@ def create_model_from_spec(
     """Create langchain model from specifications.
 
     Args:
-        model: the model in the form source/model, such as 
+        model: the model in the form source/model, such as
             'OpenAI/gpt-4o'
 
     Returns:
@@ -293,7 +308,7 @@ def create_model_from_settings(
     Raises a ValueError if the source argument is not supported.
 
     Args:
-        settings: a LanguageModelSettings object containing model 
+        settings: a LanguageModelSettings object containing model
             configuration.
 
     Returns:
@@ -361,7 +376,7 @@ def create_embedding_model_from_settings(
     is not supported.
 
     Args:
-        settings: an EmbeddingSettings object containing model 
+        settings: an EmbeddingSettings object containing model
             configuration.
 
     Returns:

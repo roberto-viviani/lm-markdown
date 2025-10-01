@@ -24,7 +24,9 @@ from pydantic_settings import (
 
 # Define supported models. These models must also be defined
 # in the model_selection.py file of the language framework
-ModelSource = Literal['OpenAI', 'Anthropic', 'Mistral', 'Gemini']
+ModelSource = Literal[
+    'OpenAI', 'Anthropic', 'Mistral', 'Gemini', 'Debug'
+]
 EmbeddingSource = Literal[
     'OpenAI', 'Mistral', 'Gemini', 'SentenceTransformers'
 ]

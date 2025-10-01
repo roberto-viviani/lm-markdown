@@ -242,5 +242,17 @@ class TestLazyDict(unittest.TestCase):
             model
 
 
+class TestDebugModel(unittest.TestCase):
+
+    def test_create_debug(self):
+        model = create_model_from_spec(model="Debug/debug")
+        self.assertIsNotNone(model)
+
+    def test_use_debug(self):
+        model = create_model_from_spec(model="Debug/debug")
+        msg = model.invoke("Test")
+        self.assertEqual(msg.content, "Message 1")
+
+
 if __name__ == "__main__":
     unittest.main()
