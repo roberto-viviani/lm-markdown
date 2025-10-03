@@ -64,6 +64,7 @@ from lmm.markdown.treeutils import (
 )
 
 # language models
+from lmm.config.config import LanguageModelSettings
 from lmm.language_models.langchain.runnables import (
     RunnableType,
     create_runnable,
@@ -163,6 +164,11 @@ class ScanOpts(BaseModel):
         description="Add universally unique identifiers (UUIDs) to "
         + "text blocks for creation of id's in vector database",
     )
+    language_model_settings: LanguageModelSettings | None = Field(
+        default=None,
+        description="A language model settings object, or None. If"
+        + " provided, overrides settings in config.toml.",
+    )
 
     model_config = ConfigDict(extra='forbid')
 
@@ -204,6 +210,15 @@ def scan_rag(
     Example of use:
         ```python
         opts = ScanOpts(titles = True) # add titles
+        blocks = scan_rag(blocks, opts)
+
+        # override language model from config.toml
+        opts = ScanOpts(
+            questions = True,               # add questions
+            language_model_settings = LanguageModelSettings(
+                model = "OpenAI/gpt-4o"
+            )
+        )
         blocks = scan_rag(blocks, opts)
         ```
     """
@@ -561,7 +576,7 @@ def add_questions(
         response: str = ""
         try:
             kernel: RunnableType = create_runnable(
-                "question_generator"
+                "question_generator", opts.language_model_settings
             )
             response = kernel.invoke({'text': text})
         except ConnectionError:
@@ -598,7 +613,10 @@ def add_summaries(
             return ""
         response: str = ""
         try:
-            kernel: RunnableType = create_runnable("summarizer")
+            kernel: RunnableType = create_runnable(
+                kernel_name="summarizer",
+                user_settings=opts.language_model_settings,
+            )
             response = kernel.invoke({'text': text})
         except ConnectionError:
             logger.error(

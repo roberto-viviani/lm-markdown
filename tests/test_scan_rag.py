@@ -351,6 +351,44 @@ Another few words.
         for n in textnodes:
             self.assertTrue(n.fetch_metadata_for_key(QUESTIONS_KEY))
 
+    def test_build_questions_language_model(self):
+        # overrides config.toml
+        from lmm.config.config import LanguageModelSettings
+
+        # Test all headings have questions
+        blocks_raw: list[Block] = parse_markdown_text(document)
+        opts = ScanOpts(
+            questions=True,  # add questions
+            language_model_settings=LanguageModelSettings(
+                model="OpenAI/gpt-4o"
+            ),
+        )
+        blocks = scan_rag(blocks_raw, opts)
+        root = blocks_to_tree(blocks)
+        if not root:
+            raise Exception("Invalid text in test")
+
+        nodes = get_nodes_with_metadata(root, QUESTIONS_KEY)
+        self.assertTrue(len(nodes) > 0)
+
+        headingnodes: list[HeadingNode] = traverse_tree_nodetype(
+            root, lambda x: x.naked_copy(), HeadingNode
+        )
+        self.assertTrue(len(headingnodes) > 0)
+        self.assertIn(QUESTIONS_KEY, headingnodes[0].metadata)
+        for n in headingnodes:
+            self.assertIn(QUESTIONS_KEY, n.metadata)
+
+        textnodes: list[TextNode] = traverse_tree_nodetype(
+            root, lambda x: x, TextNode
+        )
+        self.assertTrue(len(textnodes) > 0)
+        self.assertTrue(
+            textnodes[0].fetch_metadata_for_key(QUESTIONS_KEY)
+        )
+        for n in textnodes:
+            self.assertTrue(n.fetch_metadata_for_key(QUESTIONS_KEY))
+
     def test_build_titles(self):
         # Test all headings have questions
         blocks_raw: list[Block] = parse_markdown_text(document)
