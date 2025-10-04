@@ -188,7 +188,10 @@ def _create_model_instance(
             return ChatOpenAI(**kwargs)
 
         case 'Debug':
-            from .message_iterator import yield_message
+            from .message_iterator import (
+                yield_message,
+                yield_constant_message,
+            )
 
             try:
                 from langchain_core.language_models.fake_chat_models import (
@@ -198,9 +201,21 @@ def _create_model_instance(
                 raise ImportError(
                     "Could not import GenericFakeChatModel from langchain_core"
                 ) from e
-            return GenericFakeChatModel(
-                name="Langchain fake chat", messages=yield_message()
-            )
+            if (
+                model.provider_params
+                and 'message' in model.provider_params.keys()
+            ):
+                return GenericFakeChatModel(
+                    name="Langchain fake messages",
+                    messages=yield_constant_message(
+                        str(model.provider_params['message'])
+                    ),
+                )
+            else:
+                return GenericFakeChatModel(
+                    name="Langchain fake chat",
+                    messages=yield_message(),
+                )
 
         case _:
             raise ValueError(

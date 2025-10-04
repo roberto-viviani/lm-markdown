@@ -2,9 +2,9 @@
 Creates Langchain runnable objects or 'kernels'. These objects may be
 used in Langchain chains.
 
-The runnable combine the Lanchain interface with two resources:
+The runnable plugs two library resources into the Langchain interface:
 
-- a language model, selected via the models module from the
+- a language model access, selected via the models module from the
     specification in a config.toml file
 - a set of tools that specialize the function of the language model,
     selected from the tool library provided by the tools module.
@@ -62,6 +62,10 @@ Example of a dynamically created chat kernel:
         # if no settings object given, defaults to settings.minor
         model_minor = create_runnable("question_generator")
     ```
+
+Note:
+    A Langchain language model may be used directly by
+    create_model_from_spec in the models module.
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -149,9 +153,30 @@ def _create_runnable(
     else:
         prompt = ChatPromptTemplate.from_template(human_prompt)
 
-    # the base language model
-    language_model: BaseChatModel = create_model_from_settings(
-        model.settings
+    # the base language model. We customize the language model for
+    # debug purposes to avoid calling the model provider.
+    language_model: BaseChatModel
+    language_model_settings: LanguageModelSettings = model.settings
+    if language_model_settings.get_model_source() == "Debug":
+        match model.kernel_name:
+            case 'summarizer':
+                language_model_settings.provider_params['message'] = (
+                    "This is a summary of the text."
+                )
+            case 'question_generator':
+                language_model_settings.provider_params['message'] = (
+                    "These are questions the text answers."
+                )
+            case 'check_content':
+                language_model_settings.provider_params['message'] = (
+                    "statistics"
+                )
+            case _:
+                # generic fake chat model in all other cases
+                pass
+
+    language_model = create_model_from_settings(
+        language_model_settings
     )
 
     # combine into a runnable

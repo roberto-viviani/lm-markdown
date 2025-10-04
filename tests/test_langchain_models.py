@@ -253,6 +253,14 @@ class TestDebugModel(unittest.TestCase):
         msg = model.invoke("Test")
         self.assertEqual(msg.content, "Message 1")
 
+    def test_debug_message(self):
+        model = create_model_from_spec(
+            model="Debug/debug",
+            provider_params={'message': "This is a debug message."},
+        )
+        msg = model.invoke("Test")
+        self.assertEqual(msg.content, "This is a debug message.")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,7 @@ This script demonstrates and tests the yield_message function and MessageIterato
 
 from lmm.language_models.langchain.message_iterator import (
     yield_message,
+    yield_constant_message,
 )
 
 
@@ -71,6 +72,16 @@ def test_iterator_protocol():
     ), f"Expected {expected}, got {messages}"
     print("✓ Iterator works with built-in iteration")
     print(f"  Generated: {messages}")
+
+
+def test_constant_message():
+    """Test the constant message iterator"""
+
+    iterator = yield_constant_message("Alert")
+    msg = next(iterator)
+    assert msg == "Alert"
+    msg = next(iterator)
+    assert msg == "Alert"
 
 
 if __name__ == "__main__":

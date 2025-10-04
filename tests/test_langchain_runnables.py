@@ -181,6 +181,19 @@ TEXT:
         )
 
 
+class TestDebugModel(unittest.TestCase):
+
+    def test_debug_kernel(self):
+        model = create_kernel(
+            kernel_name="summarizer",
+            user_settings={
+                'model': "Debug/debug",
+            },
+        )
+        msg = model.invoke({'text': "This is test text"})
+        self.assertEqual(msg, "This is a summary of the text.")
+
+
 class TestEmbeddingModel(unittest.TestCase):
 
     def test_embedding_default(self) -> None:
