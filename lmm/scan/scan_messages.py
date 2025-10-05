@@ -59,7 +59,8 @@ logger = get_logger(__name__)
 def _fetch_kernel(
     kernel_name: KernelNames, node: MarkdownNode | None = None
 ) -> RunnableType:
-    """This function allows to use information from the metadata of a
+    """
+    This function allows to use information from the metadata of a
     node to modify the properties of a language kernel loaded through
     the kernel module.
     At present, this is a stub to allow this future development, and
@@ -78,6 +79,10 @@ def _fetch_kernel(
         model_properties: MetadataValue = node.fetch_metadata_for_key(
             str(kernel_name), INCLUDE_HEADER
         )
+        if model_properties is None:
+            model_properties = node.fetch_metadata_for_key(
+                'model', INCLUDE_HEADER
+            )
         if not isinstance(model_properties, dict):
             raise ValueError(
                 "Invalid specification for language "
@@ -87,22 +92,27 @@ def _fetch_kernel(
         # type checks and coertions delegated to pydantic model
         settings = LanguageModelSettings(**model_properties)  # type: ignore
         model = create_runnable(
-            kernel_name="summarizer", user_settings=settings
+            kernel_name=kernel_name, user_settings=settings
         )
     return model
 
 
 def _fetch_summary(node: MarkdownNode) -> str:
-    """Utility to create a summary on a node with a heading model
-    and return its content.
+    """
+    Utility to create a summary on a node with a heading model and
+    return its content. The summary will be created after verifying
+    that the text is changed, otherwise the old summary will be
+    retained.
+
     Raises:
-        ConnectionError
+        ConnectionError, ValueError
     """
     model = _fetch_kernel(kernel_name="summarizer")
     post_order_aggregation(
         node,
         lambda x: model.invoke({'text': "\n".join(x)}),
         SUMMARY_KEY,
+        True,  # i.e, hashed to TXTHASH_KEY
     )
     summary = node.get_metadata_string_for_key(SUMMARY_KEY, "")
     return summary if summary else ""
@@ -131,7 +141,9 @@ def _add_chat(node: MarkdownNode, chat: list[str]) -> MarkdownNode:
     return node
 
 
-def _scan_queries(node: MarkdownNode) -> MarkdownNode:
+def _scan_queries(
+    node: MarkdownNode, logger: LoggerBase = logger
+) -> MarkdownNode:
     if QUERY_KEY not in node.metadata:
         return node
 
@@ -228,6 +240,7 @@ def _scan_queries(node: MarkdownNode) -> MarkdownNode:
             node, ["Error in connecting to the model", str(e)]
         )
     except Exception as e:
+        logger.error(f"Error while messaging language model:\n{e}")
         return _add_chat(
             node, ["Error in language model exchange", str(e)]
         )
@@ -235,31 +248,43 @@ def _scan_queries(node: MarkdownNode) -> MarkdownNode:
     return _add_chat(node, [query, response])
 
 
-def _scan_messages(root: MarkdownNode) -> MarkdownNode:
+def _scan_messages(
+    root: MarkdownNode, logger: LoggerBase = logger
+) -> MarkdownNode:
     return root
 
 
-def _scan_edits(root: MarkdownNode) -> MarkdownNode:
+def _scan_edits(
+    root: MarkdownNode, logger: LoggerBase = logger
+) -> MarkdownNode:
     return root
 
 
-def _process_chain(root: MarkdownNode) -> MarkdownNode:
-    root = pre_order_map_tree(root, _scan_queries)
-    root = pre_order_map_tree(root, _scan_messages)
-    root = pre_order_map_tree(root, _scan_edits)
+def _process_chain(
+    root: MarkdownNode, logger: LoggerBase = logger
+) -> MarkdownNode:
+    root = pre_order_map_tree(
+        root, lambda x: _scan_queries(x, logger)
+    )
+    root = pre_order_map_tree(
+        root, lambda x: _scan_messages(x, logger)
+    )
+    root = pre_order_map_tree(root, lambda x: _scan_edits(x, logger))
     return root
 
 
 def scan_messages(
     blocks: list[Block], logger: LoggerBase = logger
 ) -> list[Block]:
-    """Carries out the interaction with the language model,
+    """
+    Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
     Args:
         blocks: markdown blocks to process
 
-    Returns: the processed list of blocks.
+    Returns:
+        the processed list of blocks.
     """
 
     if not blocks:
@@ -274,7 +299,7 @@ def scan_messages(
     if not root:
         return []
 
-    root = _process_chain(root)
+    root = _process_chain(root, logger)
     return tree_to_blocks(root)
 
 
@@ -309,7 +334,8 @@ def markdown_messages(
     save: bool | str | Path = False,
     logger: LoggerBase = logger,
 ) -> list[Block]:
-    """Carries out the interaction with the language model,
+    """
+    Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
     Args:
@@ -326,11 +352,11 @@ def markdown_messages(
         it does not alter the source file.
     """
 
-    blocks = markdown_scan(sourcefile, False)
+    SAVE_FILE = False
+    blocks = markdown_scan(sourcefile, SAVE_FILE, logger)
     if not blocks:
         return []
     if blocklist_haserrors(blocks):
-        # markdown_scan(sourcefile, True)
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
         return blocks
@@ -339,7 +365,7 @@ def markdown_messages(
     if not root:
         return []
 
-    root = _process_chain(root)
+    root = _process_chain(root, logger)
     blocks = tree_to_blocks(root)
     if not blocks:
         return []
