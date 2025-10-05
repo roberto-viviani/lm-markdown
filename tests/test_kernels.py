@@ -7,9 +7,34 @@ from lmm.language_models.tools import (
     create_prompt,
     ToolDefinition,
 )
+from lmm.config.config import Settings, export_settings
+
+original_settings = Settings()
+
+
+def setUpModule():
+    settings = Settings(
+        major={'model': "Debug/debug"},
+        minor={'model': "Debug/debug"},
+        aux={'model': "Debug/debug"},
+    )
+    export_settings(settings)
+
+
+def tearDownModule():
+    export_settings(original_settings)
 
 
 class TestKernelPrompts(unittest.TestCase):
+
+    def test_setup(self):
+        settings = Settings()
+        self.assertEqual(settings.major.get_model_source(), "Debug")
+        self.assertEqual(settings.minor.get_model_source(), "Debug")
+        self.assertEqual(settings.aux.get_model_source(), "Debug")
+        self.assertEqual(settings.major.get_model_name(), "debug")
+        self.assertEqual(settings.minor.get_model_name(), "debug")
+        self.assertEqual(settings.aux.get_model_name(), "debug")
 
     def test_get_kernel(self):
         prompt: str = kernel_prompts["summarizer"]

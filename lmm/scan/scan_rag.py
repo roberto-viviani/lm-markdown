@@ -571,7 +571,7 @@ def add_questions(
         logger: a logger object
     """
 
-    def llm_questions(text: str) -> str:  # type: ignore[reportUnusedFunction]
+    def llm_questions(text: str) -> str:
         if len(text.split()) < opts.questions_threshold:
             return ""
         response: str = ""
@@ -591,12 +591,13 @@ def add_questions(
             )
         return response
 
-    quest_func: Callable[[str], str] = lambda x: (
+    # use for development/debug purposes
+    quest_func: Callable[[str], str] = lambda x: (  # type: ignore # noqa: 841
         "Questions this text answers" if x else ""
     )
 
     post_order_hashed_aggregation(
-        root, quest_func, QUESTIONS_KEY, True
+        root, llm_questions, QUESTIONS_KEY, True
     )
 
 
@@ -611,7 +612,7 @@ def add_summaries(
         logger: a logger object
     """
 
-    def llm_add_summary(text: str) -> str:  # type: ignore
+    def llm_add_summary(text: str) -> str:
         if len(text.split()) < opts.summary_threshold:
             return ""
         response: str = ""
@@ -633,14 +634,17 @@ def add_summaries(
 
         return response
 
-    summary_func: Callable[[str], str] = lambda x: (
-        f"Accumulated {len(x.split())} words."
-        if len(x.split()) >= opts.summary_threshold
-        else ""
+    # for development/debug
+    summary_func: Callable[[str], str] = (  # type: ignore # noqa: 841
+        lambda x: (
+            f"Accumulated {len(x.split())} words."
+            if len(x.split()) >= opts.summary_threshold
+            else ""
+        )
     )
 
     post_order_hashed_aggregation(
-        root, summary_func, SUMMARY_KEY, True
+        root, llm_add_summary, SUMMARY_KEY, True
     )
 
 

@@ -23,6 +23,7 @@ from lmm.markdown.treeutils import (
     get_nodes_with_metadata,
     count_words,
 )
+from lmm.config.config import Settings, export_settings
 from lmm.scan.scan_keys import (
     DOCID_KEY,
     TEXTID_KEY,
@@ -202,6 +203,33 @@ class TestValidations(unittest.TestCase):
 
 class TestBuilds(unittest.TestCase):
 
+    # detup and teardown replace config.toml to avoid
+    # calling the language model server
+    original_settings = Settings()
+
+    @classmethod
+    def setUpClass(cls):
+        settings = Settings(
+            major={'model': "Debug/debug"},
+            minor={'model': "Debug/debug"},
+            aux={'model': "Debug/debug"},
+        )
+        export_settings(settings)
+
+    @classmethod
+    def tearDownClass(cls):
+        settings = cls.original_settings
+        export_settings(settings)
+
+    def test_setup(self):
+        settings = Settings()
+        self.assertEqual(settings.major.get_model_source(), "Debug")
+        self.assertEqual(settings.minor.get_model_source(), "Debug")
+        self.assertEqual(settings.aux.get_model_source(), "Debug")
+        self.assertEqual(settings.major.get_model_name(), "debug")
+        self.assertEqual(settings.minor.get_model_name(), "debug")
+        self.assertEqual(settings.aux.get_model_name(), "debug")
+
     def test_build_summaries(self):
         # test all heading nodes and dependant text nodes have summary
         # NOTE: this should fail if text blocks are too short, modify
@@ -360,7 +388,7 @@ Another few words.
         opts = ScanOpts(
             questions=True,  # add questions
             language_model_settings=LanguageModelSettings(
-                model="OpenAI/gpt-4o"
+                model="Debug/debug"
             ),
         )
         blocks = scan_rag(blocks_raw, opts)

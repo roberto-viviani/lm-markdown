@@ -14,6 +14,7 @@ from lmm.config.config import (
     Settings,
     LanguageModelSettings,
     EmbeddingSettings,
+    export_settings,
 )
 
 base_settings = Settings()
@@ -182,6 +183,33 @@ TEXT:
 
 
 class TestDebugModel(unittest.TestCase):
+
+    # detup and teardown replace config.toml to avoid
+    # calling the language model server
+    original_settings = Settings()
+
+    @classmethod
+    def setUpClass(cls):
+        settings = Settings(
+            major={'model': "Debug/debug"},
+            minor={'model': "Debug/debug"},
+            aux={'model': "Debug/debug"},
+        )
+        export_settings(settings)
+
+    @classmethod
+    def tearDownClass(cls):
+        settings = cls.original_settings
+        export_settings(settings)
+
+    def test_setup(self):
+        settings = Settings()
+        self.assertEqual(settings.major.get_model_source(), "Debug")
+        self.assertEqual(settings.minor.get_model_source(), "Debug")
+        self.assertEqual(settings.aux.get_model_source(), "Debug")
+        self.assertEqual(settings.major.get_model_name(), "debug")
+        self.assertEqual(settings.minor.get_model_name(), "debug")
+        self.assertEqual(settings.aux.get_model_name(), "debug")
 
     def test_debug_kernel(self):
         model = create_kernel(
