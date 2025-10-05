@@ -1,7 +1,7 @@
 # pyright: reportUnusedImport=false
 # flake8: noqa
 
-from .scan import scan, markdown_scan, post_order_hashed_aggregation
+from .scan import scan, markdown_scan
 
 from .scan_messages import (
     scan_messages,

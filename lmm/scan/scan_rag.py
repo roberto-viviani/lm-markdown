@@ -72,11 +72,8 @@ from lmm.language_models.langchain.runnables import (
 from requests.exceptions import ConnectionError
 
 # scan
-from lmm.scan.scan import (
-    markdown_scan,
-    scan,
-    post_order_hashed_aggregation,
-)
+from lmm.scan.scan import markdown_scan, scan
+from lmm.scan.scanutils import post_order_hashed_aggregation
 from lmm.scan.scan_messages import remove_messages
 from lmm.scan.scan_keys import (
     DOCID_KEY,

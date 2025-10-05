@@ -50,7 +50,8 @@ from .scan_keys import (
     EDIT_KEY,
     SUMMARY_KEY,
 )
-from .scan import scan, markdown_scan, post_order_hashed_aggregation
+from .scan import scan, markdown_scan
+from .scanutils import post_order_hashed_aggregation
 
 # Set up logger
 logger = get_logger(__name__)
