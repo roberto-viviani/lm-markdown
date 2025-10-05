@@ -122,17 +122,19 @@ class TestSettings(unittest.TestCase):
             )
             sets
 
-    def test_set_settings_invalid_dict3(self):
-        # need to specify valid fields
-        with self.assertRaises(ValueError):
-            sets: Settings = Settings(
-                **{
-                    'general': {
-                        'model': "OpenAI/gpt-4o",
-                    }
-                }
-            )
-            sets
+    # now new field can be specified as it facilitates
+    # customization
+    # def test_set_settings_invalid_dict3(self):
+    #     # need to specify valid fields
+    #     with self.assertRaises(ValueError):
+    #         sets: Settings = Settings(
+    #             **{
+    #                 'general': {
+    #                     'model': "OpenAI/gpt-4o",
+    #                 }
+    #             }
+    #         )
+    #         sets
 
     def test_set_settings_empty(self):
         # cannot do this.

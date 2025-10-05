@@ -34,10 +34,6 @@ SparseModel = Literal['prithivida/Splade_PP_en_v1', 'Qdrant/bm25']
 
 # Constants for better maintainability
 DEFAULT_CONFIG_FILE = "config.toml"
-DEFAULT_PORT_RANGE = (
-    1024,
-    65535,
-)  # Valid port range excluding system ports
 
 
 class LanguageModelSettings(BaseModel):
@@ -260,45 +256,6 @@ class EmbeddingSettings(BaseSettings):
         return model_spec + '/' + tokens[1].strip()
 
 
-class ServerSettings(BaseSettings):
-    """
-    Server configuration settings.
-
-    Attributes:
-        mode: one of 'local' or 'remote'
-        port: port number (only if mode is 'remote')
-        host: server host address (defaults to 'localhost')
-    """
-
-    mode: Literal["local", "remote"] = Field(
-        default="local", description="Server deployment mode"
-    )
-    port: int = Field(
-        default=61543,
-        ge=0,
-        le=65535,
-        description="Server port (0 for auto-assignment)",
-    )
-    host: str = Field(
-        default="localhost", description="Server host address"
-    )
-
-    model_config = SettingsConfigDict(frozen=True, extra='forbid')
-
-    @field_validator('port')
-    @classmethod
-    def validate_port(cls, v: int) -> int:
-        """Validate port number is in acceptable range."""
-        if v != 0 and not (
-            DEFAULT_PORT_RANGE[0] <= v <= DEFAULT_PORT_RANGE[1]
-        ):
-            raise ValueError(
-                f"Port must be 0 (auto-assign) or between "
-                f"{DEFAULT_PORT_RANGE[0]} and {DEFAULT_PORT_RANGE[1]}"
-            )
-        return v
-
-
 class Settings(BaseSettings):
     """
     A pydantic settings object containing the fields with the
@@ -320,10 +277,7 @@ class Settings(BaseSettings):
         the model_config.
     """
 
-    server: ServerSettings = Field(
-        default_factory=ServerSettings,
-        description="Server configuration",
-    )
+    # Language model embeddings
     embeddings: EmbeddingSettings = Field(
         default_factory=lambda: EmbeddingSettings(
             dense_model="OpenAI/text-embedding-3-small"
@@ -356,7 +310,7 @@ class Settings(BaseSettings):
         env_prefix="LMM_",  # Uppercase for environment variables
         frozen=True,
         validate_assignment=True,
-        extra='forbid',  # Prevent unexpected fields
+        extra='allow',  # Do not prevent unexpected fields
     )
 
     @classmethod
@@ -374,6 +328,9 @@ class Settings(BaseSettings):
             TomlConfigSettingsSource(settings_cls),
             env_settings,
         )
+
+    def __string__(self) -> str:
+        return serialize_settings(self)
 
 
 def serialize_settings(sets: BaseSettings) -> str:
@@ -525,7 +482,7 @@ def load_settings(file_path: str | Path | None = None) -> Settings:
                 env_prefix="LMM_",
                 frozen=True,
                 validate_assignment=True,
-                extra='forbid',
+                extra='allow',
             )
 
         return TempSettings()
