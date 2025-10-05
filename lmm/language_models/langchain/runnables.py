@@ -182,7 +182,7 @@ def _create_runnable(
     # combine into a runnable
     kernel: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
     # .name is a member function of RunnableSerializable
-    # inited to None, which we initialize here
+    # inited to None, which we reinitialize here
     kernel.name = (
         f"{model.kernel_name}:"
         + f"{model.settings.get_model_source()}/"
@@ -241,7 +241,7 @@ def create_runnable(
             - dict[str, str]: Dictionary with 'model' key
             - LanguageModelSettings: Pydantic model instance
             - None: Use settings from config.toml or defaults
-        system_prompt: Uses the system prompt in messages with the
+        system_prompt: System prompt used in messages with the
             language model.
 
     Returns:
