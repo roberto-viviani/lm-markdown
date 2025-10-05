@@ -50,7 +50,7 @@ from .scan_keys import (
     EDIT_KEY,
     SUMMARY_KEY,
 )
-from .scan import scan, markdown_scan, post_order_aggregation
+from .scan import scan, markdown_scan, post_order_hashed_aggregation
 
 # Set up logger
 logger = get_logger(__name__)
@@ -108,7 +108,7 @@ def _fetch_summary(node: MarkdownNode) -> str:
         ConnectionError, ValueError
     """
     model = _fetch_kernel(kernel_name="summarizer")
-    post_order_aggregation(
+    post_order_hashed_aggregation(
         node,
         lambda x: model.invoke({'text': "\n".join(x)}),
         SUMMARY_KEY,

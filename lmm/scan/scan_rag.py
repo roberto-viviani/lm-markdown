@@ -72,7 +72,11 @@ from lmm.language_models.langchain.runnables import (
 from requests.exceptions import ConnectionError
 
 # scan
-from lmm.scan.scan import markdown_scan, scan, post_order_aggregation
+from lmm.scan.scan import (
+    markdown_scan,
+    scan,
+    post_order_hashed_aggregation,
+)
 from lmm.scan.scan_messages import remove_messages
 from lmm.scan.scan_keys import (
     DOCID_KEY,
@@ -594,7 +598,9 @@ def add_questions(
         "Questions this text answers" if x else ""
     )
 
-    post_order_aggregation(root, quest_func, QUESTIONS_KEY, True)
+    post_order_hashed_aggregation(
+        root, quest_func, QUESTIONS_KEY, True
+    )
 
 
 def add_summaries(
@@ -636,7 +642,9 @@ def add_summaries(
         else ""
     )
 
-    post_order_aggregation(root, summary_func, SUMMARY_KEY, True)
+    post_order_hashed_aggregation(
+        root, summary_func, SUMMARY_KEY, True
+    )
 
 
 if __name__ == "__main__":

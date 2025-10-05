@@ -184,7 +184,7 @@ def markdown_scan(
     return blocks
 
 
-def post_order_aggregation(
+def post_order_hashed_aggregation(
     root_node: MarkdownNode,
     aggregate_func: Callable[[str], str],
     output_key: str,
@@ -216,6 +216,8 @@ def post_order_aggregation(
             aggregation. If false, the aggregation is computed only
             if the output key is missing from the metadata or its
             value is empty.
+        hash_key: the key in the metadata where the hash ist read
+            and stored.
     """
     from lmm.utils.hash import base_hash
 
