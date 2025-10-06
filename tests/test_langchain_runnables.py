@@ -197,11 +197,31 @@ TEXT:
         )
 
     def test_create_kernel_from_objects(self):
-        human_prompt = "Why is the sky blue?"
+        human_prompt = "Tell me a story"
         settings = Settings()
         model = create_kernel_from_objects(
             human_prompt=human_prompt,
-            system_prompt="You are a helpful assistant",
+            system_prompt="You are a funny storyteller",
+            language_model=settings.aux,
+        )
+        self.assertIn(
+            f"{settings.aux.get_model_source()}/"
+            + f"{settings.aux.get_model_name()}",
+            model.get_name(),
+        )
+
+    def test_create_kernel_from_objects2(self):
+
+        prompt_template = """
+Provide the questions to which the text answers.
+
+TEXT:
+{text}
+"""
+        settings = Settings()
+        model = create_kernel_from_objects(
+            human_prompt=prompt_template,
+            system_prompt="You are a university tutor",
             language_model=settings.aux,
         )
         self.assertIn(

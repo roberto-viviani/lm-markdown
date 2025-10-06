@@ -456,7 +456,8 @@ def create_kernel_from_objects(
 ) -> RunnableType:
     """
     Creates a Langchain runnable from a prompt template and
-    a language settings object.
+    a language settings object. This kernel is not registered in the
+    kernel library; it is available directly.
 
     Args:
         human_prompt: prompt text
@@ -471,7 +472,12 @@ def create_kernel_from_objects(
 
     Example:
     ```python
-    human_prompt = "Why is the sky blue?"
+    human_prompt = '''
+    Provide the questions to which the text answers.
+
+    TEXT:
+    {text}
+    '''
     settings = Settings()
     try:
         model = create_kernel_from_objects(
@@ -481,8 +487,11 @@ def create_kernel_from_objects(
         )
     except Exception ...
 
-    Note:
-        provisional code for revision
+    # model use:
+    try:
+        response = model.invoke({'text', "Logistic regression is used"
+            + " when the outcome variable is binary"})
+    except Exception ...
     ```
     """
     if language_model is None:
