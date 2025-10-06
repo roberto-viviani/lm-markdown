@@ -4,8 +4,8 @@ This module implements creation of Langchain language model objects
 object, a dictionary, or a spec given as argument to the
 create_model_from_spec function. The LanguageModelSettings is also
 a member of the Settings object that is read from the config file;
-therefore, this module allows implementing a user interface to swap
-language model implementations via the config.toml file.
+by default, the settings that determine which model is wrapped in the
+Langchain object are those specified in the config.toml file.
 
 The "runnable" object allow interacting with the language models
 directly, abstracting from vendor details.
@@ -39,6 +39,9 @@ model = create_model_from_spec(model="OpenAI/gpt-4o")
 spec = {'model': "OpenAI/gpt-4o", 'temperature': 0.7}
 model = create_model_from_spec(**spec)
 ```
+
+Behaviour:
+    Raises exception from Langchain and from itself
 
 Note:
     Support for new model sources should be added here by extending
@@ -287,7 +290,8 @@ def create_model_from_spec(
     timeout: float | None = None,
     provider_params: dict[str, MetadataPrimitive] = {},
 ) -> BaseChatModel:
-    """Create langchain model from specifications.
+    """
+    Create langchain model from specifications.
 
     Args:
         model: the model in the form source/model, such as
@@ -319,7 +323,8 @@ def create_model_from_spec(
 def create_model_from_settings(
     settings: LanguageModelSettings,
 ) -> BaseChatModel:
-    """Create langchain model from a LanguageModelSettings object.
+    """
+    Create langchain model from a LanguageModelSettings object.
     Raises a ValueError if the source argument is not supported.
 
     Args:
@@ -358,7 +363,8 @@ def create_model_from_settings(
 def create_embedding_model_from_spec(
     dense_model: str, *, sparse_model: str = 'Qdrant/bm25'
 ) -> Embeddings:
-    """Create langchain embedding model from source_name and
+    """
+    Create langchain embedding model from source_name and
     model_name. Raises a ValueError if the source_name argument
     is not supported.
 
@@ -386,7 +392,8 @@ def create_embedding_model_from_spec(
 def create_embedding_model_from_settings(
     settings: EmbeddingSettings,
 ) -> Embeddings:
-    """Create langchain embedding model from an EmbeddingSettings
+    """
+    Create langchain embedding model from an EmbeddingSettings
     object. Raises a ValueError if the source argument
     is not supported.
 
