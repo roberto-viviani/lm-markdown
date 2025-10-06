@@ -64,7 +64,7 @@ from lmm.markdown.treeutils import (
 )
 
 # language models
-from lmm.config.config import LanguageModelSettings
+from lmm.config.config import Settings, LanguageModelSettings
 from lmm.language_models.langchain.runnables import (
     RunnableType,
     create_runnable,
@@ -165,10 +165,12 @@ class ScanOpts(BaseModel):
         description="Add universally unique identifiers (UUIDs) to "
         + "text blocks for creation of id's in vector database",
     )
-    language_model_settings: LanguageModelSettings | None = Field(
+    language_model_settings: (
+        Settings | LanguageModelSettings | None
+    ) = Field(
         default=None,
-        description="A language model settings object, or None. If"
-        + " provided, overrides settings in config.toml.",
+        description="A Settings object, a LanguageModelSettings object"
+        ", or None. If provided, overrides settings in config.toml.",
     )
 
     model_config = ConfigDict(extra='forbid')
