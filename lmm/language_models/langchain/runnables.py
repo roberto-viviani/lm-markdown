@@ -1,11 +1,13 @@
 """
-Creates Langchain runnable objects or 'kernels'. These objects may be
+Creates Langchain 'runnable' objects or 'kernels'. These objects may be
 used in Langchain chains.
 
 The runnable plugs two library resources into the Langchain interface:
 
-- a language model access, selected via the models module from the
-    specification in a config.toml file
+- a language model object, itself wrapped by Langchain, selected via
+    the models module from the specification in a config.toml file.
+    This module shunts the kernels between the 'major', 'minor', and
+    'aux' specifications of the models specified in config.toml.
 - a set of tools that specialize the function of the language model,
     selected from the tool library provided by the tools module.
 
@@ -19,13 +21,17 @@ dictionary that contains the parameters for the prompt template.
 Example of a runnable created from a predefined tool:
     ```python
     from lmm.language_models.langchain.runnables import create_runnable
-    query_model = create_runnable("query")  # uses config.toml for model
+    try:
+        query_model = create_runnable("query")  # uses config.toml
+    except Exception ...
 
     # a runnable that specifies the model directly
-    questions_model = create_runnable("question_generator",
+    try:
+        questions_model = create_runnable("question_generator",
                                 {'model': "OpenAI/gpt-4o"})
+    except Exception ...
 
-    # use Langchain syntax to call the kernel
+    # use Langchain syntax to call the kernel after creating it
     try:
         response = questions_model.invoke({
             'text': "Logistic regression is typically used when the "
@@ -54,18 +60,25 @@ Example of a dynamically created chat kernel:
         from lmm.config.config import Settings
         from lmm.language_models.langchain.runnables import create_runnable
         settings = Settings()
-        model = create_runnable(
-            "question_generator",
-            settings.major,
-            "You are a helpful teacher")
+        try:
+            model = create_runnable(
+                "question_generator",
+                settings.major,
+                "You are a helpful teacher")
+        except Exception ...
 
         # if no settings object given, defaults to settings.minor
-        model_minor = create_runnable("question_generator")
+        try:
+            model_minor = create_runnable("question_generator")
+        except Exception ...
     ```
 
+Expected behaviour:
+    This module raises exceptions from Langhchain and itself.
+
 Note:
-    A Langchain language model may be used directly by
-    create_model_from_spec in the models module.
+    A Langchain language model may be used directly after obtaining it
+    from create_model_from_spec in the models module.
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -209,7 +222,7 @@ embeddings_library = LazyLoadingDict(_create_embedding)
 def create_runnable(
     kernel_name: KernelNames | str,
     user_settings: (
-        dict[str, str] | LanguageModelSettings | None
+        dict[str, str] | LanguageModelSettings | Settings | None
     ) = None,
     system_prompt: str | None = None,
 ) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
@@ -265,13 +278,17 @@ def create_runnable(
         Create kernel with default settings read from configuration
         file:
         ```python
-        kernel = create_runnable("query")
+        try:
+            kernel = create_runnable("query")
+        except Exception ...
         ```
 
         Override with dictionary:
         ```python
-        kernel = create_runnable("summarizer",
-            {"model": "OpenAI/gpt-4o"})
+        try:
+            kernel = create_runnable("summarizer",
+                {"model": "OpenAI/gpt-4o"})
+        except Exception ...
         ```
 
         Override with settings object:
@@ -280,16 +297,20 @@ def create_runnable(
         settings = LanguageModelSettings(
             model="Mistral/mistral-small-latest"
         )
-        kernel = create_runnable("question_generator", settings)
+        try:
+            kernel = create_runnable("question_generator", settings)
+        except Exception ...
         ```
 
         The kernel object may be used with Langchain `.invoke` syntax:
 
         ```python
-        response = kernel.invoke(
-            {'text': "Logistic regression is used when the outcome"
-                + " variable is binary."}
-        )
+        try:
+            response = kernel.invoke(
+                {'text': "Logistic regression is used when the outcome"
+                    + " variable is binary."}
+            )
+        except Exception ...
         ```
     """
 
@@ -305,38 +326,48 @@ def create_runnable(
         )
         return runnable_library[model]
 
+    settings: Settings
+    match user_settings:
+        case dict() if bool(user_settings):
+            try:
+                settings = Settings(
+                    major=user_settings,  # type: ignore
+                    minor=user_settings,  # type: ignore
+                    aux=user_settings,  # type: ignore
+                )
+            except Exception as e:
+                raise ValueError(f"Invalid model definition:\n{e}")
+        case LanguageModelSettings():
+            settings = Settings(
+                major=user_settings,
+                minor=user_settings,
+                aux=user_settings,
+            )
+        case Settings():
+            settings = user_settings
+        case None:
+            settings = Settings()
+        case _:
+            raise ValueError(
+                f"Invalid model definition: {user_settings}"
+            )
+
     match kernel_name:
         case 'query' | 'query_with_context':
-            if bool(user_settings):  # disallow empty dictionary
-                settings = Settings(major=user_settings)  # type: ignore
-            else:
-                settings = Settings()
             return _create_or_get(
                 settings.major, kernel_name, system_prompt
             )
         case 'question_generator' | 'summarizer':
-            if bool(user_settings):  # disallow empty dictionary
-                settings = Settings(minor=user_settings)  # type: ignore
-            else:
-                settings = Settings()
             return _create_or_get(
                 settings.minor, kernel_name, system_prompt
             )
         case 'check_content':
-            if bool(user_settings):  # disallow empty dictionary
-                settings = Settings(aux=user_settings)  # type: ignore
-            else:
-                settings = Settings()
             return _create_or_get(
                 settings.aux, kernel_name, system_prompt
             )
         case str():
             # allows custom chat kernels to be constructed from custom
             # prompt templates
-            if bool(user_settings):  # disallow empty dictionary
-                settings = Settings(minor=user_settings)  # type: ignore
-            else:
-                settings = Settings()
             language_settings = settings.minor
             if kernel_name not in tool_library.keys():
                 raise ValueError(
@@ -358,7 +389,9 @@ def create_runnable(
 
 
 def create_embeddings(
-    settings: dict[str, str] | EmbeddingSettings | None = None,
+    settings: (
+        dict[str, str] | EmbeddingSettings | Settings | None
+    ) = None,
 ) -> Embeddings:
     """
     Creates a Langchain embeddings kernel from a configuration
@@ -385,11 +418,27 @@ def create_embeddings(
     Raises:
         ValidationError, TypeError: for invalid spec
         ImportError: for missing libraries
-        requests.ConnectionError: if not online
+        requests.exceptions.ConnectionError: if not online
+
+    Example:
+    ```python
+    from lmm.language_models.langchain.runnables import (
+        create_embeddings,
+    )
+
+    try:
+        encoder: Embeddings = create_embeddings()
+        vector = encoder.embed_query("Why is the sky blue?")
+        documents = ["The sky is blue due to its oxygen content"]
+        vectors = encoder.embed_documents(documents)
+    except Exception ...
+    ```
     """
     if not bool(settings):  # includes empty dict
         sets = Settings()
         settings = sets.embeddings
+    elif isinstance(settings, Settings):
+        settings = settings.embeddings
     elif isinstance(settings, dict):
         # checked by pydantic model
         settings = EmbeddingSettings(**settings)  # type: ignore
@@ -402,7 +451,7 @@ def create_kernel_from_objects(
     *,
     system_prompt: str | None = None,
     language_model: (
-        BaseChatModel | LanguageModelSettings | None
+        BaseChatModel | LanguageModelSettings | Settings | None
     ) = None,
 ) -> RunnableType:
     """
@@ -420,11 +469,31 @@ def create_kernel_from_objects(
     Returns:
         a Langchain runnable, a type aliased as `RunnableType`.
 
+    Example:
+    ```python
+    human_prompt = "Why is the sky blue?"
+    settings = Settings()
+    try:
+        model = create_kernel_from_objects(
+            human_prompt=human_prompt,
+            system_prompt="You are a helpful assistant",
+            language_model=settings.aux,
+        )
+    except Exception ...
+
+    Note:
+        provisional code for revision
+    ```
     """
     if language_model is None:
         settings = Settings()
         language_model = create_model_from_settings(settings.minor)
         name = f"Custom:{settings.minor}"
+    elif isinstance(language_model, Settings):
+        name = f"Custom:{language_model.minor}"
+        language_model = create_model_from_settings(
+            language_model.minor
+        )
     elif isinstance(language_model, LanguageModelSettings):
         name = f"Custom:{language_model}"
         language_model = create_model_from_settings(language_model)
@@ -450,6 +519,6 @@ def create_kernel_from_objects(
     # combine into a runnable
     kernel: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
     # .name is a member function of RunnableSerializable
-    # inited to None, which we initialize here
+    # inited to None, which we re-initialize here
     kernel.name = name
     return kernel

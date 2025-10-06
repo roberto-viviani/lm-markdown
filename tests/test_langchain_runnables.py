@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from lmm.language_models.langchain.runnables import (
     create_runnable as create_kernel,
     create_embeddings,
+    create_kernel_from_objects,
 )
 from lmm.config.config import (
     Settings,
@@ -114,6 +115,20 @@ class TestDefaultModels(unittest.TestCase):
             ),
         )
 
+    def test_set_model_settings(self):
+        model = create_kernel(
+            "summarizer",
+            Settings(minor={'model': "Mistral/mistral-small-latest"}),
+        )
+        self.assertEqual(
+            model.get_name(),
+            _get_name(
+                "summarizer",
+                "Mistral",
+                "mistral-small-latest",
+            ),
+        )
+
     def test_set_invalid_model(self):
         with self.assertRaises(ValueError):
             model = create_kernel(
@@ -181,6 +196,20 @@ TEXT:
             model.get_name(),
         )
 
+    def test_create_kernel_from_objects(self):
+        human_prompt = "Why is the sky blue?"
+        settings = Settings()
+        model = create_kernel_from_objects(
+            human_prompt=human_prompt,
+            system_prompt="You are a helpful assistant",
+            language_model=settings.aux,
+        )
+        self.assertIn(
+            f"{settings.aux.get_model_source()}/"
+            + f"{settings.aux.get_model_name()}",
+            model.get_name(),
+        )
+
 
 class TestDebugModel(unittest.TestCase):
 
@@ -239,6 +268,16 @@ class TestEmbeddingModel(unittest.TestCase):
     def test_spec_embedding_dict(self) -> None:
         embmodel = create_embeddings(
             {'dense_model': "OpenAI/text-embedding-3-small"}
+        )
+        self.assertIsInstance(embmodel, Embeddings)
+
+    def test_spec_embedding_settings(self) -> None:
+        embmodel = create_embeddings(
+            Settings(
+                embeddings={
+                    'dense_model': "OpenAI/text-embedding-3-small"
+                }
+            )
         )
         self.assertIsInstance(embmodel, Embeddings)
 
