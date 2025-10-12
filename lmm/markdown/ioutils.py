@@ -14,7 +14,7 @@ Key Features:
 - Support for both file paths and direct string content
 
 Logger Usage Patterns:
-    The module supports different logger implementations for various 
+    The module supports different logger implementations for various
     use cases:
 
     1. ConsoleLogger - For interactive development and debugging:
@@ -39,12 +39,12 @@ Logger Usage Patterns:
     4. LoglistLogger - For testing and programmatic access:
         >>> from lmm.utils.logging import LoglistLogger
         >>> logger = LoglistLogger()
-        >>> content = load_markdown("file.md", 
+        >>> content = load_markdown("file.md",
                                     logger=logger)
         >>> errors = logger.get_logs(level=3)  # Error-level only
 
 Module Relationships:
-    This module serves as the I/O layer between file system 
+    This module serves as the I/O layer between file system
     operations and the markdown parsing system:
 
     File System ←→ ioutils.py ←→ parse_markdown.py ←→ Application
@@ -56,11 +56,11 @@ Module Relationships:
 
 Performance Characteristics:
     - File size checking: O(1) - single stat() call
-    - Encoding detection: O(n) where n is detection sample size 
+    - Encoding detection: O(n) where n is detection sample size
         (1-10KB)
     - UTF-8 detection: Fast path with 1KB sample
     - Chardet detection: Slower but more accurate with 10KB sample
-    - Memory usage: Proportional to file size (entire file loaded 
+    - Memory usage: Proportional to file size (entire file loaded
         into memory)
     - Recommended limits: 50MB max, 10MB warning (configurable)
 
@@ -72,11 +72,15 @@ Performance Characteristics:
 
 import io
 from pathlib import Path
+from pydantic import validate_call
+
 from lmm.utils.ioutils import validate_file
 from lmm.utils.ioutils import string_to_path_or_string
 from .parse_markdown import Block, ErrorBlock
 from .parse_markdown import serialize_blocks, blocklist_errors
-from lmm.utils.logging import LoggerBase
+from lmm.utils.logging import LoggerBase, get_logger
+
+logger = get_logger(__name__)
 
 
 def _check_file_size(
@@ -86,7 +90,7 @@ def _check_file_size(
     logger: LoggerBase,
 ) -> bool:
     """
-    Check file size against limits and log warnings/errors as 
+    Check file size against limits and log warnings/errors as
     appropriate.
 
     Args:
@@ -96,14 +100,14 @@ def _check_file_size(
         logger: Logger for reporting issues
 
     Returns:
-        True if file size is acceptable, False if it exceeds 
+        True if file size is acceptable, False if it exceeds
         max_size_mb
     """
     try:
         file_size_bytes = file_path.stat().st_size
         file_size_mb = file_size_bytes / (1024 * 1024)
 
-        # Skip checks if limits are negative (effectively disables 
+        # Skip checks if limits are negative (effectively disables
         # the check)
         if max_size_mb > 0 and file_size_mb > max_size_mb:
             logger.error(
@@ -143,7 +147,7 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
         logger: Logger for reporting detection results
 
     Returns:
-        Detected encoding string (defaults to 'utf-8' if detection 
+        Detected encoding string (defaults to 'utf-8' if detection
             fails)
     """
     # Try UTF-8 first (most common for markdown files)
@@ -202,9 +206,10 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
 
 
 # Load markdown
+@validate_call(config={'arbitrary_types_allowed': True})
 def load_markdown(
     source: str | Path,
-    logger: LoggerBase,
+    logger: LoggerBase = logger,
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
     encoding: str | None = None,
@@ -221,12 +226,12 @@ def load_markdown(
             string itself.
         logger (LoggerBase): a logger object (defaults to console).
         max_size_mb (float): maximum file size in MB (default: 50.0).
-        warn_size_mb (float): file size in MB to trigger warning 
+        warn_size_mb (float): file size in MB to trigger warning
             (default: 10.0).
         encoding (str | None): specific encoding to use. If None and
-            auto_detect_encoding is True, encoding will be detected 
+            auto_detect_encoding is True, encoding will be detected
             automatically.
-        auto_detect_encoding (bool): whether to automatically detect 
+        auto_detect_encoding (bool): whether to automatically detect
             file encoding (default: True).
 
     Note:
@@ -298,16 +303,18 @@ def load_markdown(
     return content
 
 
+@validate_call(config={'arbitrary_types_allowed': True})
 def save_markdown(
     dest: str | Path | io.TextIOBase,
     content: list[Block] | str,
-    logger: LoggerBase,
+    logger: LoggerBase = logger,
 ) -> bool:
     """
     Save markdown blocks to a file.
 
     Args:
         dest (str | Path): the file to save the markdown to.
+        content: the content of the markdown, a block list or a string
         logger (LoggerBase): a logger object, defaulting to
             a console logger.
 
@@ -359,7 +366,7 @@ def save_markdown(
 
 
 def report_error_blocks(
-    blocks: list[Block], logger: LoggerBase
+    blocks: list[Block], logger: LoggerBase = logger
 ) -> list[Block]:
     """
     Checks the existence of error blocks. If there are any, they are
@@ -399,7 +406,7 @@ def report_error_blocks(
 def _report_single_error_block(
     error_block: ErrorBlock, logger: LoggerBase
 ) -> None:
-    """Report a single error block (typically from file loading 
+    """Report a single error block (typically from file loading
     failure)."""
     error_parts = [
         "Error loading markdown file:",
