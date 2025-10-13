@@ -14,6 +14,7 @@ from lmm.markdown.parse_markdown import (
 from lmm.markdown.blockutils import (
     compose,
     clear_metadata,
+    clear_metadata_properties,
     merge_textblocks,
     unmerge_textblocks,
     merge_textblocks_if,
@@ -133,6 +134,76 @@ class TestClearMetadata(unittest.TestCase):
         ]
         result = clear_metadata(blocks)
         self.assertEqual(result, [])
+
+
+class TestClearMetadataProperties(unittest.TestCase):
+    """Test the clear_metadata function that removes metadata blocks."""
+
+    def test_empty_list(self):
+        """Test with an empty list of blocks."""
+        self.assertEqual(clear_metadata_properties([], []), [])
+
+    def test_no_metadata(self):
+        """Test with a list that has no metadata blocks."""
+        blocks: list[Block] = [
+            TextBlock(content="Text 1"),
+            HeadingBlock(level=1, content="Heading"),
+            TextBlock(content="Text 2"),
+        ]
+        result = clear_metadata_properties(blocks, ["summary"])
+        self.assertEqual(result, blocks)
+
+    def test_with_metadata(self):
+        """Test with a list that has metadata blocks."""
+        blocks: list[Block] = [
+            MetadataBlock(
+                content={"key1": "value1", "key2": "value2"}
+            ),
+            TextBlock(content="Text 1"),
+            MetadataBlock(content={"key2": "value2"}),
+            TextBlock(content="Text 2"),
+        ]
+        result = clear_metadata_properties(blocks, ["key2"])
+        expected = [
+            MetadataBlock(content={"key1": "value1"}),
+            TextBlock(content="Text 1"),
+            TextBlock(content="Text 2"),
+        ]
+        self.assertEqual(len(result), len(expected))
+        for i, block in enumerate(result):
+            self.assertEqual(
+                block.get_content(), expected[i].get_content()
+            )
+
+    def test_only_metadata(self):
+        """Test with a list that has only metadata blocks."""
+        blocks: list[Block] = [
+            MetadataBlock(content={"key1": "value1"}),
+            MetadataBlock(content={"key2": "value2"}),
+        ]
+        result = clear_metadata_properties(blocks, ["key1", "key2"])
+        self.assertEqual(len(result), 0)
+
+    def test_only_metadata_several(self):
+        """Test with a list that has only metadata blocks."""
+        blocks: list[Block] = [
+            MetadataBlock(
+                content={"key1": "value1", "key3": "value3"}
+            ),
+            MetadataBlock(
+                content={"key2": "value2", "key3": "value3"}
+            ),
+        ]
+        result = clear_metadata_properties(blocks, ["key1", "key2"])
+        expected = [
+            MetadataBlock(content={"key3": "value3"}),
+            MetadataBlock(content={"key3": "value3"}),
+        ]
+        self.assertEqual(len(result), len(expected))
+        for i, block in enumerate(result):
+            self.assertEqual(
+                block.get_content(), expected[i].get_content()
+            )
 
 
 class TestMergeTextblocks(unittest.TestCase):

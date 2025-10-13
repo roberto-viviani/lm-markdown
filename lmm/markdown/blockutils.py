@@ -11,6 +11,7 @@ import re
 from .parse_markdown import (
     Block,
     TextBlock,
+    MetadataBlock,
 )
 from .parse_markdown import serialize_blocks, parse_markdown_text
 from .tree import HeadingNode, TextNode
@@ -51,6 +52,29 @@ def clear_metadata(blocks: list[Block]) -> list[Block]:
     Remove metadata blocks from the block list, except the header.
     """
     return [b for b in blocks if b.type != "metadata"]
+
+
+def clear_metadata_properties(
+    blocks: list[Block], keys: list[str]
+) -> list[Block]:
+    """
+    Remove key/value properties from metadata blocks as specified by
+    keys.
+    """
+    if not keys:
+        return blocks
+
+    blocklist: list[Block] = []
+    for b in blocks:
+        if isinstance(b, MetadataBlock):
+            newb: MetadataBlock = b.deep_copy()
+            for k in keys:
+                newb.content.pop(k, None)
+            if len(newb.content) > 0 or bool(newb.private_):
+                blocklist.append(newb)
+        else:
+            blocklist.append(b)
+    return blocklist
 
 
 def merge_textblocks(blocks: list[Block]) -> list[Block]:
