@@ -317,17 +317,16 @@ def scan_rag(
 
     pre_order_traversal(root, add_source_func)
 
-    # Add questions that the text answers, recomputed if text changes
-    if build_questions:
-        # Replace with actual question generation implementation
-        logger.info("Adding questions about text.")
-        add_questions(root, opts, logger)
-
     # Add a summary to heading nodes that is recomputed after changes
     if build_summaries:
-        # Replace with final accumulator function add_summary
         logger.info("Adding summaries about text.")
         add_summaries(root, opts, logger)
+
+    # Add questions that the text answers, recomputed if text changes
+    # (will use summaries if existing)
+    if build_questions:
+        logger.info("Adding questions about text.")
+        add_questions(root, opts, logger)
 
     # check meta-data without text
     def _warn_empty_text(node: MarkdownNode) -> None:
@@ -598,9 +597,16 @@ def add_questions(
         "Questions this text answers" if x else ""
     )
 
-    post_order_hashed_aggregation(
-        root, llm_questions, QUESTIONS_KEY, True
-    )
+    # do not call questions at header node.
+    if root.is_header_node():
+        for node in root.children:
+            post_order_hashed_aggregation(
+                node, llm_questions, QUESTIONS_KEY, True
+            )
+    else:
+        post_order_hashed_aggregation(
+            root, llm_questions, QUESTIONS_KEY, True
+        )
 
 
 def add_summaries(

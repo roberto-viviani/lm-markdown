@@ -109,9 +109,9 @@ SUMMARY:
             return ToolDefinition(
                 name=kernel_name,
                 prompt="""
-Provide the questions that are answered by the 
-following text. To form the questions, use the format in the EXAMPLES 
-OF QUESTIONS below:
+Provide at most five questions that are answered by the following 
+text, focussing on important or general issues. To form the 
+questions, use the format in the EXAMPLES OF QUESTIONS below:
 
 EXAMPLES OF QUESTIONS:
 - When is it appropriate to use logistic regression?
