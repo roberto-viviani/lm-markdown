@@ -20,6 +20,7 @@ from lmm.markdown.parse_markdown import (
     blocklist_haserrors,
     blocklist_copy,
 )
+from lmm.markdown.blockutils import clear_metadata_properties
 from lmm.markdown.parse_yaml import MetadataValue
 from lmm.markdown.tree import (
     MarkdownNode,
@@ -304,21 +305,33 @@ def scan_messages(
     return tree_to_blocks(root)
 
 
-def remove_messages(blocks: list[Block]) -> list[Block]:
-    """Remove language model interactions from metadata"""
+def remove_messages(
+    blocks: list[Block], keys: list[str] | None = None
+) -> list[Block]:
+    """Remove language model interactions from metadata. If specific
+    keys are specified, only remove those keys.
+
+    Args:
+        blocks: the block list to handle
+        keys (opts): specify the keys to remove. Otherwise, will
+            remove the keys used in message exchanges.
+    """
+
+    if keys is not None:
+        return clear_metadata_properties(blocks, keys)
 
     blocklist: list[Block] = []
     for b in blocks:
         if isinstance(b, MetadataBlock):
             newb: MetadataBlock = b.deep_copy()
-            keys = newb.content.keys()
-            if QUERY_KEY in keys:
+            kks = newb.content.keys()
+            if QUERY_KEY in kks:
                 newb.content.pop(QUERY_KEY)
-            if MESSAGE_KEY in keys:
+            if MESSAGE_KEY in kks:
                 newb.content.pop(MESSAGE_KEY)
-            if EDIT_KEY in keys:
+            if EDIT_KEY in kks:
                 newb.content.pop(EDIT_KEY)
-            if CHAT_KEY in keys:
+            if CHAT_KEY in kks:
                 newb.content.pop(CHAT_KEY)
 
             if len(newb.content) > 0 or bool(newb.private_):
@@ -370,6 +383,58 @@ def markdown_messages(
     blocks = tree_to_blocks(root)
     if not blocks:
         return []
+
+    match save:
+        case False:
+            pass
+        case True:
+            save_markdown(sourcefile, blocks, logger)
+        case str() | Path():
+            save_markdown(save, blocks, logger)
+        case _:  # ignore
+            pass
+
+    return blocks
+
+
+@validate_call(config={'arbitrary_types_allowed': True})
+def markdown_remove_messages(
+    sourcefile: str | Path,
+    keys: list[str] | None = None,
+    save: bool | str | Path = False,
+    logger: LoggerBase = logger,
+) -> list[Block]:
+    """
+    Removes the messages from a markdown. If keys is specified,
+    removes the metadata properties specified by keys.
+
+    Args:
+        sourcefile: the file to load the markdown from
+        keys (optional): the keys of messages or any property to
+            remove
+        save: if False, does not save; if True, saves back to
+            original markdown file; if a filename, saves to
+            file.
+
+    Returns:
+        the processed list of blocks.
+
+    Note:
+        if an error occurs and the blocklist becomes empty,
+        it does not alter the source file.
+    """
+
+    SAVE_FILE = False
+    blocks = markdown_scan(sourcefile, SAVE_FILE, logger)
+    if not blocks:
+        return []
+
+    if blocklist_haserrors(blocks):
+        save_markdown(sourcefile, blocks, logger)
+        logger.warning("Problems in markdown, fix before continuing")
+        return blocks
+
+    blocks = remove_messages(blocks, keys)
 
     match save:
         case False:
