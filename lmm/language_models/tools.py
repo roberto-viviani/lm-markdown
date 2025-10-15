@@ -110,12 +110,11 @@ SUMMARY:
                 name=kernel_name,
                 prompt="""
 Provide at most five questions that are answered by the following 
-text, focussing on important or general issues. To form the 
-questions, use the format in the EXAMPLES OF QUESTIONS below:
+text, focussing on important or general issues. Use the format in the 
+EXAMPLES OF QUESTIONS below:
 
 EXAMPLES OF QUESTIONS:
-- When is it appropriate to use logistic regression?
-- What is the link function?
+- When is it appropriate to use logistic regression? - What is the link function?
 
 TEXT: "{text}"
 
