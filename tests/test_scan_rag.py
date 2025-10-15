@@ -351,7 +351,7 @@ Another few words.
                 self.assertTrue(SUMMARY_KEY not in n.metadata)
 
     def test_build_questions(self):
-        # Test all headings have questions
+        # Test all headings have questions, except the root node
         blocks_raw: list[Block] = parse_markdown_text(document)
         blocks = scan_rag(blocks_raw, ScanOpts(questions=True))
         root = blocks_to_tree(blocks)
@@ -362,7 +362,10 @@ Another few words.
         self.assertTrue(len(nodes) > 0)
 
         headingnodes: list[HeadingNode] = traverse_tree_nodetype(
-            root, lambda x: x.naked_copy(), HeadingNode
+            root,
+            lambda x: x.naked_copy(),
+            HeadingNode,
+            lambda x: x.heading_level() > 0,
         )
         self.assertTrue(len(headingnodes) > 0)
         self.assertIn(QUESTIONS_KEY, headingnodes[0].metadata)
@@ -383,7 +386,7 @@ Another few words.
         # overrides config.toml
         from lmm.config.config import LanguageModelSettings
 
-        # Test all headings have questions
+        # Test all headings have questions, except the root note
         blocks_raw: list[Block] = parse_markdown_text(document)
         opts = ScanOpts(
             questions=True,  # add questions
@@ -400,7 +403,10 @@ Another few words.
         self.assertTrue(len(nodes) > 0)
 
         headingnodes: list[HeadingNode] = traverse_tree_nodetype(
-            root, lambda x: x.naked_copy(), HeadingNode
+            root,
+            lambda x: x.naked_copy(),
+            HeadingNode,
+            lambda x: not x.is_header_node(),
         )
         self.assertTrue(len(headingnodes) > 0)
         self.assertIn(QUESTIONS_KEY, headingnodes[0].metadata)

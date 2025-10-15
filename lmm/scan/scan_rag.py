@@ -564,7 +564,8 @@ def add_id_to_nodes(
 def add_questions(
     root: MarkdownNode, opts: ScanOpts, logger: LoggerBase
 ) -> None:
-    """Add questions answered by text using a language model.
+    """Add questions answered by text using a language model. Will
+    not add qquestions to a header node.
 
     Args:
         root: a markdown node to start the traversal
