@@ -143,5 +143,3 @@ def post_order_hashed_aggregation(
                 # (bound if hashed)
 
     post_order_traversal(root_node, _process_node)
-    # TODO: verify what happens to header
-    # TODO: verify what happens to document without text
