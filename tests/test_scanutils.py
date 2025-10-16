@@ -289,6 +289,69 @@ Original text content.
         self.assertEqual(second_result, "There are 7 words")
         self.assertNotEqual(first_result, second_result)
 
+    def test_hashed_no_recomputes_on_frozen(self):
+        """Test that changing content does not trigger recomputation
+        with hashing, if the node is frozen"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Original text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Root has only one child, so heading gets the aggregation
+        heading_node = root.get_heading_children()[0]
+        first_result = heading_node.metadata.get(OUTPUT_KEY)
+        self.assertEqual(first_result, "There are 3 words")
+
+        # Modify the text content
+        text_node = (
+            root.get_text_children()[0]
+            if root.get_text_children()
+            else None
+        )
+        if text_node is None:
+            # Navigate through children to find text node
+            for child in root.children:
+                if isinstance(child, HeadingNode):
+                    text_nodes = child.get_text_children()
+                    if text_nodes:
+                        text_node = text_nodes[0]
+                        break
+
+        self.assertIsNotNone(text_node)
+        if text_node:
+            text_node.set_content(
+                "Modified text with many more words now."
+            )
+
+        from lmm.scan.scan_keys import FREEZE_KEY  # fmat: skip
+
+        text_node.get_parent().metadata[FREEZE_KEY] = True
+
+        # Rerun aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Result should reflect new content
+        second_result = heading_node.metadata.get(OUTPUT_KEY)
+        self.assertEqual(second_result, first_result)
+
     def test_non_hashed_only_computes_when_missing(self):
         """Test that with hashed=False, only computes when output is missing"""
         markdown = """---

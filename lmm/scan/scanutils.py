@@ -8,7 +8,7 @@ from lmm.markdown.tree import (
     TextNode,
     post_order_traversal,
 )
-from .scan_keys import TXTHASH_KEY
+from .scan_keys import TXTHASH_KEY, FREEZE_KEY
 
 
 def post_order_hashed_aggregation(
@@ -60,7 +60,7 @@ def post_order_hashed_aggregation(
         if isinstance(node, TextNode):
             return
 
-        # do not repeat aggregation is the node is a parent of just
+        # do not repeat aggregation if the node is a parent of just
         # one parent node, as the content will be the same
         if isinstance(node, HeadingNode):
             if node.count_children() == 0:
@@ -69,6 +69,11 @@ def post_order_hashed_aggregation(
                 node.children[0], HeadingNode
             ):
                 return
+
+        # do not compute aggregation if there is a parent node
+        # with a "frozen" property to prevent updates
+        if node.fetch_metadata_for_key(FREEZE_KEY, True, False):
+            return
 
         # For parent nodes, collect content from children
         collected_content: list[str] = []
