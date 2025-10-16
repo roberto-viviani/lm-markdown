@@ -2,3 +2,18 @@ site_name: Language Model Markdown
 plugins:
   - search
   - mkdocstrings
+
+nav:
+  - index.md 
+  - Handbook:
+    - Handbook/Configuration.md
+    - Handbook/Interaction.md
+    - Handbook/PrepareRAG.md
+  - LMM API:
+    - API/config.md
+    - API/scan.md
+    - API/markdown.md
+    - API/tree.md
+    - API/language_models.md
+    - API/utils.md
+  - About.md

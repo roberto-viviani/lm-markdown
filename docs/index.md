@@ -1,12 +1,18 @@
+---
+title: Home
+author: Roberto Viviani, University of Innsbruck
+date: October 16th 2025
+---
+
 <img src="./img/LMMarkdown_liberation.jpg" width="600">
 
 # Welcome to Language Models Markdown
 
 Markdown is a versatile format that may be used to create web-page content, as well as slides, reports, or even books. LM Markdown extends standard Markdown in two ways. 
 
-* it enables the interaction with a language model from within the markdown text, in the guise of a "co-pilot"
+* it enables the interaction with a language model from within the markdown text, in the guise of a "co-pilot". See the [handbook](Handbook/Interaction.md) manual for examples.
 
-* it extends the range of artefacts that may be created from the markdown file with _LM artefacts_, i.e. textual applications with a language model as the engine of textual processing
+* it extends the range of artefacts that may be created from the markdown file with _LM artefacts_, i.e. textual applications with a language model as the engine of textual processing. See the [RAG section](Handbook/PrepareRAG.md) of the handbook for details.
 
 In LM Markdown, the interaction with language models takes place through _metadata_ that can be interspersed with text and headings at any level of granularity. Metadata blocks can be used to annotate text, store properties of text extracted with language models, or simply to interact with language models to quality-proof and revise text. The philosophy of LM Markdown is to allow users to interact at any stage of the AI-driven production of text irrespective of their expertise in programming.
 
