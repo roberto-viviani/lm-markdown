@@ -1,5 +1,8 @@
 """
-Operations on markdown files to support LM markdown use
+Operations on markdown files to support LM markdown use. Here,
+scan checks that that markdown is well-formed, adds a header if missing,
+and returns a list of blocks with a header block first, or a list of
+blocks with error blocks for problems.
 
 Main functions:
     scan: general checks on blocklist, mainly header
@@ -37,7 +40,8 @@ def scan(blocks: list[Block]) -> list[Block]:
     Args:
         blocks: the list of blocks to process.
 
-    Returns: the processed list of blocks.
+    Returns:
+        the processed list of blocks.
     """
 
     if not blocks:  # Empty list
@@ -83,7 +87,7 @@ def scan(blocks: list[Block]) -> list[Block]:
 @validate_call(config={'arbitrary_types_allowed': True})
 def markdown_scan(
     sourcefile: str | Path,
-    save: bool | str | Path = False,
+    save: bool | str | Path = True,
     logger: LoggerBase = logger,
 ) -> list[Block]:
     """General check that the markdown is suitable for work,

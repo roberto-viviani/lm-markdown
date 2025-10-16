@@ -345,7 +345,7 @@ def remove_messages(
 @validate_call(config={'arbitrary_types_allowed': True})
 def markdown_messages(
     sourcefile: str | Path,
-    save: bool | str | Path = False,
+    save: bool | str | Path = True,
     logger: LoggerBase = logger,
 ) -> list[Block]:
     """
@@ -401,7 +401,7 @@ def markdown_messages(
 def markdown_remove_messages(
     sourcefile: str | Path,
     keys: list[str] | None = None,
-    save: bool | str | Path = False,
+    save: bool | str | Path = True,
     logger: LoggerBase = logger,
 ) -> list[Block]:
     """

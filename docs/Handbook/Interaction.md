@@ -52,10 +52,7 @@ The interaction with the language model is controlled thorugh the CLI with a cal
 ```python
 from lmm.scan.scan_messages import markdown_messages
 
-document = markdown_messages(
-    "MyText.md",   # The file where the interaction takes place 
-    save = True,   # save messages back to text (or give the name of a new file)
-    )
+document = markdown_messages("MyText.md")
 ```
 
 The edited text is automatically reloaded in a markdown text editor such as MS Visual Studio Code or RStudio, with the response of the language model listed at the bottom of the metadata block:
@@ -91,6 +88,14 @@ more complex associations.
 ```
 
 The interaction with the language model can be continued by re-writing the text of the query. The application checks that the query is new, and sends it to the language model. If you delete che ~chat in the meatadata block without deleting the query: key, then the query (and the text) will be sent to the language model again.
+
+It is possible to save the edited markdown to a different file. In this case, indicate the new file name as the second argument of the call to `markdown_messages`:
+
+```python
+from lmm.scan.scan_messages import markdown_messages
+
+document = markdown_messages("MyText.md", "MyTextEdited.md")
+```
 
 ## Remove messages to and from the language model
 

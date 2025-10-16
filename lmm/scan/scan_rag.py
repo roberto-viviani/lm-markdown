@@ -372,7 +372,7 @@ def scan_rag(
 def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
-    save: bool | str | Path = False,
+    save: bool | str | Path = True,
     logger: Annotated[LoggerBase, Field(exclude=True)] = logger,
 ) -> list[Block]:
     """Carries out the interaction with the language model,
