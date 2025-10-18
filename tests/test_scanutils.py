@@ -117,7 +117,7 @@ Third paragraph content.
 
 
 class TestPostOrderHashedAggregationEdgeCases(unittest.TestCase):
-    """Test edge cases as specified by user"""
+    """Test edge cases"""
 
     def test_only_header(self):
         """Test with markdown containing only a header"""
@@ -139,7 +139,8 @@ description: A document with just metadata
         )
 
         # Since there's no text content, output_key should not be set
-        # (aggregate function returns empty string for no content)
+        # (post_order aggregation does not invoke aggregation function
+        # when there is no input)
         self.assertNotIn(OUTPUT_KEY, root.metadata)
 
     def test_header_and_heading_no_text(self):
@@ -273,6 +274,65 @@ Original text content.
                 "Modified text with many more words now."
             )
 
+        # Rerun aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Result should reflect new content
+        second_result = heading_node.metadata.get(OUTPUT_KEY)
+        self.assertEqual(second_result, "There are 7 words")
+        self.assertNotEqual(first_result, second_result)
+
+    def test_hashed_recomputes_on_deleted_metadata(self):
+        """Test that deleted metadata triggers recomputation"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Original text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=False
+        )
+
+        # Root has only one child, so heading gets the aggregation
+        heading_node = root.get_heading_children()[0]
+        first_result = heading_node.metadata.get(OUTPUT_KEY)
+        self.assertEqual(first_result, "There are 3 words")
+
+        # Modify the text content
+        text_node = (
+            root.get_text_children()[0]
+            if root.get_text_children()
+            else None
+        )
+        if text_node is None:
+            # Navigate through children to find text node
+            for child in root.children:
+                if isinstance(child, HeadingNode):
+                    text_nodes = child.get_text_children()
+                    if text_nodes:
+                        text_node = text_nodes[0]
+                        break
+
+        self.assertIsNotNone(text_node)
+        if text_node:
+            text_node.set_content(
+                "Modified text with many more words now."
+            )
+
         # Clear the previous aggregation result to force recomputation
         if OUTPUT_KEY in heading_node.metadata:
             del heading_node.metadata[OUTPUT_KEY]
@@ -281,7 +341,7 @@ Original text content.
 
         # Rerun aggregation
         post_order_hashed_aggregation(
-            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            root, word_count_aggregate, OUTPUT_KEY, hashed=False
         )
 
         # Result should reflect new content
