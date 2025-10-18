@@ -1,4 +1,9 @@
-"""Utilities for scan modules"""
+"""
+Utilities for scan modules.
+
+Important functions:
+    post_order_hashed_aggregation
+"""
 
 from typing import Callable
 
@@ -25,9 +30,15 @@ def post_order_hashed_aggregation(
     attribute is computed by aggregate_func and recursively stored in
     the output_key field of the metadata member of the parent node.
 
-    Note: this function differs from tree.extract_content in that a
-    hash is computed to verify that the content was changed before
-    calling the aggregate function.
+    Note:
+        this function differs from tree.extract_content in that a
+        hash is computed to verify that the content was changed before
+        calling the aggregate function.
+
+    Note:
+        aggregate_func is only called if there is content to aggregate.
+        This avoids calls to llm's without content. aggregate_func iself
+        may return empty for insufficient content.
 
     Args:
         root_node: The root node of the markdown tree
