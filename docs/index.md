@@ -20,6 +20,8 @@ In LM Markdown, the interaction with language models takes place through _metada
 
 The simplest LM artefact we can think of is a _RAG server_. LM markdown includes the basic building blocks to allow users to author a RAG application: instead of converting the markdown file to a Web file, it is converted to a database. The difference with the classic RAG setup is that LM markdown allows users to actively interact with the language model and explore ways of encoding the meaning of text prior to ingesting the data in the database when working at the level of the markdown text. LM markdown supports _graph RAG_ by leveraging the hierarchical nature of documents, where communal content is identified at different levels of granularity by the hierarchy of headings in the document, and transversally through metadata annotating text blocks or the text under headings.
 
+While RAG is most often used to make available the content of throusand of documents, LM markdown addresses a completely different need: that of users who want to _author_ a RAG application, exploiting a tight feedback loop with language models. In the former case, RAG ingests gigabytes of data somewhat blindly. In LM markdown, by cotrast, the idea is one of allowing RAG authors to curate their content as carefully as they need.
+
 ## LM Markdown as an API for textual analysis and data extraction
 
 Because LM Markdown is an API, it may be used by data scientist to develop a pipeline to extract information from semi-structured content, such as research reports or papers. In this application, the data scientist can directly use and supplement the LM Markdown API with specific prompts or functions to support bespoke analysis pipelines.
