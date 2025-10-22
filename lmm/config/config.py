@@ -211,8 +211,9 @@ class EmbeddingSettings(BaseSettings):
     """
 
     dense_model: str = Field(
+        default="SentenceTransformers/all-MiniLM-L6-v2",
         description="Model specification in the form "
-        + "'model_provider/model' (e.g., 'OpenAI/text-embedding-3-small')"
+        + "'model_provider/model' (e.g., 'OpenAI/text-embedding-3-small')",
     )
     sparse_model: SparseModel = Field(
         default="Qdrant/bm25",  # multilingual
@@ -280,7 +281,8 @@ class Settings(BaseSettings):
     # Language model embeddings
     embeddings: EmbeddingSettings = Field(
         default_factory=lambda: EmbeddingSettings(
-            dense_model="OpenAI/text-embedding-3-small"
+            dense_model="SentenceTransformers/all-MiniLM-L6-v2",
+            sparse_model="Qdrant/bm25",
         ),
         description="Embedding model configuration",
     )
