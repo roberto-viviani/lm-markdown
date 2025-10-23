@@ -23,4 +23,4 @@ TITLES_KEY = 'titles'
 QUESTIONS_KEY = 'questions'
 SUMMARIES_KEY = SUMMARY_KEY
 TXTHASH_KEY = '~txthash'
-FREEZE_KEY = '~freeze'
+FREEZE_KEY = 'frozen'

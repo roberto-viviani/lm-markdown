@@ -19,7 +19,7 @@ This code snippet runs a language model to create summaries of content and quest
 After processing the markdown file, it can be opened, inspected, and edited. Calling `markdown_rag` on an edited document again will not overwrite summaries and questions. To have the language model re-create a summary or a question, delete the summary or questions section in the metadata and run `markdown_rag` again.
 
 NOTE: 
-    The `markdown_rag` function will recompute summaries and questions if the text under one heading is changed. If you do not want summaries or questions to be recomputed after having changed the text under a heading, add the property `~freeze = True` to the metadata of the heading. Note that now, all RAG annotations of all subheadings of that heading will be frozen.
+    The `markdown_rag` function will recompute summaries and questions if the text under one heading is changed. If you do not want summaries or questions to be recomputed after having changed the text under a heading, add the property `frozen = True` to the metadata of the heading. Note that now, all RAG annotations of all subheadings of that heading will be frozen.
 
 `ScanOpts` allows annotating the document with other properties. For example, `titles` adds the running titles of each heading. Other annotations that can be specified with `ScanOpts` are implementation steps that are not ususally of interest for manual inspection and editing (see the API section for an exhastive listing).
 
