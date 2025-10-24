@@ -363,7 +363,9 @@ def create_runnable(
             )
         case 'check_content':
             return _create_or_get(
-                settings.aux, kernel_name, system_prompt
+                settings.aux,
+                kernel_name,
+                "You are a helpful assistant",
             )
         case str():
             # allows custom chat kernels to be constructed from custom
