@@ -14,6 +14,7 @@ from pydantic import (
     field_validator,
     model_validator,
     BaseModel,
+    ValidationError,
 )
 from pydantic_settings import (
     BaseSettings,
@@ -21,6 +22,8 @@ from pydantic_settings import (
     SettingsConfigDict,
     TomlConfigSettingsSource,
 )
+from tomllib import TOMLDecodeError
+
 
 # Define supported models. These models must also be defined
 # in the model_selection.py file of the language framework
@@ -453,7 +456,12 @@ def print_settings(settings: BaseSettings) -> None:
     print(serialize_settings(settings))
 
 
-def load_settings(file_path: str | Path | None = None) -> Settings:
+from lmm.utils.logging import ExceptionConsoleLogger
+
+
+def load_settings(
+    file_path: str | Path | None = None,
+) -> Settings | None:
     """Load settings from TOML file.
 
     Args:
@@ -466,15 +474,15 @@ def load_settings(file_path: str | Path | None = None) -> Settings:
         FileNotFoundError: If settings file doesn't exist
         ValueError: If settings file is invalid
     """
+    logger = ExceptionConsoleLogger()
     if file_path is None:
         file_path = DEFAULT_CONFIG_FILE
 
     file_path = Path(file_path)
 
     if not file_path.exists():
-        raise FileNotFoundError(
-            f"Settings file not found: {file_path}"
-        )
+        logger.error(f"Settings file not found: {file_path}")
+        return None
 
     try:
         # Create a temporary settings class with the specified file
@@ -488,10 +496,25 @@ def load_settings(file_path: str | Path | None = None) -> Settings:
             )
 
         return TempSettings()
+    except TOMLDecodeError:
+        logger.error(
+            "An invalid value was found in the config file "
+            "(often, 'None').\nCheck that all values are numbers "
+            "or strings.\n"
+            "Express None as an empty string or as 'None'."
+        )
+        return None
+    except ValidationError as e:
+        logger.error(
+            format_pydantic_error_message(f"Invalid settings:\n{e}")
+        )
+        return None
+    except ValueError as e:
+        logger.error(f"Invalid settings:\n{e}")
+        return None
     except Exception as e:
-        raise ValueError(
-            f"Failed to load settings from {file_path}: {e}"
-        ) from e
+        logger.error(f"Could not load config settings:\n{e}")
+        return None
 
 
 def format_pydantic_error_message(error_message: str) -> str:
