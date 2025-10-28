@@ -8,6 +8,7 @@ package.
 from pathlib import Path
 from typing import Any, Literal, Self
 from lmm.markdown.parse_yaml import MetadataPrimitive
+from lmm.utils.logging import ExceptionConsoleLogger, LoggerBase
 
 from pydantic import (
     Field,
@@ -456,11 +457,9 @@ def print_settings(settings: BaseSettings) -> None:
     print(serialize_settings(settings))
 
 
-from lmm.utils.logging import ExceptionConsoleLogger
-
-
 def load_settings(
     file_path: str | Path | None = None,
+    logger: LoggerBase = ExceptionConsoleLogger(),
 ) -> Settings | None:
     """Load settings from TOML file.
 
@@ -474,7 +473,6 @@ def load_settings(
         FileNotFoundError: If settings file doesn't exist
         ValueError: If settings file is invalid
     """
-    logger = ExceptionConsoleLogger()
     if file_path is None:
         file_path = DEFAULT_CONFIG_FILE
 
