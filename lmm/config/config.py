@@ -3,6 +3,14 @@ Read and write configuration file.
 
 This file also contains the definitions of the models supported in the
 package.
+
+Expected behaviour:
+    By being implemented with the pydantic_settings package, the
+    constructors of the settings object may through errors at validation.
+    The function load_settings centralizes the error handling of the
+    construction of settings objects, but the default logger raises an
+    exception like th eother constructors. Pass a concole logger for
+    functions to be called from the console.
 """
 
 from pathlib import Path
@@ -458,25 +466,48 @@ def print_settings(settings: BaseSettings) -> None:
 
 
 def load_settings(
-    file_path: str | Path | None = None,
+    *,
+    file_name: str | Path | None = None,
     logger: LoggerBase = ExceptionConsoleLogger(),
 ) -> Settings | None:
     """Load settings from TOML file.
 
     Args:
-        file_path: Path to settings file (defaults to config.toml)
+        file_name: Path to settings file (defaults to config.toml)
+        logger: logger to use. Defaults to a exception-raising logger.
 
     Returns:
-        Loaded settings object
+        Loaded settings object, or None if exception raised.
 
-    Raises:
-        FileNotFoundError: If settings file doesn't exist
-        ValueError: If settings file is invalid
+    Note:
+        Use of an ExceptionConsoleLogger still requires to check that
+        return value is not None to satisfy a type checker.
+
+        ```python
+        logger = ExceptionConsoleLogger()
+        settings = load_settings(logger=logger)
+        if settings is None:
+            raise ValueError("Unreacheable code reached")
+        ```
+
+        Here, the type checker is told that settings is not None, but
+        the condition is always satisfied because load_settings will
+        raise an exception whenever it would be returning None.
+
+        Contrast with the following:
+
+        ```python
+        logger = ConsoleLogger()
+        settings = load_settings(logger=logger)
+        if settings is None:
+            raise ValueError("Could not read config.toml")
+        ```
+
     """
-    if file_path is None:
-        file_path = DEFAULT_CONFIG_FILE
+    if file_name is None:
+        file_name = DEFAULT_CONFIG_FILE
 
-    file_path = Path(file_path)
+    file_path = Path(file_name)
 
     if not file_path.exists():
         logger.error(f"Settings file not found: {file_path}")

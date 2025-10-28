@@ -148,7 +148,7 @@ class TestSettings(unittest.TestCase):
         set = Settings(major={'model': "Gemini/gemini-latest"})
         export_settings(set, "config_test.toml")
 
-        sets: Settings = load_settings("config_test.toml")
+        sets: Settings = load_settings(file_name="config_test.toml")
         # expected result: name_model as in file
         self.assertEqual(sets.major.get_model_source(), "Gemini")
         self.assertEqual(set.major.get_model_name(), "gemini-latest")
@@ -185,13 +185,13 @@ class TestSettings(unittest.TestCase):
 
     def test_default_config(self):
         create_default_config_file("temp_config.toml")
-        default_sets = load_settings("temp_config.toml")
+        default_sets = load_settings(file_name="temp_config.toml")
         sets = Settings(
             **{'major': {'model': "Mistral/mistral-large-latest"}}
         )
         export_settings(sets, "temp_config.toml")
         create_default_config_file("temp_config.toml")
-        sets = load_settings("temp_config.toml")
+        sets = load_settings(file_name="temp_config.toml")
         self.assertEqual(
             sets.major.get_model_source(),
             default_sets.major.get_model_source(),
