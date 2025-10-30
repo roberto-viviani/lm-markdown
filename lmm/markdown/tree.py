@@ -403,6 +403,12 @@ class MarkdownNode(ABC):
                 'metadata': self.fetch_metadata(None, include_header),
             }
 
+    @abstractmethod
+    def get_info(self) -> str:
+        """Return a string rpresentation of the node with info
+        on its properties"""
+        pass
+
 
 # Define the node types
 class HeadingNode(MarkdownNode):
@@ -544,6 +550,8 @@ class HeadingNode(MarkdownNode):
                 + f"\n{yaml.safe_dump(self.get_metadata())}"
             )
 
+        if not info[-1] == '\n':
+            info += "\n"
         return info
 
     def add_child(self, child_node: MarkdownNode) -> None:
@@ -682,14 +690,16 @@ class TextNode(MarkdownNode):
         indent_str = "  " * indent
 
         # Collect block type and content
-        info = "Text node\n"
+        info = "Text node"
+        info += "\n" if self.get_parent() else " (freestanding)\n"
+
         content = self.get_content()
         if len(content) > 50:
             content = content[:47] + "..."
         if len(content) > 0:
-            info = f"{indent_str}Text: {content}"
+            info += f"{indent_str}Text: {content}"
         else:
-            info = "Placeholder text block for metadata"
+            info += "Placeholder text block for metadata"
 
         # Collect metadata
         if self.metadata:
@@ -698,6 +708,8 @@ class TextNode(MarkdownNode):
                 + f"\n{yaml.safe_dump(self.metadata)}"
             )
 
+        if not info[-1] == '\n':
+            info += "\n"
         return info
 
 
@@ -1320,6 +1332,12 @@ def serialize_tree(node: MarkdownTree) -> str:
     """
     blocks = tree_to_blocks(node)
     return serialize_blocks(blocks)
+
+
+def get_tree_info(node: MarkdownTree) -> list[str]:
+    if node is None:
+        return []
+    return traverse_tree(node, lambda x: x.get_info())
 
 
 def save_tree(file_name: str | Path, tree: MarkdownTree) -> None:
