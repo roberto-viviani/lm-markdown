@@ -28,8 +28,10 @@ from lmm.scan.scan_keys import (
     DOCID_KEY,
     TEXTID_KEY,
     HEADINGID_KEY,
+    SOURCE_KEY,
     TXTHASH_KEY,
     TITLES_KEY,
+    SKIP_KEY,
     UUID_KEY,
     SUMMARY_KEY,
     QUESTIONS_KEY,
@@ -545,6 +547,196 @@ Another few words.
             root, lambda x: x, TextNode
         )
         self.assertEqual(len(nodes), len(textnodes))
+
+
+class TestSkippedNodes(unittest.TestCase):
+    # setup and teardown replace config.toml to avoid
+    # calling the language model server
+    original_settings = Settings()
+
+    @classmethod
+    def setUpClass(cls):
+        settings = Settings(
+            major={'model': "Debug/debug"},
+            minor={'model': "Debug/debug"},
+            aux={'model': "Debug/debug"},
+        )
+        export_settings(settings)
+
+    @classmethod
+    def tearDownClass(cls):
+        settings = cls.original_settings
+        export_settings(settings)
+
+    def setUp(self):
+        self.doc_with_skip = """
+---
+title: Document with skips
+---
+
+# Heading 1 (Process)
+
+Text under heading 1.
+
+---
+skip: True
+...
+## Heading 2 (Skip)
+
+Text under heading 2 that should be skipped.
+
+### Heading 3 (Also Skip)
+
+Text under heading 3.
+
+---
+skip: True
+...
+This is a skipped text block.
+
+# Heading 4 (Process)
+
+Final text block.
+"""
+        self.blocks = parse_markdown_text(self.doc_with_skip)
+
+    def test_skip_textid(self):
+        """Test that textid is not added to skipped text blocks."""
+        blocks = scan_rag(self.blocks, ScanOpts(textid=True))
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        text_nodes = traverse_tree_nodetype(
+            root, lambda x: x, TextNode
+        )
+
+        self.assertEqual(len(text_nodes), 5)
+
+        processed_text_nodes = [
+            n for n in text_nodes if TEXTID_KEY in n.metadata
+        ]
+        skipped_text_nodes = [
+            n for n in text_nodes if TEXTID_KEY not in n.metadata
+        ]
+
+        # 4 text blocks should have textid, 1 should be skipped
+        self.assertEqual(len(processed_text_nodes), 4)
+        self.assertEqual(len(skipped_text_nodes), 1)
+
+        self.assertEqual(
+            skipped_text_nodes[0].get_content(),
+            "This is a skipped text block.",
+        )
+        self.assertTrue(
+            skipped_text_nodes[0].get_metadata_for_key(SKIP_KEY)
+        )
+
+    def test_skip_headingid(self):
+        """Test that headingid is not added to skipped heading blocks."""
+        blocks = scan_rag(self.blocks, ScanOpts(headingid=True))
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        heading_nodes = traverse_tree_nodetype(
+            root, lambda x: x, HeadingNode
+        )
+
+        # Root + 4 headings = 5
+        self.assertEqual(len(heading_nodes), 5)
+
+        processed_heading_nodes = [
+            n for n in heading_nodes if HEADINGID_KEY in n.metadata
+        ]
+        skipped_heading_nodes = [
+            n
+            for n in heading_nodes
+            if HEADINGID_KEY not in n.metadata
+        ]
+
+        # Root, H1, H4 should be processed. H2 and H3 should be skipped.
+        self.assertEqual(len(processed_heading_nodes), 3)
+        self.assertEqual(len(skipped_heading_nodes), 2)
+
+        skipped_contents = {
+            n.get_content() for n in skipped_heading_nodes
+        }
+        self.assertIn("Heading 2 (Skip)", skipped_contents)
+        self.assertIn("Heading 3 (Also Skip)", skipped_contents)
+
+    def test_skip_questions(self):
+        """Test that questions are not added to skipped headings."""
+        blocks = scan_rag(
+            self.blocks,
+            ScanOpts(questions=True, questions_threshold=1),
+        )
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        # Find all nodes that have questions
+        nodes_with_questions = get_nodes_with_metadata(
+            root, QUESTIONS_KEY
+        )
+
+        # Questions are added to Heading 1 and Heading 4.
+        # The root node does not get questions aggregated from its children.
+        self.assertEqual(len(nodes_with_questions), 2)
+
+        for node in nodes_with_questions:
+            self.assertFalse(
+                node.get_metadata_for_key(SKIP_KEY, False)
+            )
+
+    def test_skip_summaries(self):
+        """Test that summaries are not added to skipped headings."""
+        blocks = scan_rag(
+            self.blocks, ScanOpts(summaries=True, summary_threshold=1)
+        )
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        # Find all nodes that have summaries
+        nodes_with_summaries = get_nodes_with_metadata(
+            root, SUMMARY_KEY
+        )
+
+        # Summaries are added to Heading 1 and Heading 4.
+        # The root node will also get a summary aggregated from its children.
+        self.assertEqual(len(nodes_with_summaries), 3)
+
+        for node in nodes_with_summaries:
+            self.assertFalse(
+                node.get_metadata_for_key(SKIP_KEY, False)
+            )
+
+    def test_skip_source(self):
+        """Test that source is not added to skipped heading blocks."""
+        blocks = scan_rag(self.blocks)
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        heading_nodes = traverse_tree_nodetype(
+            root, lambda x: x, HeadingNode
+        )
+
+        # Root + 4 headings = 5
+        self.assertEqual(len(heading_nodes), 5)
+
+        processed_heading_nodes = [
+            n for n in heading_nodes if SOURCE_KEY in n.metadata
+        ]
+        skipped_heading_nodes = [
+            n for n in heading_nodes if SOURCE_KEY not in n.metadata
+        ]
+
+        # H1, H4 should be processed. Header, H2 and H3 should be skipped.
+        self.assertEqual(len(processed_heading_nodes), 2)
+        self.assertEqual(len(skipped_heading_nodes), 3)
+
+        skipped_contents = {
+            n.get_content() for n in skipped_heading_nodes
+        }
+        self.assertIn("Heading 2 (Skip)", skipped_contents)
+        self.assertIn("Heading 3 (Also Skip)", skipped_contents)
 
 
 if __name__ == '__main__':

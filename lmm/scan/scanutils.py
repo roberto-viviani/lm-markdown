@@ -22,6 +22,8 @@ def post_order_hashed_aggregation(
     output_key: str,
     hashed: bool = True,
     hash_key: str = TXTHASH_KEY,
+    *,
+    filter_func: Callable[[MarkdownNode], bool] = lambda x: True,
 ) -> None:
     """
     Executes a post-order traversal on the markdown tree, with bottom-
@@ -71,6 +73,9 @@ def post_order_hashed_aggregation(
         if isinstance(node, TextNode):
             return
 
+        if not filter_func(node):
+            return
+
         # do not repeat aggregation if the node is a parent of just
         # one parent node, as the content will be the same
         if isinstance(node, HeadingNode):
@@ -91,6 +96,8 @@ def post_order_hashed_aggregation(
 
         def _collect_text(node: MarkdownNode) -> None:
             for child in node.children:
+                if not filter_func(child):
+                    continue
                 if isinstance(child, TextNode):
                     # Collect content from direct TextBlock children
                     collected_content.append(child.get_content())
@@ -111,7 +118,8 @@ def post_order_hashed_aggregation(
                             )
                         )
                     else:  # recursion to children down the tree
-                        _collect_text(child)
+                        if filter_func(child):
+                            _collect_text(child)
 
         # start the recursion
         _collect_text(node)

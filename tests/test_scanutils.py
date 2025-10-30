@@ -699,5 +699,137 @@ Text content here.
                 )
 
 
+title_block = "---\ntitle: document\n---\n" ""
+heading_block = "# first heading\n\n"
+text_block = "Text block.\n\n"
+skip_metadata = "---\nskip: True\n---\n"
+
+from lmm.markdown.parse_markdown import blocklist_copy
+from lmm.markdown.tree import tree_to_blocks, serialize_tree
+
+
+class TestSkippedAggregation(unittest.TestCase):
+
+    def test_skipped_text(self):
+        # Test that post_order_hashed_aggregation skips aggregating
+        # from text nodes that do not satify a predicate function
+        # passed in in the filter_func
+        markdown = (
+            title_block
+            + heading_block
+            + "First block.\n\n"
+            + skip_metadata
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+        )
+
+        root = load_tree(markdown, LoglistLogger())
+        self.assertFalse(
+            root.children[0]
+            .children[0]
+            .get_metadata_for_key('skip', False)
+        )
+        self.assertTrue(
+            root.children[0]
+            .children[1]
+            .get_metadata_for_key('skip', False)
+        )
+        self.assertFalse(
+            root.children[0]
+            .children[2]
+            .get_metadata_for_key('skip', False)
+        )
+
+        OUTPUT_KEY = "text_aggregate"
+
+        post_order_hashed_aggregation(
+            root,
+            lambda x: x,
+            OUTPUT_KEY,
+            False,
+            filter_func=lambda x: not x.get_metadata_for_key(
+                "skip", False
+            ),
+        )
+
+        aggregate = root.children[0].get_metadata_for_key(OUTPUT_KEY)
+        self.assertIn("First block", aggregate)
+        self.assertIn("Third block", aggregate)
+        self.assertNotIn("Second block", aggregate)
+
+    def test_skipped_heading(self):
+        # test that aggregation is not computed on a hading with
+        # a skipped predicate
+
+        markdown = (
+            title_block
+            + skip_metadata
+            + heading_block
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + "# Second heading\n\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+
+        OUTPUT_KEY = "text_aggregate"
+
+        post_order_hashed_aggregation(
+            root,
+            lambda x: x,
+            OUTPUT_KEY,
+            False,
+            filter_func=lambda x: not x.get_metadata_for_key(
+                "skip", False
+            ),
+        )
+
+        aggregate = root.children[0].get_metadata_for_key(
+            OUTPUT_KEY, None
+        )
+        self.assertIsNone(aggregate)
+        aggregate = root.children[1].get_metadata_for_key(
+            OUTPUT_KEY, None
+        )
+        self.assertTrue(aggregate)
+
+        # repeat for other order
+        markdown = (
+            title_block
+            + heading_block
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + skip_metadata
+            + "# Second heading\n\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+
+        post_order_hashed_aggregation(
+            root,
+            lambda x: x,
+            OUTPUT_KEY,
+            False,
+            filter_func=lambda x: not x.get_metadata_for_key(
+                "skip", False
+            ),
+        )
+
+        aggregate = root.children[0].get_metadata_for_key(
+            OUTPUT_KEY, None
+        )
+        self.assertTrue(aggregate)
+        aggregate = root.children[1].get_metadata_for_key(
+            OUTPUT_KEY, None
+        )
+        self.assertIsNone(aggregate)
+
+
 if __name__ == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)

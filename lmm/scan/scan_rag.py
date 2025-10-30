@@ -85,6 +85,7 @@ from lmm.scan.scan_keys import (
     QUESTIONS_KEY,
     UUID_KEY,
     OPTIONS_KEY,
+    SKIP_KEY,
 )
 
 from lmm.utils.logging import LoggerBase, get_logger
@@ -128,7 +129,7 @@ class ScanOpts(BaseModel):
     )
     questions_threshold: int = Field(
         default=15,
-        gt=10,
+        gt=-1,
         description="Minimum word count threshold to trigger question"
         + " generation (ignored if questions=False)",
     )
@@ -139,7 +140,7 @@ class ScanOpts(BaseModel):
     )
     summary_threshold: int = Field(
         default=50,
-        gt=20,
+        gt=-1,
         description="Minimum word count threshold to trigger summary "
         + "generation (ignored if summaries=False)",
     )
@@ -226,6 +227,17 @@ def scan_rag(
         ```
     """
 
+    # function used to skip over when SKIP_KEY is true
+    def _filt_func(n: MarkdownNode) -> bool:
+        """To use in aggregate function to exclude nodes with
+        SKIP_KEY in meatadata"""
+        flag = bool(
+            n.fetch_metadata_for_key(SKIP_KEY, False, False)
+            if isinstance(n, HeadingNode)
+            else n.get_metadata_for_key(SKIP_KEY, False)
+        )
+        return not flag
+
     # Validation
     build_titles = bool(opts.titles)
     build_questions = bool(opts.questions)
@@ -279,7 +291,7 @@ def scan_rag(
     # Add titles to headings
     if build_titles:
         logger.info("Adding titles to heading metadata.")
-        add_titles_to_headings(root, TITLES_KEY)
+        add_titles_to_headings(root, TITLES_KEY, _filt_func)
 
     # Add an id to all heading and text blocks
     add_id_to_nodes(
@@ -287,10 +299,13 @@ def scan_rag(
         build_textids,
         build_headingids,
         root.get_metadata_string_for_key(DOCID_KEY),
+        _filt_func,
     )
 
     # Add UUID to text nodes
     def add_UUID_func(node: MarkdownNode) -> None:
+        if not _filt_func(node):
+            return
         if isinstance(node, TextNode):
             uuid_base = node.get_metadata_string_for_key(TEXTID_KEY)
             if uuid_base is not None:
@@ -308,6 +323,8 @@ def scan_rag(
 
     # Add source
     def add_source_func(node: MarkdownNode) -> None:
+        if not _filt_func(node):
+            return
         if isinstance(node, HeadingNode):
             if node.is_header_node():
                 return
@@ -320,13 +337,13 @@ def scan_rag(
     # Add a summary to heading nodes that is recomputed after changes
     if build_summaries:
         logger.info("Adding summaries about text.")
-        add_summaries(root, opts, logger)
+        add_summaries(root, opts, logger, _filt_func)
 
     # Add questions that the text answers, recomputed if text changes
     # (will use summaries if existing)
     if build_questions:
         logger.info("Adding questions about text.")
-        add_questions(root, opts, logger)
+        add_questions(root, opts, logger, _filt_func)
 
     # check meta-data without text
     def _warn_empty_text(node: MarkdownNode) -> None:
@@ -448,7 +465,9 @@ def markdown_rag(
 
 
 def add_titles_to_headings(
-    root: MarkdownNode, key: str = TITLES_KEY
+    root: MarkdownNode,
+    key: str = TITLES_KEY,
+    filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
     """Recursively add titles to heading blocks in a markdown tree.
 
@@ -461,6 +480,8 @@ def add_titles_to_headings(
     Args:
         root: The root node of the markdown tree to process, or
             any other parent node
+        filt_fun: A predicate the nodes must satisfy for titles to
+            be added
 
     Note:
         - Only non-empty heading contents are included in the titles
@@ -470,6 +491,8 @@ def add_titles_to_headings(
     def map_func(node: MarkdownNode) -> None:
         # recursively add content of headings to key in metadata
         if isinstance(node, HeadingNode):
+            if not filt_func(node):
+                return
             if node.parent:
                 titles: str = str(
                     node.parent.get_metadata_for_key(key, "")
@@ -493,6 +516,7 @@ def add_id_to_nodes(
     textid: bool,
     headingid: bool,
     base_hash: str | None = None,
+    filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
     """Add unique identifiers to text and heading blocks in a markdown
     tree. These identifiers may be used when ingesting the document,
@@ -543,6 +567,8 @@ def add_id_to_nodes(
     headingkey = HEADINGID_KEY
 
     def _add_id(node: MarkdownNode) -> MarkdownNode:
+        if not filt_func(node):
+            return node
         match node.block:
             case TextBlock() if textid:
                 counter['text'] += 1
@@ -562,7 +588,10 @@ def add_id_to_nodes(
 
 
 def add_questions(
-    root: MarkdownNode, opts: ScanOpts, logger: LoggerBase
+    root: MarkdownNode,
+    opts: ScanOpts,
+    logger: LoggerBase,
+    filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
     """Add questions answered by text using a language model. Will
     not add qquestions to a header node.
@@ -602,16 +631,22 @@ def add_questions(
     if root.is_header_node():
         for node in root.children:
             post_order_hashed_aggregation(
-                node, llm_questions, QUESTIONS_KEY, True
+                node,
+                llm_questions,
+                QUESTIONS_KEY,
+                filter_func=filt_func,
             )
     else:
         post_order_hashed_aggregation(
-            root, llm_questions, QUESTIONS_KEY, True
+            root, llm_questions, QUESTIONS_KEY, filter_func=filt_func
         )
 
 
 def add_summaries(
-    root: MarkdownNode, opts: ScanOpts, logger: LoggerBase
+    root: MarkdownNode,
+    opts: ScanOpts,
+    logger: LoggerBase,
+    filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ):
     """Add summaries of text using a language model.
 
@@ -653,7 +688,7 @@ def add_summaries(
     )
 
     post_order_hashed_aggregation(
-        root, llm_add_summary, SUMMARY_KEY, True
+        root, llm_add_summary, SUMMARY_KEY, filter_func=filt_func
     )
 
 

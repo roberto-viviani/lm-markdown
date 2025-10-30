@@ -18,6 +18,7 @@ IDX_KEY = TEXTID_KEY
 UUID_KEY = 'UUID'
 GROUP_UUID_KEY = 'group_UUID'
 SOURCE_KEY = 'source'
+SKIP_KEY = 'skip'
 
 TITLES_KEY = 'titles'
 QUESTIONS_KEY = 'questions'
