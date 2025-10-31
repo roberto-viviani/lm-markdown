@@ -561,5 +561,174 @@ class TestGetHeadingnodes(unittest.TestCase):
         self.assertEqual(hblocks[0].get_content(), "New content")
 
 
+class TestPruneTree(unittest.TestCase):
+
+    def test_skipped_text(self):
+        # Test that post_order_hashed_aggregation skips aggregating
+        # from text nodes that do not satify a predicate function
+        # passed in in the filter_func
+        from lmm.markdown.treeutils import prune_tree
+
+        markdown = (
+            "---\ntitle: document\n---\n"
+            + "# first heading\n\n"
+            + "First block.\n\n"
+            + "---\nskip: True\n---\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+        )
+
+        root = load_tree(markdown, LoglistLogger())
+        root = prune_tree(
+            root, lambda x: not x.get_metadata_for_key('skip', False)
+        )
+        blocks = [
+            b
+            for b in tree_to_blocks(root)
+            if isinstance(b, TextBlock)
+        ]
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(blocks[0].get_content(), "First block.")
+        self.assertEqual(blocks[1].get_content(), "Third block.")
+
+    def test_skipped_heading(self):
+        # test that aggregation is not computed on a hading with
+        # a skipped predicate
+
+        markdown = (
+            "---\ntitle: document\n---\n"
+            + "---\nskip: True\n---\n"
+            + "# first heading\n\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + "# Second heading\n\n"
+            + "Fourth block.\n\n"
+            + "Fifth block.\n\n"
+            + "Sixth block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+        root = prune_tree(
+            root, lambda x: not x.get_metadata_for_key('skip', False)
+        )
+        blocks = [
+            b
+            for b in tree_to_blocks(root)
+            if isinstance(b, TextBlock)
+        ]
+        self.assertEqual(len(blocks), 3)
+        self.assertEqual(blocks[0].get_content(), "Fourth block.")
+        self.assertEqual(blocks[1].get_content(), "Fifth block.")
+        self.assertEqual(blocks[2].get_content(), "Sixth block.")
+
+        # repeat for other order
+        markdown = (
+            "---\ntitle: document\n---\n"
+            + "# first heading\n\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + "---\nskip: True\n---\n"
+            + "# Second heading\n\n"
+            + "Fourth block.\n\n"
+            + "Fifth block.\n\n"
+            + "Sixth block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+        root = prune_tree(
+            root, lambda x: not x.get_metadata_for_key('skip', False)
+        )
+        blocks = [
+            b
+            for b in tree_to_blocks(root)
+            if isinstance(b, TextBlock)
+        ]
+        self.assertEqual(len(blocks), 3)
+        self.assertEqual(blocks[0].get_content(), "First block.")
+        self.assertEqual(blocks[1].get_content(), "Second block.")
+        self.assertEqual(blocks[2].get_content(), "Third block.")
+
+        # repeat combined
+        markdown = (
+            "---\ntitle: document\n---\n"
+            + "# first heading\n\n"
+            + "---\nskip: True\n---\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + "---\nskip: True\n---\n"
+            + "# Second heading\n\n"
+            + "Fourth block.\n\n"
+            + "Fifth block.\n\n"
+            + "Sixth block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+        root = prune_tree(
+            root, lambda x: not x.get_metadata_for_key('skip', False)
+        )
+        blocks = [
+            b
+            for b in tree_to_blocks(root)
+            if isinstance(b, TextBlock)
+        ]
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(blocks[0].get_content(), "Second block.")
+        self.assertEqual(blocks[1].get_content(), "Third block.")
+
+    def test_prune_all(self):
+        markdown = (
+            "---\ntitle: document\nskip: True---\n"
+            + "---\nskip: True\n---\n"
+            + "# first heading\n\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + "# Second heading\n\n"
+            + "Fourth block.\n\n"
+            + "Fifth block.\n\n"
+            + "Sixth block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+        root = prune_tree(
+            root, lambda x: not x.get_metadata_for_key('skip', False)
+        )
+        self.assertIsNone(root)
+
+    def test_prune_structure(self):
+        markdown = (
+            "---\ntitle: document\n---\n"
+            + "# first heading\n\n"
+            + "---\nskip: True\n---\n"
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+            + "---\nskip: True\n---\n"
+            + "# Second heading\n\n"
+            + "Fourth block.\n\n"
+            + "Fifth block.\n\n"
+            + "Sixth block.\n\n"
+        )
+        root = load_tree(markdown, LoglistLogger())
+        pruned = prune_tree(
+            root, lambda x: not x.get_metadata_for_key('skip', False)
+        )
+        blocks = [
+            b
+            for b in tree_to_blocks(pruned)
+            if isinstance(b, TextBlock)
+        ]
+        self.assertEqual(len(blocks), 2)
+        # original unchanged
+        blocks = [
+            b
+            for b in tree_to_blocks(root)
+            if isinstance(b, TextBlock)
+        ]
+        self.assertEqual(len(blocks), 6)
+
+        self.assertEqual(len(pruned.get_heading_children()), 1)
+        self.assertEqual(pruned.children[0].count_children(), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

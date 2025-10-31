@@ -518,6 +518,30 @@ def post_order_map_tree(
     return map_func(node)
 
 
+def prune_tree(
+    node: MarkdownTree,
+    filter_func: Callable[[MarkdownNode], bool],
+) -> MarkdownTree:
+    """Prune all nodes of the tree that do not satisfy the predicate
+    filter_func."""
+    if node is None:
+        return None
+
+    if not filter_func(node):
+        return None
+
+    def _visit_func(n: MarkdownNode) -> None:
+        survivors: list[MarkdownNode] = []
+        for child in n.children:
+            if filter_func(child):
+                survivors.append(child)
+        n.children = survivors
+
+    root = node.tree_copy()
+    pre_order_traversal(root, _visit_func)
+    return root
+
+
 # utilities -------------------------------------------------------
 def print_tree_info(node: MarkdownNode, indent: int = 0) -> None:
     """
