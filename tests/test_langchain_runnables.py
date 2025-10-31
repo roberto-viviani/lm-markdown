@@ -273,6 +273,24 @@ class TestDebugModel(unittest.TestCase):
 
 class TestEmbeddingModel(unittest.TestCase):
 
+    # setup and teardown replace config.toml to avoid
+    # calling the language model server
+    original_settings = Settings()
+
+    @classmethod
+    def setUpClass(cls):
+        settings = Settings(
+            embeddings={
+                'dense_model': "OpenAI/text-embedding-3-small"
+            }
+        )
+        export_settings(settings)
+
+    @classmethod
+    def tearDownClass(cls):
+        settings = cls.original_settings
+        export_settings(settings)
+
     def test_embedding_default(self) -> None:
         embmodel = create_embeddings()
         self.assertIsInstance(embmodel, Embeddings)
