@@ -336,7 +336,6 @@ Final text block.
         chunks = blocks_to_chunks(
             blocks, EncodingModel.SPARSE_CONTENT, [SUMMARIES_KEY]
         )
-        print(chunks)
         for c in chunks:
             self.assertIn(SUMMARIES_KEY, c.metadata)
 

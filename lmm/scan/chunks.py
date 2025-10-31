@@ -134,7 +134,7 @@ from lmm.markdown.parse_markdown import (
 from lmm.markdown.parse_yaml import MetadataDict
 from lmm.markdown.tree import MarkdownTree, MarkdownNode, TextNode
 from lmm.markdown.tree import blocks_to_tree, traverse_tree_nodetype
-from lmm.markdown.treeutils import inherit_metadata
+from lmm.markdown.treeutils import inherit_metadata, prune_tree
 from lmm.scan.scan_rag import scan_rag, ScanOpts
 from lmm.scan.scan_keys import (
     TXTHASH_KEY,
@@ -398,14 +398,20 @@ def blocks_to_chunks(
     if root is None:
         return []
 
+    # get rid of skipped nodes
+    root = prune_tree(
+        root, lambda x: not x.get_metadata_for_key(SKIP_KEY, False)
+    )
+    if root is None:
+        logger.info("Markdown skipped (skip directive in header)")
+        return []
+
     # integrate text node metadata by collecting metadata from parent,
     # unless metadata are already specified in the text node. These
     # metadata will be stored in the database as payload. This will
     # not inherit specific properties from ancestors, only the first
     # metadata block on the ancestor's path. We exclude metadata
     # properties that are used to chat and housekeeping.
-    # We also inherit skipping, as skipping a heading means skipping
-    # everything in its whole branch.
     exclude_set: list[str] = [
         TXTHASH_KEY,
         CHAT_KEY,
@@ -496,7 +502,6 @@ def blocks_to_chunks(
         rootnode,
         _textnode_to_chunk,
         TextNode,
-        lambda n: not n.get_metadata_for_key(SKIP_KEY, False),
     )
     return [c for c in chunks if c.content]
 
