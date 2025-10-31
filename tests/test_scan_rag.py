@@ -255,9 +255,9 @@ class TestBuilds(unittest.TestCase):
 
         # now apply scan rag
         with self.assertRaises(ValidationError):
-            # summary threshold at least 20
+            # summary threshold at least 0
             blocks = scan_rag(
-                blocks, ScanOpts(summaries=True, summary_threshold=15)
+                blocks, ScanOpts(summaries=True, summary_threshold=-1)
             )
         blocks = scan_rag(
             blocks, ScanOpts(summaries=True, summary_threshold=21)
