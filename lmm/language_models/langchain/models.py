@@ -239,9 +239,16 @@ def _create_embedding_instance(
     model_name: str = model.get_model_name()
     match model_source:
         case 'Gemini':
-            from langchain_google_genai import (
-                GoogleGenerativeAIEmbeddings,
-            )
+            try:
+                from langchain_google_genai import (
+                    GoogleGenerativeAIEmbeddings,
+                )
+            except ImportError as e:
+                raise ImportError(
+                    "Gemini models require the "
+                    "'langchain-google-genai' package. "
+                    "Install it with: pip install langchain-google-genai"
+                ) from e
 
             return GoogleGenerativeAIEmbeddings(
                 model=model_name,
@@ -249,18 +256,33 @@ def _create_embedding_instance(
             )
 
         case 'Mistral':
-            from langchain_mistralai import MistralAIEmbeddings
+            try:
+                from langchain_mistralai import MistralAIEmbeddings
+            except ImportError as e:
+                raise ImportError(
+                    "Mistral models require the "
+                    "'langchain-mistralai' package. "
+                    "Install it with: pip install langchain-mistralai"
+                ) from e
 
             return MistralAIEmbeddings(
                 model=model_name,
             )
 
         case 'OpenAI':
-            from langchain_openai import OpenAIEmbeddings
+            try:
+                from langchain_openai import OpenAIEmbeddings
+            except ImportError as e:
+                raise ImportError(
+                    "OpenAI models require the 'langchain-openai'"
+                    " package. Install it with: pip install "
+                    "langchain-openai"
+                ) from e
 
             return OpenAIEmbeddings(model=model_name)
 
         case 'SentenceTransformers':
+            # not clear what may be missing, leave original error
             from langchain_huggingface import HuggingFaceEmbeddings
 
             source_name = "sentence-transformers"
