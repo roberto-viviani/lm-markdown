@@ -147,7 +147,7 @@ YOUR RESPONSE:
             return ToolDefinition(
                 name=kernel_name,
                 prompt="""
-Please assist the user and answert the query concerning the following text:
+Please assist the user and answer the query concerning the following text:
 ----
 QUERY:  "{query}"
 
