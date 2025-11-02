@@ -900,11 +900,11 @@ The second block!
         self.assertTrue(len(blocks) > 0)
         self.assertEqual(logger.count_logs(), 1)
         self.assertIn(
-            "A metadata marker preceded by space found at line 2",
+            "A metadata marker preceded by space found at line 3",
             logger.get_logs()[0],
         )
 
-    def test_mispecified_heding(self):
+    def test_mispecified_heading(self):
         from lmm.utils.logging import LoglistLogger
 
         logger = LoglistLogger()
@@ -923,7 +923,7 @@ The second block!
         self.assertTrue(len(blocks) > 0)
         self.assertEqual(logger.count_logs(), 1)
         self.assertIn(
-            "A heading marker preceded by space found at line 5",
+            "A heading marker preceded by space found at line 6",
             logger.get_logs()[0],
         )
 

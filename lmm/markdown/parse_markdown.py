@@ -869,14 +869,14 @@ def parse_markdown_text(
             if re.match(r'^\s+---(\s*|$)', line):
                 logger.warning(
                     "A metadata marker preceded by space "
-                    f"found at line {i}. Are you sure? it"
+                    f"found at line {i + 1}. Are you sure? it"
                     " will be parsed as text."
                 )
 
             if re.match(r'^\s+#\s+\w+', line):
                 logger.warning(
                     "A heading marker preceded by space "
-                    f"found at line {i}. Are you sure? it"
+                    f"found at line {i + 1}. Are you sure? it"
                     " will be parsed as text."
                 )
 
