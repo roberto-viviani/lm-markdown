@@ -824,7 +824,9 @@ def _parser(
 
 
 def parse_markdown_text(
-    content: str, mapped_keys: Mapping[str, str] | None = None
+    content: str,
+    mapped_keys: Mapping[str, str] | None = None,
+    logger: LoggerBase | None = None,
 ) -> list[Block]:
     """Parse a pandoc markdown text into structured blocks.
 
@@ -834,6 +836,12 @@ def parse_markdown_text(
             used to replace short-form of metadata entries of the
             user (for example, ?: maps to query: for a mapped key of
             {'?': "query"}). Does not affect keys in the header block.
+        logger: a logger object. This function does not raise or logs
+            errors, because parse errors will be propagated by error
+            blocks. If you pass a logger, you get warning about
+            possible block and heading markers preceded by space,
+            which are not errors strictly speaking, but may be
+            unnitended typos with consequences.
 
     Returns:
         List of Block objects (HeaderBlock, MetadataBlock,
@@ -854,6 +862,23 @@ def parse_markdown_text(
     lines = (
         content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
     )
+
+    # check for possible unintended misspecified blocks or headings
+    if logger is not None:
+        for i, line in enumerate(lines):
+            if re.match(r'^\s+---(\s*|$)', line):
+                logger.warning(
+                    "A metadata marker preceded by space "
+                    f"found at line {i}. Are you sure? it"
+                    " will be parsed as text."
+                )
+
+            if re.match(r'^\s+#\s+\w+', line):
+                logger.warning(
+                    "A heading marker preceded by space "
+                    f"found at line {i}. Are you sure? it"
+                    " will be parsed as text."
+                )
 
     # proc
     tokens = _tokenizer(lines)
@@ -1019,7 +1044,7 @@ def load_blocks(
         return []
 
     # Parse it
-    blocks = parse_markdown_text(content)
+    blocks = parse_markdown_text(content, logger=logger)
 
     # Check for errors in the block list and log them to console
     from .ioutils import report_error_blocks

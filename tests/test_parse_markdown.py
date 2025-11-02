@@ -883,6 +883,50 @@ The second block!
         self.assertEqual(blocks[1].get_content(), "The first block.")
         self.assertEqual(blocks[2].get_content(), "The second block.")
 
+    def test_mispecified_block(self):
+        from lmm.utils.logging import LoglistLogger
+
+        logger = LoglistLogger()
+
+        text = """---
+            title: Title
+            ---
+
+            The first block!
+
+            The second block!
+            """
+        blocks = parse_markdown_text(text, logger=logger)
+        self.assertTrue(len(blocks) > 0)
+        self.assertEqual(logger.count_logs(), 1)
+        self.assertIn(
+            "A metadata marker preceded by space found at line 2",
+            logger.get_logs()[0],
+        )
+
+    def test_mispecified_heding(self):
+        from lmm.utils.logging import LoglistLogger
+
+        logger = LoglistLogger()
+
+        text = """---
+            title: Title
+            \n---
+
+            # Level 1
+            The first block!
+
+            \n# Level 2
+            The second block!
+            """
+        blocks = parse_markdown_text(text, logger=logger)
+        self.assertTrue(len(blocks) > 0)
+        self.assertEqual(logger.count_logs(), 1)
+        self.assertIn(
+            "A heading marker preceded by space found at line 5",
+            logger.get_logs()[0],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
