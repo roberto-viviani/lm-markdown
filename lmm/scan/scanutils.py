@@ -143,7 +143,7 @@ def post_order_hashed_aggregation(
             # corresponds to the hash
             if hashed:
                 # new_hash = base_hash(joined_content)
-                new_hash = aggregate_hash(node)
+                new_hash = aggregate_hash(node, filter_func)
                 if (
                     node.metadata
                     and output_key in node.metadata
