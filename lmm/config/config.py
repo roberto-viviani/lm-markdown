@@ -314,7 +314,7 @@ class Settings(BaseSettings):
     )
     aux: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
-            model="Mistral/mistral-small-latest", temperature=0.7
+            model="Mistral/mistral-small-latest", temperature=0
         ),
         description="Auxiliary language model for specialized tasks",
     )
