@@ -14,7 +14,10 @@ from lmm.markdown.tree import (
     TextNode,
     load_tree,
 )
-from lmm.scan.scanutils import post_order_hashed_aggregation
+from lmm.scan.scanutils import (
+    post_order_hashed_aggregation,
+    aggregate_hash,
+)
 from lmm.scan.scan_keys import TXTHASH_KEY
 from lmm.utils.logging import LoglistLogger
 
@@ -829,6 +832,244 @@ class TestSkippedAggregation(unittest.TestCase):
             OUTPUT_KEY, None
         )
         self.assertIsNone(aggregate)
+
+
+from lmm.utils.hash import base_hash
+
+
+class TestAggregateHash(unittest.TestCase):
+
+    def test_empty_hash(self):
+        logger = LoglistLogger()
+
+        root = load_tree("# A title", logger)
+        self.assertEqual(logger.count_logs(), 0)
+        hash = aggregate_hash(root)
+        self.assertEqual(hash, "")
+
+    def test_hash_textnode(self):
+        node = TextNode.from_content("test")
+        hash = aggregate_hash(node)
+        self.assertEqual(hash, base_hash("test"))
+
+    def test_hash(self):
+        # garden path
+        logger = LoglistLogger()
+        text = """
+---
+title: document
+---
+
+# First title
+
+This is the first piece of text
+
+## Second title
+
+More text.
+"""
+
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        first_heading = root.get_heading_children()[0]
+        second_heading = first_heading.get_heading_children()[0]
+
+        hash_leaf = aggregate_hash(second_heading)
+        self.assertEqual(hash_leaf, base_hash("More text."))
+
+        hash_head = aggregate_hash(first_heading)
+        self.assertEqual(
+            hash_head,
+            base_hash("This is the first piece of text" + hash_leaf),
+        )
+
+    def test_hash_filtered(self):
+        logger = LoglistLogger()
+        text = """
+---
+title: document
+---
+
+# First title
+
+This is the first piece of text
+
+---
+skip: True
+---
+## Second title
+
+More text.
+"""
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        hash_head = aggregate_hash(
+            root.children[0],
+            lambda x: not x.fetch_metadata_for_key(
+                'skip', True, False
+            ),
+        )
+        self.assertEqual(
+            hash_head, base_hash("This is the first piece of text")
+        )
+
+    def test_hash_filtered_textnode(self):
+        logger = LoglistLogger()
+        text = """
+---
+title: document
+---
+
+# First title
+
+This is the first piece of text
+
+## Second title
+
+---
+skip: True
+---
+More text
+"""
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        hash_head = aggregate_hash(
+            root.children[0],
+            lambda x: not x.fetch_metadata_for_key(
+                'skip', True, False
+            ),
+        )
+        self.assertEqual(
+            hash_head, base_hash("This is the first piece of text")
+        )
+
+    def test_hash_filtered_texts(self):
+        logger = LoglistLogger()
+        text = """
+---
+title: document
+---
+
+# First title
+
+This is the first piece of text
+
+## Second title
+
+First text block.
+
+---
+skip: True
+---
+More text.
+
+Third text block.
+"""
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        hash_head = aggregate_hash(
+            root.children[0],
+            lambda x: not x.fetch_metadata_for_key(
+                'skip', True, False
+            ),
+        )
+
+        text = """
+---
+title: document
+---
+
+# First title
+
+This is the first piece of text
+
+## Second title
+
+First text block.
+
+---
+skip: True
+---
+More text was changed.
+
+Third text block.
+"""
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        hash_changed = aggregate_hash(
+            root.children[0],
+            lambda x: not x.fetch_metadata_for_key(
+                'skip', True, False
+            ),
+        )
+        self.assertEqual(hash_head, hash_changed)
+
+    def test_hash_skipall(self):
+        logger = LoglistLogger()
+        text = """
+---
+title: document
+skip: True
+---
+
+# First title
+
+This is the first piece of text
+
+---
+skip: True
+---
+## Second title
+
+More text.
+"""
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        hash_head = aggregate_hash(
+            root,
+            lambda x: not x.fetch_metadata_for_key(
+                'skip', True, False
+            ),
+        )
+        self.assertEqual(hash_head, "")
+
+    def test_hash_skipall2(self):
+        logger = LoglistLogger()
+        text = """
+---
+title: document
+---
+
+---
+skip: True
+---
+# First title
+
+This is the first piece of text
+
+---
+skip: True
+---
+## Second title
+
+More text.
+"""
+        root = load_tree(text, logger)
+        self.assertTrue(logger.count_logs() == 0)
+
+        hash_head = aggregate_hash(
+            root,
+            lambda x: not x.fetch_metadata_for_key(
+                'skip', True, False
+            ),
+        )
+        self.assertEqual(hash_head, "")
 
 
 if __name__ == "__main__":

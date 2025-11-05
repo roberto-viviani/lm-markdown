@@ -15,6 +15,7 @@ from lmm.markdown.tree import (
     TextNode,
     post_order_traversal,
 )
+from lmm.utils.hash import base_hash
 from .scan_keys import TXTHASH_KEY, FREEZE_KEY
 
 
@@ -74,7 +75,6 @@ def post_order_hashed_aggregation(
         place if there is already any. To recompute, use
         extract_content.
     """
-    from lmm.utils.hash import base_hash
 
     delimiter: str = "\n\n"
 
@@ -142,7 +142,8 @@ def post_order_hashed_aggregation(
             # If there is the output, check that the joined content
             # corresponds to the hash
             if hashed:
-                new_hash = base_hash(joined_content)
+                # new_hash = base_hash(joined_content)
+                new_hash = aggregate_hash(node)
                 if (
                     node.metadata
                     and output_key in node.metadata
@@ -177,3 +178,38 @@ def post_order_hashed_aggregation(
                 # (bound if hashed)
 
     post_order_traversal(root_node, _process_node)
+
+
+def aggregate_hash(
+    node: MarkdownNode,
+    filter_func: Callable[[MarkdownNode], bool] = lambda _: True,
+) -> str:
+    """
+    Create a hash from the text of the node, or of the descendants
+    of the node. If the text is empty, an empty string is returned.
+
+    Args:
+        root_node: the node to compute the hash for
+        filter_func (opts) a function to filter the nodes whose
+            content should be hashed
+
+    Returns:
+        a string of 22 characters.
+    """
+
+    if isinstance(node, TextNode):
+        return (
+            base_hash(node.get_content()) if filter_func(node) else ""
+        )
+
+    buffer: list[str] = []
+    for child in node.children:
+        if not filter_func(child):
+            continue
+
+        if isinstance(child, TextNode):
+            buffer.append(child.get_content())
+        else:
+            buffer.append(aggregate_hash(child, filter_func))
+
+    return base_hash("".join(buffer))
