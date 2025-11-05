@@ -80,7 +80,7 @@ def validate_file(
 
 @validate_call
 def create_interface(
-    f: Callable[[str, str], list[Block]], argv: list[str]
+    f: Callable[[str, str], list[Block] | None], argv: list[str]
 ) -> None:
     """Waits for Enter key presses and handles Ctrl-C to
     enable interactive execution of the function f and for debugging.

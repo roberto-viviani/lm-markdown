@@ -347,7 +347,7 @@ def markdown_messages(
     sourcefile: str | Path,
     save: bool | str | Path = True,
     logger: LoggerBase = logger,
-) -> list[Block]:
+) -> None:
     """
     Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
@@ -358,9 +358,6 @@ def markdown_messages(
             original markdown file; if a filename, saves to
             file.
 
-    Returns:
-        the processed list of blocks.
-
     Note:
         if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
@@ -369,20 +366,20 @@ def markdown_messages(
     SAVE_FILE = False
     blocks = markdown_scan(sourcefile, SAVE_FILE, logger)
     if not blocks:
-        return []
+        return
     if blocklist_haserrors(blocks):
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
-        return blocks
+        return
 
     root = blocks_to_tree(blocklist_copy(blocks), logger)
     if not root:
-        return []
+        return
 
     root = _process_chain(root, logger)
     blocks = tree_to_blocks(root)
     if not blocks:
-        return []
+        return
 
     match save:
         case False:
@@ -394,8 +391,6 @@ def markdown_messages(
         case _:  # ignore
             pass
 
-    return blocks
-
 
 @validate_call(config={'arbitrary_types_allowed': True})
 def markdown_remove_messages(
@@ -403,7 +398,7 @@ def markdown_remove_messages(
     keys: list[str] | None = None,
     save: bool | str | Path = True,
     logger: LoggerBase = logger,
-) -> list[Block]:
+) -> None:
     """
     Removes the messages from a markdown. If keys is specified,
     removes the metadata properties specified by keys.
@@ -416,9 +411,6 @@ def markdown_remove_messages(
             original markdown file; if a filename, saves to
             file.
 
-    Returns:
-        the processed list of blocks.
-
     Note:
         if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
@@ -427,12 +419,12 @@ def markdown_remove_messages(
     SAVE_FILE = False
     blocks = markdown_scan(sourcefile, SAVE_FILE, logger)
     if not blocks:
-        return []
+        return
 
     if blocklist_haserrors(blocks):
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
-        return blocks
+        return
 
     blocks = remove_messages(blocks, keys)
 
@@ -445,8 +437,6 @@ def markdown_remove_messages(
             save_markdown(save, blocks, logger)
         case _:  # ignore
             pass
-
-    return blocks
 
 
 if __name__ == "__main__":

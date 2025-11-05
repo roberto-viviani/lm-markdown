@@ -391,7 +391,7 @@ def markdown_rag(
     opts: ScanOpts = ScanOpts(),
     save: bool | str | Path = True,
     logger: Annotated[LoggerBase, Field(exclude=True)] = logger,
-) -> list[Block]:
+) -> None:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
@@ -416,19 +416,17 @@ def markdown_rag(
             UUID (False)      add UUID to text blocks
             pool_threshold (0) pooling of text blocks
 
-    Returns: the processed list of blocks.
-
     Note: if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
     """
 
     blocks = markdown_scan(sourcefile, False, logger)
     if not blocks:
-        return []
+        return
     if blocklist_haserrors(blocks):
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
-        return []
+        return
 
     # Take over options if specified in header. The isinstance check
     # will always be true since markdown_scan provides a default
@@ -443,7 +441,7 @@ def markdown_rag(
                 opts = ScanOpts(**options)  # type: ignore
             except Exception as e:
                 logger.error(f"Invalid scan specification:\n{e}")
-                return []
+                return
     else:
         raise RuntimeError(
             "Unreachable code reached: header block missing"
@@ -451,7 +449,7 @@ def markdown_rag(
 
     blocks = scan_rag(blocks, opts, logger)
     if not blocks:
-        return []
+        return
 
     match save:
         case False:
@@ -460,8 +458,6 @@ def markdown_rag(
             save_markdown(sourcefile, blocks, logger)
         case str() | Path():
             save_markdown(save, blocks, logger)
-
-    return blocks
 
 
 def add_titles_to_headings(
