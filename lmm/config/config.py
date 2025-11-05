@@ -562,8 +562,3 @@ def format_pydantic_error_message(error_message: str) -> str:
         if "For further information visit" not in line
     ]
     return '\n'.join(filtered_lines)
-
-
-# Create a default config.toml file, if there is none.
-if not Path(DEFAULT_CONFIG_FILE).exists():
-    create_default_config_file()
