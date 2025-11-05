@@ -43,6 +43,8 @@ from lmm.language_models.langchain.runnables import (
     RunnableType,
 )
 
+from .scanutils import preproc_for_markdown
+
 # metadata block keys
 from .scan_keys import (
     CHAT_KEY,
@@ -233,6 +235,7 @@ def _scan_queries(
             .replace('\n...', '\n....')
             .replace('\n', '__NEWLINE__')
         )
+        response = preproc_for_markdown(response)
     except ConnectionError as e:
         logger.error(
             "Could not connect to language models.\n"
