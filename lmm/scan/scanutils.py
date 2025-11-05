@@ -2,10 +2,12 @@
 Utilities for scan modules.
 
 Important functions:
+    preproc_for_markdown
     post_order_hashed_aggregation
 """
 
 from typing import Callable
+import re
 
 from lmm.markdown.tree import (
     MarkdownNode,
@@ -14,6 +16,14 @@ from lmm.markdown.tree import (
     post_order_traversal,
 )
 from .scan_keys import TXTHASH_KEY, FREEZE_KEY
+
+
+def preproc_for_markdown(response: str) -> str:
+    # replace square brackets containing the character '\' to one
+    # that is enclosed between '$$' for rendering in markdown
+    response = re.sub(r"\\\[|\\\]", "$$", response)
+    response = re.sub(r"\\\(|\\\)", "$", response)
+    return response
 
 
 def post_order_hashed_aggregation(
