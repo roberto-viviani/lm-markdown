@@ -426,7 +426,7 @@ def markdown_rag(
         it does not alter the source file.
     """
 
-    blocks = markdown_scan(
+    blocks: list[Block] = markdown_scan(
         sourcefile,
         False,
         max_size_mb=max_size_mb,
