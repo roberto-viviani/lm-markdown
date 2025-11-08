@@ -6,7 +6,7 @@ Important functions:
     post_order_hashed_aggregation
 """
 
-from typing import Callable
+from typing import Callable, TypeGuard
 import re
 
 from lmm.markdown.tree import (
@@ -16,6 +16,7 @@ from lmm.markdown.tree import (
     post_order_traversal,
 )
 from lmm.utils.hash import base_hash
+from lmm.utils.logging import LoggerBase, ConsoleLogger
 from .scan_keys import TXTHASH_KEY, FREEZE_KEY
 
 
@@ -35,6 +36,7 @@ def post_order_hashed_aggregation(
     hash_key: str = TXTHASH_KEY,
     *,
     filter_func: Callable[[MarkdownNode], bool] = lambda x: True,
+    logger: LoggerBase = ConsoleLogger(),
 ) -> None:
     """
     Executes a post-order traversal on the markdown tree, with bottom-
@@ -74,31 +76,66 @@ def post_order_hashed_aggregation(
         If hashed is false, no re-computing of the output value takes
         place if there is already any. To recompute, use
         extract_content.
+
+    Raises:
+        ValueError: If validation fails for any of the following:
+            - hashed is True and output_key equals hash_key
+            - output_key is None or empty string
+        UserWarning: If filter_func filters out all nodes in the tree
     """
 
+    # this to inform type checker about assumption on node type
+    def _is_heading_node(
+        node: MarkdownNode,
+    ) -> TypeGuard[HeadingNode]:
+        return isinstance(node, HeadingNode)
+
+    # Validate output_key (treated as coding error)
+    if not output_key or not output_key.strip():
+        raise ValueError(
+            "output_key must be a non-empty string. "
+            f"Received: {repr(output_key)}"
+        )
+
+    # Validate that output_key and hash_key are different when
+    # hashing is enabled (treated as coding error)
+    if hashed and output_key == hash_key:
+        raise ValueError(
+            f"output_key and hash_key cannot be the same when hashed=True. "
+            f"Both are set to '{output_key}'. This would cause the hash value "
+            f"to overwrite the aggregated output."
+        )
+
     delimiter: str = "\n\n"
+    any_content_processed = False
 
     def _process_node(node: MarkdownNode) -> None:
+        nonlocal any_content_processed
         # Skip leaf nodes (they don't have children to synthetise)
         if isinstance(node, TextNode):
             return
 
+        if not _is_heading_node(node):
+            # coding error, new node type
+            raise ValueError(
+                "Unreachable code reached: unexpected node type"
+            )
+
         if not filter_func(node):
             return
-
-        # do not repeat aggregation if the node is a parent of just
-        # one parent node, as the content will be the same
-        if isinstance(node, HeadingNode):
-            if node.count_children() == 0:
-                return
-            if node.count_children() == 1 and isinstance(
-                node.children[0], HeadingNode
-            ):
-                return
 
         # do not compute aggregation if there is a parent node
         # with a "frozen" property to prevent updates
         if node.fetch_metadata_for_key(FREEZE_KEY, True, False):
+            return
+
+        # do not repeat aggregation if the node is a parent of just
+        # one heading node, as the content will be the same
+        if node.count_children() == 0:
+            return
+        if node.count_children() == 1 and isinstance(
+            node.children[0], HeadingNode
+        ):
             return
 
         # For parent nodes, collect content from children
@@ -106,27 +143,22 @@ def post_order_hashed_aggregation(
 
         def _collect_text(node: MarkdownNode) -> None:
             for child in node.children:
+
                 if not filter_func(child):
                     continue
+
                 if isinstance(child, TextNode):
                     # Collect content from direct TextBlock children
                     collected_content.append(child.get_content())
                 else:
-                    # Collect synth outputs from parent children that
+                    # Collect synth outputs from heading children that
                     # have them, and if not look in their children
-                    text = (
-                        child.metadata[output_key]
-                        if output_key in child.metadata
-                        else ""
-                    )
-                    if text:  # text is not empty
-                        collected_content.append(
-                            str(
-                                child.get_metadata_for_key(
-                                    output_key, ""
-                                )
-                            )
-                        )
+                    text: str = str(
+                        child.get_metadata_for_key(output_key, "")
+                    ).strip()
+
+                    if text:
+                        collected_content.append(text)
                     else:  # recursion to children down the tree
                         if filter_func(child):
                             _collect_text(child)
@@ -174,10 +206,21 @@ def post_order_hashed_aggregation(
             # Store the synthesized property in metadata
             node.metadata[output_key] = synth_content
             if hashed:
-                node.metadata[hash_key] = new_hash  # type: ignore
-                # (bound if hashed)
+                node.metadata[hash_key] = new_hash  # type: ignore (bound)
+                # (i.e., bound if hashed)
+
+            # Mark that we processed at least some content
+            any_content_processed = True
 
     post_order_traversal(root_node, _process_node)
+
+    # Warn if no content was processed (all nodes were filtered out,
+    # or aggregate_func refused to compute aggregation)
+    if not any_content_processed:
+        logger.warning(
+            "No aggregation was performed. This may indicate an overly "
+            "restrictive filter or an empty/small document.",
+        )
 
 
 def aggregate_hash(

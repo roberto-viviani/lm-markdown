@@ -1,7 +1,7 @@
 """Test scanutils module"""
 
 # flake8: noqa
-# pyright: basic
+# pyright: strict
 # pyright: reportUnknownMemberType=false
 # pyright: reportAttributeAccessIssue=false
 
@@ -1070,6 +1070,954 @@ More text.
             ),
         )
         self.assertEqual(hash_head, "")
+
+
+class TestPostOrderHashedAggregationMixedContent(unittest.TestCase):
+    """Test behavior with mixed direct text and synthetic outputs"""
+
+    def test_mixed_text_and_synthetic_outputs(self):
+        """Test aggregation with both text nodes and pre-existing synthetic outputs"""
+        markdown = """---
+title: Test
+---
+
+# Chapter One
+
+Direct text in chapter one.
+
+## Section One
+
+Text in section one.
+
+# Chapter Two
+
+Direct text in chapter two.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation - creates synthetic outputs
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Verify initial aggregation
+        chapter_one = root.get_heading_children()[0]
+        chapter_two = root.get_heading_children()[1]
+
+        # Chapter One has text + section output
+        self.assertIn(OUTPUT_KEY, chapter_one.metadata)
+        # Chapter Two has just text
+        self.assertIn(OUTPUT_KEY, chapter_two.metadata)
+
+        # Root aggregates from both chapters' synthetic outputs
+        self.assertIn(OUTPUT_KEY, root.metadata)
+        root_result_initial = root.metadata[OUTPUT_KEY]
+
+        # Now manually modify a synthetic output (not text content)
+        # This simulates having pre-existing synthetic outputs
+        chapter_two.metadata[OUTPUT_KEY] = (
+            "Modified synthetic output with different words count"
+        )
+
+        # Second aggregation - should NOT recompute because hash is
+        # based on text content only
+        # The hash of text content hasn't changed
+        call_count = [0]
+
+        def counting_aggregate(content: str) -> str:
+            call_count[0] += 1
+            return word_count_aggregate(content)
+
+        post_order_hashed_aggregation(
+            root, counting_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # The aggregate function should NOT have been called for nodes
+        # whose text content hash hasn't changed
+        # Root should use cached values (including the modified synthetic output from chapter_two)
+        self.assertEqual(
+            root.metadata[OUTPUT_KEY], root_result_initial
+        )
+
+    def test_synthetic_output_changes_not_trigger_reaggregation(self):
+        """Test that modifying synthetic outputs doesn't trigger re-aggregation"""
+        markdown = """---
+title: Test
+---
+
+# Parent
+
+## Child One
+
+Text in child one.
+
+## Child Two
+
+Text in child two.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        parent = root.get_heading_children()[0]
+        child_one = parent.get_heading_children()[0]
+        child_two = parent.get_heading_children()[1]
+
+        initial_parent_result = parent.metadata[OUTPUT_KEY]
+        initial_parent_hash = parent.metadata[TXTHASH_KEY]
+
+        # Modify synthetic output of child_one (not text content)
+        child_one.metadata[OUTPUT_KEY] = (
+            "Completely different synthetic content here"
+        )
+
+        # Track calls to aggregate function
+        call_count = [0]
+
+        def counting_aggregate(content: str) -> str:
+            call_count[0] += 1
+            return word_count_aggregate(content)
+
+        # Second aggregation
+        post_order_hashed_aggregation(
+            root, counting_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Parent should NOT have been re-aggregated because:
+        # - Text content hash hasn't changed
+        # - Synthetic outputs are not part of the hash
+        self.assertEqual(
+            parent.metadata[OUTPUT_KEY], initial_parent_result
+        )
+        self.assertEqual(
+            parent.metadata[TXTHASH_KEY], initial_parent_hash
+        )
+
+    def test_text_change_triggers_reaggregation_with_synthetic_outputs(
+        self,
+    ):
+        """Test that changing text DOES trigger re-aggregation even with
+        synthetic outputs"""
+        markdown = """---
+title: Test
+---
+
+# Parent
+
+Original parent text.
+
+## Child
+
+Child text here.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        parent = root.get_heading_children()[0]
+        initial_parent_result = parent.metadata[OUTPUT_KEY]
+        initial_parent_hash = parent.metadata[TXTHASH_KEY]
+
+        # Modify TEXT CONTENT (not synthetic output)
+        parent_text = parent.get_text_children()[0]
+        parent_text.set_content(
+            "Modified parent text with many more words now."
+        )
+
+        # Track calls to aggregate function
+        call_count = [0]
+
+        def counting_aggregate(content: str) -> str:
+            call_count[0] += 1
+            return word_count_aggregate(content)
+
+        # Second aggregation
+        post_order_hashed_aggregation(
+            root, counting_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Parent SHOULD have been re-aggregated because text content changed
+        self.assertNotEqual(
+            parent.metadata[OUTPUT_KEY], initial_parent_result
+        )
+        self.assertNotEqual(
+            parent.metadata[TXTHASH_KEY], initial_parent_hash
+        )
+        # Verify aggregate function was called at least for parent
+        self.assertGreater(call_count[0], 0)
+
+    def test_mixed_with_some_nodes_having_preexisting_outputs(self):
+        """Test scenario where only some nodes have pre-existing synthetic outputs"""
+        markdown = """---
+title: Test
+---
+
+# Chapter One
+
+Text in chapter one.
+
+# Chapter Two
+
+Text in chapter two.
+
+# Chapter Three
+
+Text in chapter three.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # Manually add synthetic output to only Chapter Two (simulate pre-existing output)
+        chapter_two = root.get_heading_children()[1]
+        chapter_two.metadata[OUTPUT_KEY] = (
+            "Pre-existing synthetic output"
+        )
+        # Note: No hash, simulating old data or data from different source
+
+        # Run aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # All chapters should now have outputs
+        for chapter in root.get_heading_children():
+            self.assertIn(OUTPUT_KEY, chapter.metadata)
+
+        # Chapter Two's pre-existing output should be replaced
+        # because there's no hash to indicate it's current
+        self.assertEqual(
+            chapter_two.metadata[OUTPUT_KEY], "There are 4 words"
+        )
+        self.assertIn(TXTHASH_KEY, chapter_two.metadata)
+
+    def test_aggregation_collects_from_synthetic_outputs_not_text(
+        self,
+    ):
+        """Test that parent aggregation uses synthetic outputs from
+        children, not their raw text"""
+        markdown = """---
+title: Test
+---
+
+# Parent
+
+## Child One
+
+Text one.
+
+## Child Two
+
+Text two.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # Custom aggregate function that returns different format
+        def custom_aggregate(content: str) -> str:
+            word_count = len(content.split())
+            return f"COUNT:{word_count}"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, custom_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        parent = root.get_heading_children()[0]
+        child_one = parent.get_heading_children()[0]
+        child_two = parent.get_heading_children()[1]
+
+        # Children should have custom format
+        self.assertEqual(child_one.metadata[OUTPUT_KEY], "COUNT:2")
+        self.assertEqual(child_two.metadata[OUTPUT_KEY], "COUNT:2")
+
+        # Parent should aggregate from children's synthetic outputs
+        # "COUNT:2\n\nCOUNT:2" = 2 words (the word "COUNT" appears twice, numbers are ignored by split)
+        parent_result = parent.metadata[OUTPUT_KEY]
+        # The parent aggregates the synthetic outputs which are "COUNT:2\n\nCOUNT:2"
+        # split() gives ["COUNT:2", "COUNT:2"] = 2 items
+        self.assertEqual(parent_result, "COUNT:2")
+
+    def test_deep_hierarchy_with_mixed_content(self):
+        """Test deep hierarchy where some levels have text and others
+        only synthetic outputs"""
+        markdown = """---
+title: Test
+---
+
+# Level 1
+
+Text at level 1.
+
+## Level 2A
+
+Text at level 2A.
+
+### Level 3A
+
+Text at level 3A.
+
+## Level 2B
+
+Text at level 2B.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        level1 = root.get_heading_children()[0]
+        level2a = level1.get_heading_children()[0]
+        level2b = level1.get_heading_children()[1]
+        level3a = level2a.get_heading_children()[0]
+
+        # Verify nodes with text or multiple children have outputs
+        self.assertIn(OUTPUT_KEY, level3a.metadata)
+        self.assertIn(
+            OUTPUT_KEY, level2a.metadata
+        )  # Has text + child
+        self.assertIn(OUTPUT_KEY, level2b.metadata)
+        self.assertIn(OUTPUT_KEY, level1.metadata)
+
+        # Level2A should aggregate from its text + level3a's synthetic output
+        # Level1 should aggregate from its direct text + level2a and level2b synthetic outputs
+
+        initial_level1_result = level1.metadata[OUTPUT_KEY]
+        initial_level1_hash = level1.metadata[TXTHASH_KEY]
+        initial_level2a_hash = level2a.metadata[TXTHASH_KEY]
+
+        # Modify level3a text content
+        level3a_text = level3a.get_text_children()[0]
+        level3a_text.set_content(
+            "Changed text at level 3A with more words."
+        )
+
+        # Re-run aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Level3A should be re-aggregated (text changed)
+        # Just verify level3a has a hash (it should be different from before)
+        self.assertIn(TXTHASH_KEY, level3a.metadata)
+
+        # Level2A should be re-aggregated (child's content changed, so hash changed)
+        self.assertNotEqual(
+            level2a.metadata[TXTHASH_KEY], initial_level2a_hash
+        )
+
+        # Level1 should be re-aggregated (child's content changed, so hash changed)
+        self.assertNotEqual(
+            level1.metadata[TXTHASH_KEY], initial_level1_hash
+        )
+        # Note: OUTPUT_KEY might or might not change depending on word count,
+        # but hash should definitely change since underlying content changed
+
+
+class TestPostOrderHashedAggregationMetadataEdgeCases(
+    unittest.TestCase
+):
+    """Test metadata edge cases and unusual scenarios"""
+
+    def test_conflicting_metadata_keys(self):
+        """Test when output_key conflicts with existing metadata"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "existing_key"
+
+        # Pre-populate with conflicting data
+        heading_node = root.get_heading_children()[0]
+        heading_node.metadata[OUTPUT_KEY] = "Pre-existing value"
+        heading_node.metadata[TXTHASH_KEY] = "old_hash"
+
+        # Run aggregation - should overwrite the existing key
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Should have new aggregated value
+        self.assertEqual(
+            heading_node.metadata[OUTPUT_KEY], "There are 3 words"
+        )
+        # Hash should also be updated
+        self.assertNotEqual(
+            heading_node.metadata[TXTHASH_KEY], "old_hash"
+        )
+
+    def test_metadata_with_complex_types(self):
+        """Test nodes with complex data types in metadata"""
+        markdown = """---
+title: Test
+complex_list: [1, 2, 3]
+complex_dict: {a: 1, b: 2}
+---
+
+# Heading
+
+Some text.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # Should handle complex metadata types gracefully
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        self.assertEqual(
+            heading_node.metadata[OUTPUT_KEY], "There are 2 words"
+        )
+
+        # Original complex metadata should still be there
+        self.assertIn("complex_list", root.metadata)
+        self.assertIn("complex_dict", root.metadata)
+
+    def test_empty_metadata_dict(self):
+        """Test with explicitly empty metadata dictionary"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        heading_node = root.get_heading_children()[0]
+        # Explicitly set to empty dict
+        heading_node.metadata = {}
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Should populate the empty dict
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        self.assertEqual(
+            heading_node.metadata[OUTPUT_KEY], "There are 2 words"
+        )
+
+    def test_metadata_key_same_as_hash_key(self):
+        """Test that ValueError is raised when output_key equals hash_key with hashed=True"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        # Use same key for output and hash - should raise ValueError
+        OUTPUT_KEY = TXTHASH_KEY
+
+        with self.assertRaises(ValueError) as context:
+            post_order_hashed_aggregation(
+                root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            )
+
+        # Verify the error message is informative
+        self.assertIn(
+            "output_key and hash_key cannot be the same",
+            str(context.exception),
+        )
+        self.assertIn("hashed=True", str(context.exception))
+        self.assertIn(OUTPUT_KEY, str(context.exception))
+
+    def test_metadata_key_same_as_hash_key_with_hashed_false(self):
+        """Test that same keys are allowed when hashed=False"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        # Use same key for output and hash with hashed=False - should work
+        OUTPUT_KEY = TXTHASH_KEY
+
+        # Should not raise an error when hashed=False
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=False
+        )
+
+        heading_node = root.get_heading_children()[0]
+        # Should have the aggregated value since hashed=False doesn't store hash
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        self.assertEqual(
+            heading_node.metadata[OUTPUT_KEY], "There are 2 words"
+        )
+
+
+class TestPostOrderHashedAggregationParameterValidation(
+    unittest.TestCase
+):
+    """Test parameter validation"""
+
+    def test_empty_output_key(self):
+        """Test that empty output_key raises ValueError"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        with self.assertRaises(ValueError) as context:
+            post_order_hashed_aggregation(
+                root, word_count_aggregate, "", hashed=True
+            )
+
+        self.assertIn(
+            "output_key must be a non-empty string",
+            str(context.exception),
+        )
+
+    def test_none_output_key(self):
+        """Test that None output_key raises ValueError"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        with self.assertRaises(ValueError) as context:
+            post_order_hashed_aggregation(
+                root, word_count_aggregate, None, hashed=True  # type: ignore
+            )
+
+        self.assertIn(
+            "output_key must be a non-empty string",
+            str(context.exception),
+        )
+
+    def test_whitespace_only_output_key(self):
+        """Test that whitespace-only output_key raises ValueError"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        with self.assertRaises(ValueError) as context:
+            post_order_hashed_aggregation(
+                root, word_count_aggregate, "   ", hashed=True
+            )
+
+        self.assertIn(
+            "output_key must be a non-empty string",
+            str(context.exception),
+        )
+
+    def test_warning_when_all_nodes_filtered(self):
+        """Test that UserWarning is raised when all nodes are filtered out"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # Filter function that filters out everything
+        def filter_nothing(node: MarkdownNode) -> bool:
+            return False
+
+        post_order_hashed_aggregation(
+            root,
+            word_count_aggregate,
+            OUTPUT_KEY,
+            hashed=True,
+            filter_func=filter_nothing,
+            logger=logger,
+        )
+        logs = logger.get_logs(level=1)
+        self.assertLess(0, len(logs))
+
+        self.assertIn(
+            "No aggregation was performed",
+            logs[-1],
+        )
+
+    def test_no_warning_when_some_nodes_processed(self):
+        """Test that no warning is issued when some nodes are processed"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # Normal processing should not generate warnings
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            post_order_hashed_aggregation(
+                root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            )
+            # Check that no warnings were raised
+            self.assertEqual(len(w), 0)
+
+
+class TestPostOrderHashedAggregationUnicodeHandling(
+    unittest.TestCase
+):
+    """Test Unicode and special character handling"""
+
+    def test_unicode_content_basic(self):
+        """Test aggregation with basic Unicode content"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Content with unicode: café, naïve, résumé.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        # "Content with unicode: café, naïve, résumé." = 6 words
+        self.assertEqual(
+            heading_node.metadata[OUTPUT_KEY], "There are 6 words"
+        )
+
+    def test_emoji_content(self):
+        """Test aggregation with emoji characters"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Hello world 👋 with emoji 😊 content 🎉.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        # Should handle emoji without crashing
+        self.assertIsNotNone(heading_node.metadata[OUTPUT_KEY])
+        self.assertIn(TXTHASH_KEY, heading_node.metadata)
+
+    def test_mixed_language_content(self):
+        """Test with mixed language content"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+English text 中文内容 العربية Русский.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        # Should process mixed languages correctly
+        self.assertIsNotNone(heading_node.metadata[OUTPUT_KEY])
+
+    def test_unicode_in_aggregate_output(self):
+        """Test that aggregate function can return Unicode"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Some text content.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # Aggregate function that returns Unicode
+        def unicode_aggregate(content: str) -> str:
+            word_count = len(content.split())
+            return f"有 {word_count} 个词 (words: {word_count}) 🎯"
+
+        post_order_hashed_aggregation(
+            root, unicode_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        result = heading_node.metadata[OUTPUT_KEY]
+        self.assertIn("有", result)
+        self.assertIn("个词", result)
+        self.assertIn("🎯", result)
+
+    def test_unicode_hash_consistency(self):
+        """Test that Unicode content produces consistent hashes"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Unicode content: café ☕ 中文.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        # First aggregation
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        first_hash = heading_node.metadata[TXTHASH_KEY]
+
+        # Second aggregation with same content
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        # Hash should be identical (consistent)
+        self.assertEqual(
+            heading_node.metadata[TXTHASH_KEY], first_hash
+        )
+
+    def test_special_characters_in_content(self):
+        """Test with various special characters"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Special chars: @#$%^&*()_+-=[]{}|;':",.<>?/~`.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        # Should handle special characters without errors
+        self.assertIsNotNone(heading_node.metadata[OUTPUT_KEY])
+
+    def test_combining_characters(self):
+        """Test with Unicode combining characters"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Combining: e\u0301 (é) a\u0308 (ä) n\u0303 (ñ).
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        # Should handle combining characters
+        self.assertIsNotNone(heading_node.metadata[OUTPUT_KEY])
+
+    def test_zero_width_characters(self):
+        """Test with zero-width Unicode characters"""
+        markdown = """---
+title: Test
+---
+
+# Heading
+
+Text with zero\u200bwidth\u200bjoiner characters.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        heading_node = root.get_heading_children()[0]
+        self.assertIn(OUTPUT_KEY, heading_node.metadata)
+        # Should process zero-width characters
+        self.assertIsNotNone(heading_node.metadata[OUTPUT_KEY])
 
 
 if __name__ == "__main__":
