@@ -1312,7 +1312,7 @@ def load_tree(source: str | Path, logger: LoggerBase) -> MarkdownTree:
     """
 
     # Pure parsing function  (no exceptions raised)
-    blocks = load_blocks(source, logger)
+    blocks = load_blocks(source, logger=logger)
     if not blocks:
         return None
 

@@ -587,7 +587,7 @@ if __name__ == "__main__":
                 "differ from input file"
             )
             return []
-        blocks = load_blocks(filename, default_logger)
+        blocks = load_blocks(filename, logger=default_logger)
         if not blocks:
             return []
         if blocklist_haserrors(blocks):

@@ -147,7 +147,7 @@ def markdown_split(
         it does not alter the source file.
     """
 
-    blocks = load_blocks(sourcefile, logger)
+    blocks = load_blocks(sourcefile, logger=logger)
     if not blocks:
         return []
     if blocklist_haserrors(blocks):

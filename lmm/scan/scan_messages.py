@@ -367,7 +367,7 @@ def markdown_messages(
     """
 
     SAVE_FILE = False
-    blocks = markdown_scan(sourcefile, SAVE_FILE, logger)
+    blocks = markdown_scan(sourcefile, SAVE_FILE, logger=logger)
     if not blocks:
         return
     if blocklist_haserrors(blocks):
@@ -420,7 +420,7 @@ def markdown_remove_messages(
     """
 
     SAVE_FILE = False
-    blocks = markdown_scan(sourcefile, SAVE_FILE, logger)
+    blocks = markdown_scan(sourcefile, SAVE_FILE, logger=logger)
     if not blocks:
         return
 
