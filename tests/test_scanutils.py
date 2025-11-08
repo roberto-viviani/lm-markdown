@@ -138,8 +138,11 @@ description: A document with just metadata
 
         # Should not crash
         post_order_hashed_aggregation(
-            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        # Expect warning, as the document is empty
+        self.assertEqual(1, logger.count_logs())
+        self.assertIn("No aggregation was", logger.get_logs()[-1])
 
         # Since there's no text content, output_key should not be set
         # (post_order aggregation does not invoke aggregation function
@@ -166,8 +169,11 @@ title: Document
 
         # Should not crash
         post_order_hashed_aggregation(
-            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        # Expect warning, as the document is empty
+        self.assertEqual(1, logger.count_logs())
+        self.assertIn("No aggregation was", logger.get_logs()[-1])
 
         # Since there's no text content, output_key should not be set
         self.assertNotIn(OUTPUT_KEY, root.metadata)
@@ -408,8 +414,11 @@ Original text content.
 
         # Rerun aggregation
         post_order_hashed_aggregation(
-            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        # We expect a warning here since the text_node was the whole doc
+        self.assertEqual(logger.count_logs(), 1)
+        self.assertIn("No aggregation was", logger.get_logs()[-1])
 
         # Result should reflect new content
         second_result = heading_node.metadata.get(OUTPUT_KEY)
@@ -637,8 +646,12 @@ Some text.
             return ""
 
         post_order_hashed_aggregation(
-            root, empty_aggregate, OUTPUT_KEY, hashed=True
+            root, empty_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        # Expect warning, as the aggregate returns empty if the doc
+        # is insufficient to generate aggregate
+        self.assertEqual(1, logger.count_logs())
+        self.assertIn("No aggregation was", logger.get_logs()[-1])
 
         # When aggregate returns empty, output_key should not be set
         self.assertNotIn(OUTPUT_KEY, root.metadata)
@@ -833,6 +846,40 @@ class TestSkippedAggregation(unittest.TestCase):
         )
         self.assertIsNone(aggregate)
 
+    def test_skip_document(self):
+        from lmm.markdown.parse_markdown import Block
+        markdown: list[Block] = (
+            title_block
+            + heading_block
+            + "First block.\n\n"
+            + "Second block.\n\n"
+            + "Third block.\n\n"
+        )
+
+        root = load_tree(markdown, LoglistLogger())
+        root.metadata['skip'] = True
+        self.assertTrue(
+            root.get_metadata_for_key('skip', False)
+        )
+
+        OUTPUT_KEY = "text_aggregate"
+
+        logger = LoglistLogger()
+        post_order_hashed_aggregation(
+            root,
+            lambda x: x,
+            OUTPUT_KEY,
+            False,
+            filter_func=lambda x: not x.get_metadata_for_key(
+                "skip", False
+            ),
+            logger=logger,
+        )
+        self.assertGreater(logger.count_logs(), 0)
+        self.assertIn("Aggregation skipped", logger.get_logs()[-1])
+        aggregate = root.children[0].get_metadata_for_key(OUTPUT_KEY, "")
+        print(aggregate)
+        self.assertFalse(aggregate)
 
 from lmm.utils.hash import base_hash
 
@@ -844,12 +891,12 @@ class TestAggregateHash(unittest.TestCase):
 
         root = load_tree("# A title", logger)
         self.assertEqual(logger.count_logs(), 0)
-        hash = aggregate_hash(root)
+        hash = aggregate_hash(root, lambda x: True)
         self.assertEqual(hash, "")
 
     def test_hash_textnode(self):
         node = TextNode.from_content("test")
-        hash = aggregate_hash(node)
+        hash = aggregate_hash(node, lambda x: True)
         self.assertEqual(hash, base_hash("test"))
 
     def test_hash(self):
@@ -875,10 +922,10 @@ More text.
         first_heading = root.get_heading_children()[0]
         second_heading = first_heading.get_heading_children()[0]
 
-        hash_leaf = aggregate_hash(second_heading)
+        hash_leaf = aggregate_hash(second_heading, lambda x: True)
         self.assertEqual(hash_leaf, base_hash("More text."))
 
-        hash_head = aggregate_hash(first_heading)
+        hash_head = aggregate_hash(first_heading, lambda x: True)
         self.assertEqual(
             hash_head,
             base_hash("This is the first piece of text" + hash_leaf),
@@ -1103,8 +1150,12 @@ Direct text in chapter two.
 
         # First aggregation - creates synthetic outputs
         post_order_hashed_aggregation(
-            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        if logger.count_logs() > 0:
+            print("Logs present:")
+            print("\n".join(logger.get_logs()))
+        self.assertEqual(0, logger.count_logs())
 
         # Verify initial aggregation
         chapter_one = root.get_heading_children()[0]
@@ -1135,12 +1186,17 @@ Direct text in chapter two.
             return word_count_aggregate(content)
 
         post_order_hashed_aggregation(
-            root, counting_aggregate, OUTPUT_KEY, hashed=True
+            root, counting_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        if logger.count_logs() > 0:
+            print("Logs present:")
+            print("\n".join(logger.get_logs()))
+        self.assertEqual(0, logger.count_logs())
 
         # The aggregate function should NOT have been called for nodes
         # whose text content hash hasn't changed
-        # Root should use cached values (including the modified synthetic output from chapter_two)
+        # Root should use cached values (including the modified 
+        # synthetic output from chapter_two)
         self.assertEqual(
             root.metadata[OUTPUT_KEY], root_result_initial
         )
@@ -1478,7 +1534,7 @@ Some text content.
 
         OUTPUT_KEY = "existing_key"
 
-        # Pre-populate with conflicting data
+        # Pre-populate with hash not matching data
         heading_node = root.get_heading_children()[0]
         heading_node.metadata[OUTPUT_KEY] = "Pre-existing value"
         heading_node.metadata[TXTHASH_KEY] = "old_hash"
@@ -1519,8 +1575,9 @@ Some text.
 
         # Should handle complex metadata types gracefully
         post_order_hashed_aggregation(
-            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True, logger=logger
         )
+        self.assertEqual(0, logger.count_logs())
 
         heading_node = root.get_heading_children()[0]
         self.assertIn(OUTPUT_KEY, heading_node.metadata)
@@ -1733,8 +1790,12 @@ Some text content.
         def filter_nothing(node: MarkdownNode) -> bool:
             return False
 
+        # if you filter the header, then it will give an info,
+        # not a warning. This is because if the header is marked
+        # as skipped, it is assumed one wants to exclude the
+        # whole document.
         post_order_hashed_aggregation(
-            root,
+            root.children[0],
             word_count_aggregate,
             OUTPUT_KEY,
             hashed=True,

@@ -35,7 +35,7 @@ def post_order_hashed_aggregation(
     hashed: bool = True,
     hash_key: str = TXTHASH_KEY,
     *,
-    filter_func: Callable[[MarkdownNode], bool] = lambda x: True,
+    filter_func: Callable[[MarkdownNode], bool] = lambda _: True,
     logger: LoggerBase = ConsoleLogger(),
 ) -> None:
     """
@@ -51,9 +51,10 @@ def post_order_hashed_aggregation(
         calling the aggregate function.
 
     Note:
-        aggregate_func is only called if there is content to aggregate.
-        This avoids calls to llm's without content. aggregate_func iself
-        may return empty for insufficient content.
+        aggregate_func is only called if there is content to 
+            aggregate.
+        This avoids calls to llm's without content. aggregate_func 
+            itself may return empty for insufficient content.
 
     Args:
         root_node: The root node of the markdown tree
@@ -71,6 +72,10 @@ def post_order_hashed_aggregation(
             value is empty.
         hash_key: the key in the metadata where the hash ist read
             and stored.
+        filter_func: a predicate function on the nodes to be 
+            aggregated. Only nodes where filter_func(node) is True
+            will be aggregated.
+        logger: a logger object.
 
     Note:
         If hashed is false, no re-computing of the output value takes
@@ -81,7 +86,6 @@ def post_order_hashed_aggregation(
         ValueError: If validation fails for any of the following:
             - hashed is True and output_key equals hash_key
             - output_key is None or empty string
-        UserWarning: If filter_func filters out all nodes in the tree
     """
 
     # this to inform type checker about assumption on node type
@@ -101,10 +105,15 @@ def post_order_hashed_aggregation(
     # hashing is enabled (treated as coding error)
     if hashed and output_key == hash_key:
         raise ValueError(
-            f"output_key and hash_key cannot be the same when hashed=True. "
-            f"Both are set to '{output_key}'. This would cause the hash value "
-            f"to overwrite the aggregated output."
+            "output_key and hash_key cannot be the same when "
+            f"hashed=True. Both are set to '{output_key}'. This "
+            "would cause the hash value to overwrite the aggregated "
+            "output."
         )
+
+    if root_node.is_header_node() and not filter_func(root_node):
+        logger.warning("Aggregation skipped for document")
+        return
 
     delimiter: str = "\n\n"
     any_content_processed = False
@@ -121,9 +130,6 @@ def post_order_hashed_aggregation(
                 "Unreachable code reached: unexpected node type"
             )
 
-        if not filter_func(node):
-            return
-
         # do not compute aggregation if there is a parent node
         # with a "frozen" property to prevent updates
         if node.fetch_metadata_for_key(FREEZE_KEY, True, False):
@@ -138,10 +144,15 @@ def post_order_hashed_aggregation(
         ):
             return
 
-        # For parent nodes, collect content from children
+        # collect content from children (it is a heading node)
         collected_content: list[str] = []
 
         def _collect_text(node: MarkdownNode) -> None:
+            # Recursively collects text from a node
+
+            if not filter_func(node):
+                return
+
             for child in node.children:
 
                 if not filter_func(child):
@@ -151,17 +162,15 @@ def post_order_hashed_aggregation(
                     # Collect content from direct TextBlock children
                     collected_content.append(child.get_content())
                 else:
-                    # Collect synth outputs from heading children that
-                    # have them, and if not look in their children
-                    text: str = str(
-                        child.get_metadata_for_key(output_key, "")
-                    ).strip()
+                    # Collect synthetic outputs from heading children 
+                    # that have them, and if not look in children
+                    text: str | None = \
+                        child.get_metadata_string_for_key(output_key)
 
                     if text:
                         collected_content.append(text)
-                    else:  # recursion to children down the tree
-                        if filter_func(child):
-                            _collect_text(child)
+                    else:  # recursion to headings down the tree
+                        _collect_text(child)
 
         # start the recursion
         _collect_text(node)
@@ -174,7 +183,6 @@ def post_order_hashed_aggregation(
             # If there is the output, check that the joined content
             # corresponds to the hash
             if hashed:
-                # new_hash = base_hash(joined_content)
                 new_hash = aggregate_hash(node, filter_func)
                 if (
                     node.metadata
@@ -183,6 +191,7 @@ def post_order_hashed_aggregation(
                     and hash_key in node.metadata
                 ):
                     if node.metadata[hash_key] == new_hash:
+                        any_content_processed = True
                         return
             # If not hashed, check that output is already there
             else:
@@ -191,6 +200,7 @@ def post_order_hashed_aggregation(
                     and output_key in node.metadata
                     and node.metadata[output_key]
                 ):
+                    any_content_processed = True
                     return
 
             # the hash differs or the output is missing. we need to
@@ -206,11 +216,11 @@ def post_order_hashed_aggregation(
             # Store the synthesized property in metadata
             node.metadata[output_key] = synth_content
             if hashed:
-                node.metadata[hash_key] = new_hash  # type: ignore (bound)
-                # (i.e., bound if hashed)
+                node.metadata[hash_key] = new_hash  # type: ignore
+                # ignore: bound if hashed
 
             # Mark that we processed at least some content
-            any_content_processed = True
+            any_content_processed = True  # bool(collected_content)
 
     post_order_traversal(root_node, _process_node)
 
@@ -218,14 +228,18 @@ def post_order_hashed_aggregation(
     # or aggregate_func refused to compute aggregation)
     if not any_content_processed:
         logger.warning(
-            "No aggregation was performed. This may indicate an overly "
-            "restrictive filter or an empty/small document.",
+            "No aggregation was performed. This may indicate an "
+            "overly restrictive filter, non-aggregable metadata, "
+            "or an empty/small document.",
         )
+    # else:
+    #     print("Collected content:")
+    #     print("\n".join(any_content_processed))
 
 
 def aggregate_hash(
     node: MarkdownNode,
-    filter_func: Callable[[MarkdownNode], bool] = lambda _: True,
+    filter_func: Callable[[MarkdownNode], bool],
 ) -> str:
     """
     Create a hash from the text of the node, or of the descendants
@@ -233,11 +247,12 @@ def aggregate_hash(
 
     Args:
         root_node: the node to compute the hash for
-        filter_func (opts) a function to filter the nodes whose
+        filter_func a function to filter the nodes whose
             content should be hashed
 
     Returns:
-        a string of 22 characters.
+        a string of 22 characters, or an empty string if there is
+            no content in the tree.
     """
 
     if isinstance(node, TextNode):
