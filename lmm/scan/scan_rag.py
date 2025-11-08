@@ -34,7 +34,7 @@ Main superordinate functions:
 """
 
 from pathlib import Path
-from typing import Callable, Annotated
+from typing import Callable
 from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 # LM markdown
@@ -170,8 +170,9 @@ class ScanOpts(BaseModel):
         Settings | LanguageModelSettings | None
     ) = Field(
         default=None,
-        description="A Settings object, a LanguageModelSettings object"
-        ", or None. If provided, overrides settings in config.toml.",
+        description="A Settings object, a LanguageModelSettings "
+        "object, or None. If provided, overrides settings in "
+        "config.toml.",
     )
 
     model_config = ConfigDict(extra='forbid')
@@ -291,7 +292,8 @@ def scan_rag(
     # Add titles to headings
     if build_titles:
         logger.info("Adding titles to heading metadata.")
-        add_titles_to_headings(root, TITLES_KEY, _filt_func)
+        add_titles_to_headings(root, logger, key=TITLES_KEY, 
+                               filt_func=_filt_func)
 
     # Add an id to all heading and text blocks
     add_id_to_nodes(
@@ -299,7 +301,8 @@ def scan_rag(
         build_textids,
         build_headingids,
         root.get_metadata_string_for_key(DOCID_KEY),
-        _filt_func,
+        logger,
+        filt_func=_filt_func,
     )
 
     # Add UUID to text nodes
@@ -337,13 +340,13 @@ def scan_rag(
     # Add a summary to heading nodes that is recomputed after changes
     if build_summaries:
         logger.info("Adding summaries about text.")
-        add_summaries(root, opts, logger, _filt_func)
+        add_summaries(root, opts, filt_func=_filt_func, logger=logger)
 
     # Add questions that the text answers, recomputed if text changes
     # (will use summaries if existing)
     if build_questions:
         logger.info("Adding questions about text.")
-        add_questions(root, opts, logger, _filt_func)
+        add_questions(root, opts, filt_func=_filt_func, logger=logger)
 
     # check meta-data without text
     def _warn_empty_text(node: MarkdownNode) -> None:
@@ -390,7 +393,7 @@ def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
     save: bool | str | Path = True,
-    logger: Annotated[LoggerBase, Field(exclude=True)] = logger,
+    logger: LoggerBase = logger,
 ) -> None:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
@@ -462,6 +465,8 @@ def markdown_rag(
 
 def add_titles_to_headings(
     root: MarkdownNode,
+    logger: LoggerBase,
+    *,
     key: str = TITLES_KEY,
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
@@ -511,7 +516,9 @@ def add_id_to_nodes(
     root_node: MarkdownNode,
     textid: bool,
     headingid: bool,
-    base_hash: str | None = None,
+    base_hash: str | None,
+    logger: LoggerBase,
+    *,
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
     """Add unique identifiers to text and heading blocks in a markdown
@@ -587,6 +594,7 @@ def add_questions(
     root: MarkdownNode,
     opts: ScanOpts,
     logger: LoggerBase,
+    *,
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
     """Add questions answered by text using a language model. Will
@@ -614,7 +622,8 @@ def add_questions(
             )
         except Exception:
             logger.error(
-                "Error in using the language model to create questions."
+                "Error in using the language model to create " 
+                "questions."
             )
         return response
 
@@ -642,6 +651,7 @@ def add_summaries(
     root: MarkdownNode,
     opts: ScanOpts,
     logger: LoggerBase,
+    *,
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ):
     """Add summaries of text using a language model.
@@ -669,7 +679,8 @@ def add_summaries(
             )
         except Exception:
             logger.error(
-                "Error in using the language model to create summaries."
+                "Error in using the language model to create " 
+                "summaries."
             )
 
         return response
