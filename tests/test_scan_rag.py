@@ -732,5 +732,398 @@ Final text block.
         self.assertIn("Heading 3 (Also Skip)", skipped_contents)
 
 
+class TestFileOperationSecurity(unittest.TestCase):
+    """
+    Test file operation security for markdown_rag function.
+    Covers risks related to file integrity, error handling, and save operations.
+    """
+
+    original_settings = Settings()
+
+    @classmethod
+    def setUpClass(cls):
+        settings = Settings(
+            major={'model': "Debug/debug"},
+            minor={'model': "Debug/debug"},
+            aux={'model': "Debug/debug"},
+        )
+        export_settings(settings)
+
+    @classmethod
+    def tearDownClass(cls):
+        settings = cls.original_settings
+        export_settings(settings)
+
+    def setUp(self):
+        """Set up temporary directory and test files for each test."""
+        import tempfile
+        import os
+
+        self.test_dir = tempfile.mkdtemp()
+        self.test_file = os.path.join(self.test_dir, 'test.md')
+        self.backup_file = os.path.join(
+            self.test_dir, 'test_backup.md'
+        )
+
+        # Create a valid test markdown file
+        self.valid_content = """---
+title: Test Document
+---
+
+# Test Heading
+
+This is test content for file operation security tests.
+"""
+        with open(self.test_file, 'w', encoding='utf-8') as f:
+            f.write(self.valid_content)
+
+    def tearDown(self):
+        """Clean up temporary files and directory."""
+        import shutil
+
+        if hasattr(self, 'test_dir'):
+            shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_file_preserved_on_error_blocks(self):
+        """
+        Test that original file is not altered when processing fails
+        due to error blocks in the document.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+
+        # Create file with error content (malformed YAML)
+        error_content = """---
+title: Test
+bad: yaml: structure:
+---
+
+# Heading
+"""
+        with open(self.test_file, 'w', encoding='utf-8') as f:
+            f.write(error_content)
+
+        # Try to process - should fail and not alter file
+        logger = LoglistLogger()
+        markdown_rag(
+            self.test_file,
+            ScanOpts(),
+            save=True,
+            logger=logger,
+        )
+
+        # Verify file was saved with error blocks but not with processed content
+        final = open(self.test_file, 'r', encoding='utf-8').read()
+        # The file should contain error information
+        self.assertIn('---', final)
+
+    def test_file_preserved_on_processing_failure(self):
+        """
+        Test that original file is preserved when scan_rag returns
+        empty list (processing failure).
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        from unittest.mock import patch
+
+        # Store original content
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            original = f.read()
+
+        logger = LoglistLogger()
+
+        # Mock scan_rag to simulate processing failure
+        with patch('lmm.scan.scan_rag.scan_rag') as mock_scan_rag:
+            mock_scan_rag.return_value = []  # Empty list = failure
+
+            markdown_rag(
+                self.test_file,
+                ScanOpts(),
+                save=True,
+                logger=logger,
+            )
+
+        # Verify file was not altered
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            final = f.read()
+
+        self.assertEqual(original, final)
+
+    def test_save_to_different_file(self):
+        """
+        Test that saving to a different file works correctly and
+        doesn't affect the original.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        import os
+
+        output_file = os.path.join(self.test_dir, 'output.md')
+
+        # Store original content
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            original = f.read()
+
+        logger = LoglistLogger()
+        markdown_rag(
+            self.test_file,
+            ScanOpts(textid=True),
+            save=output_file,
+            logger=logger,
+        )
+
+        # Verify original file unchanged
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            final = f.read()
+        self.assertEqual(original, final)
+
+        # Verify output file was created and contains processed content
+        self.assertTrue(os.path.exists(output_file))
+        with open(output_file, 'r', encoding='utf-8') as f:
+            output = f.read()
+
+        # Output should have textid metadata
+        self.assertIn('textid', output)
+        self.assertNotEqual(original, output)
+
+    def test_save_false_preserves_file(self):
+        """
+        Test that save=False does not modify the original file.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+
+        # Store original content
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            original = f.read()
+
+        logger = LoglistLogger()
+        markdown_rag(
+            self.test_file,
+            ScanOpts(textid=True),
+            save=False,
+            logger=logger,
+        )
+
+        # Verify file unchanged
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            final = f.read()
+        self.assertEqual(original, final)
+
+    def test_nonexistent_file_handling(self):
+        """
+        Test that attempting to process a nonexistent file is handled
+        gracefully without creating corrupted files.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        import os
+
+        nonexistent = os.path.join(self.test_dir, 'nonexistent.md')
+
+        logger = LoglistLogger()
+        markdown_rag(
+            nonexistent,
+            ScanOpts(),
+            save=True,
+            logger=logger,
+        )
+
+        # Verify no file was created
+        self.assertFalse(os.path.exists(nonexistent))
+
+        # Verify error was logged
+        self.assertTrue(logger.count_logs() > 0)
+
+    def test_save_creates_parent_directories(self):
+        """
+        Test that save operation creates parent directories if they
+        don't exist.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        import os
+
+        # Create nested path that doesn't exist
+        nested_output = os.path.join(
+            self.test_dir, 'sub1', 'sub2', 'output.md'
+        )
+
+        logger = LoglistLogger()
+        markdown_rag(
+            self.test_file,
+            ScanOpts(),
+            save=nested_output,
+            logger=logger,
+        )
+
+        # Verify nested directories were created and file exists
+        self.assertTrue(os.path.exists(nested_output))
+
+    def test_invalid_options_in_header_preserves_file(self):
+        """
+        Test that invalid options in document header don't corrupt
+        the file.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+
+        # Create file with invalid options in header
+        invalid_opts_content = """---
+title: Test Document
+options:
+  summary_threshold: -100
+  invalid_option: true
+---
+
+# Test Heading
+
+This is test content.
+"""
+        with open(self.test_file, 'w', encoding='utf-8') as f:
+            f.write(invalid_opts_content)
+
+        # Store original content
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            original = f.read()
+
+        logger = LoglistLogger()
+        markdown_rag(
+            self.test_file,
+            ScanOpts(),
+            save=True,
+            logger=logger,
+        )
+
+        # Should log error about invalid options
+        logs = logger.get_logs()
+        error_logged = any(
+            'Invalid scan specification' in log for log in logs
+        )
+        self.assertTrue(error_logged)
+
+        # File should remain unchanged (function returns early on invalid opts)
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            final = f.read()
+        self.assertEqual(original, final)
+
+    def test_file_integrity_after_successful_processing(self):
+        """
+        Test that file content is valid markdown after successful
+        processing and can be re-parsed.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        from lmm.markdown.parse_markdown import (
+            load_blocks,
+            blocklist_haserrors,
+        )
+
+        logger = LoglistLogger()
+        markdown_rag(
+            self.test_file,
+            ScanOpts(textid=True, headingid=True, titles=True),
+            save=True,
+            logger=logger,
+        )
+
+        # Verify file can be parsed without errors
+        blocks = load_blocks(self.test_file, logger=logger)
+        self.assertTrue(len(blocks) > 0)
+        self.assertFalse(blocklist_haserrors(blocks))
+
+        # Verify metadata was added
+        from lmm.markdown.tree import blocks_to_tree
+
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        # Should have textid in metadata of text nodes
+        from lmm.markdown.tree import traverse_tree_nodetype, TextNode
+
+        text_nodes = traverse_tree_nodetype(
+            root, lambda x: x, TextNode
+        )
+        self.assertTrue(len(text_nodes) > 0)
+        self.assertIn(TEXTID_KEY, text_nodes[0].metadata)
+
+    def test_concurrent_processing_safety(self):
+        """
+        Test that multiple instances don't interfere with each other's
+        file operations.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        import os
+
+        # Create multiple test files
+        file1 = os.path.join(self.test_dir, 'test1.md')
+        file2 = os.path.join(self.test_dir, 'test2.md')
+
+        for f in [file1, file2]:
+            with open(f, 'w', encoding='utf-8') as fp:
+                fp.write(self.valid_content)
+
+        logger = LoglistLogger()
+
+        # Process both files
+        markdown_rag(
+            file1, ScanOpts(textid=True), save=True, logger=logger
+        )
+        markdown_rag(
+            file2, ScanOpts(headingid=True), save=True, logger=logger
+        )
+
+        # Check file1 has textid
+        content1 = open(file1, 'r', encoding='utf-8').read()
+        self.assertIn('textid', content1)
+
+        # Check file2 has headingid
+        content2 = open(file2, 'r', encoding='utf-8').read()
+        self.assertIn('headingid', content2)
+
+    def test_empty_file_handling(self):
+        """
+        Test that empty files are handled gracefully without crashing.
+        """
+        from lmm.scan.scan_rag import markdown_rag
+        import os
+
+        empty_file = os.path.join(self.test_dir, 'empty.md')
+        with open(empty_file, 'w', encoding='utf-8') as f:
+            f.write('')
+
+        logger = LoglistLogger()
+
+        # Should not raise an exception
+        try:
+            markdown_rag(
+                empty_file,
+                ScanOpts(),
+                save=True,
+                logger=logger,
+            )
+            exception_raised = False
+        except Exception:
+            exception_raised = True
+
+        # Verify no exception was raised
+        self.assertFalse(exception_raised)
+
+        # Verify file still exists
+        self.assertTrue(os.path.exists(empty_file))
+
+        # File should remain empty since there's nothing to process
+        with open(empty_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        self.assertEqual(content, '')
+
+        # Verify that warnings were logged
+        logs = logger.get_logs()
+        self.assertTrue(
+            len(logs) > 0,
+            "Expected logs but got none. Empty file should trigger warnings.",
+        )
+
+        # Check for expected warning about empty file
+        log_text = '\n'.join(logs)
+        self.assertIn(
+            'File is empty',
+            log_text,
+            f"Expected 'File is empty' warning in logs but got: {logs}",
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
