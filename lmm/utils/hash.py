@@ -59,3 +59,11 @@ def generate_uuid(
 
     generated_uuid = uuid.uuid5(namespace_uuid, text_input)
     return str(generated_uuid)
+
+
+def generate_random_string(length: int = 9) -> str:
+    import secrets
+    import string
+
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))

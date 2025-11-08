@@ -39,7 +39,7 @@ from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 # LM markdown
 from lmm.markdown.ioutils import save_markdown
-from lmm.utils.hash import generate_uuid
+from lmm.utils.hash import generate_uuid, generate_random_string
 from lmm.markdown.parse_markdown import (
     Block,
     HeaderBlock,
@@ -47,6 +47,7 @@ from lmm.markdown.parse_markdown import (
     TextBlock,
     ErrorBlock,
     blocklist_haserrors,
+    blocklist_errors,
     blocklist_copy,
 )
 from lmm.markdown.tree import (
@@ -58,9 +59,6 @@ from lmm.markdown.tree import (
     tree_to_blocks,
     pre_order_traversal,
     post_order_traversal,
-)
-from lmm.markdown.treeutils import (
-    pre_order_map_tree,
 )
 
 # language models
@@ -86,6 +84,7 @@ from lmm.scan.scan_keys import (
     UUID_KEY,
     OPTIONS_KEY,
     SKIP_KEY,
+    WARNING_KEY,
 )
 
 from lmm.utils.logging import LoggerBase, get_logger
@@ -246,10 +245,9 @@ def scan_rag(
     build_textids = bool(opts.textid)
     build_headingids = bool(opts.headingid)
     build_UUID = bool(opts.UUID)
-    if build_UUID:
-        if not build_textids:
-            logger.info("scan_rag: text id's built to form UUID")
-            build_textids = True
+    if build_UUID and (not build_textids):
+        logger.info("scan_rag: text id's built to form UUID")
+        build_textids = True
 
     # Validate for lm markdown
     blocks = scan(blocks)
@@ -260,10 +258,13 @@ def scan_rag(
             "Unreachable code reached: scan function "
             + "should not return an empty list"
         )
-    if isinstance(blocks[0], ErrorBlock):
-        logger.error("Load failed:\n" + blocks[0].content)
+    if len(blocks) == 1 and isinstance(blocks[0], ErrorBlock):
+        logger.error("Load failed:\n" + blocks[0].get_content())
         return []
     if blocklist_haserrors(blocks):
+        # convert markdown errors into logger errors
+        for b in blocklist_errors(blocks):
+            logger.error(b.get_content())
         logger.error("Errors in markdown. Fix before continuing.")
         return []
 
@@ -282,18 +283,14 @@ def scan_rag(
     # add docid
     if DOCID_KEY not in root.metadata:
         # generate a random string to form doc id
-        import secrets
-        import string
-
-        alphabet = string.ascii_letters + string.digits
-        docid = ''.join(secrets.choice(alphabet) for _ in range(9))
-        root.metadata[DOCID_KEY] = docid
+        root.metadata[DOCID_KEY] = generate_random_string()
 
     # Add titles to headings
     if build_titles:
         logger.info("Adding titles to heading metadata.")
-        add_titles_to_headings(root, logger, key=TITLES_KEY, 
-                               filt_func=_filt_func)
+        add_titles_to_headings(
+            root, logger, key=TITLES_KEY, filt_func=_filt_func
+        )
 
     # Add an id to all heading and text blocks
     add_id_to_nodes(
@@ -350,31 +347,30 @@ def scan_rag(
 
     # check meta-data without text
     def _warn_empty_text(node: MarkdownNode) -> None:
-        warnkey = 'WARNING'
         if node.is_header_node():
             pass
         elif isinstance(node, HeadingNode):
             if node.metadata:
                 if len(node.get_text_children()) == 0:
-                    node.metadata[warnkey] = (
+                    node.metadata[WARNING_KEY] = (
                         "**Add text under this "
                         + "heading to avoid removal of "
                         + "metadata when ingesting**"
                     )
-                elif warnkey in node.metadata:
-                    node.metadata.pop(warnkey, "")
+                elif WARNING_KEY in node.metadata:
+                    node.metadata.pop(WARNING_KEY, "")
                 else:
                     pass
         elif isinstance(node, TextNode):
             if node.metadata:
                 if not node.get_content():
-                    node.metadata[warnkey] = (
+                    node.metadata[WARNING_KEY] = (
                         "**Add text under this "
                         + "metadata to avoid removal of "
                         + "metadata when ingesting**"
                     )
-                elif warnkey in node.metadata:
-                    node.metadata.pop(warnkey, "")
+                elif WARNING_KEY in node.metadata:
+                    node.metadata.pop(WARNING_KEY, "")
                 else:
                     pass
         else:
@@ -393,6 +389,9 @@ def markdown_rag(
     sourcefile: str | Path,
     opts: ScanOpts = ScanOpts(),
     save: bool | str | Path = True,
+    *,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
 ) -> None:
     """Carries out the interaction with the language model,
@@ -404,9 +403,6 @@ def markdown_rag(
 
     Args:
         sourcefile: the file to load the markdown from
-        save: if False, does not save; if True, saves back to
-            original markdown file; if a filename, saves to
-            file.
         opts: a ScanOpts objects with the following options:
             titles (False)    add hierarchical titles to headings
             questions (False) add questions to headings
@@ -418,12 +414,25 @@ def markdown_rag(
             headingid (False) add headingid to headings
             UUID (False)      add UUID to text blocks
             pool_threshold (0) pooling of text blocks
+        save: if False, does not save; if True, saves back to
+            original markdown file; if a filename, saves to
+            file. Defaults to True.
+        max_size_mb: the max size, in MB, of the file to load
+        warn_size_mb: the size of the input file that results in
+            a warning
+        logger: a logger object. Defaults to console logger.
 
     Note: if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
     """
 
-    blocks = markdown_scan(sourcefile, False, logger)
+    blocks = markdown_scan(
+        sourcefile,
+        False,
+        max_size_mb=max_size_mb,
+        warn_size_mb=warn_size_mb,
+        logger=logger,
+    )
     if not blocks:
         return
     if blocklist_haserrors(blocks):
@@ -569,9 +578,9 @@ def add_id_to_nodes(
     textkey = TEXTID_KEY
     headingkey = HEADINGID_KEY
 
-    def _add_id(node: MarkdownNode) -> MarkdownNode:
+    def _add_id(node: MarkdownNode) -> None:
         if not filt_func(node):
-            return node
+            return
         match node.block:
             case TextBlock() if textid:
                 counter['text'] += 1
@@ -585,9 +594,8 @@ def add_id_to_nodes(
                 )
             case _:
                 pass
-        return node
 
-    pre_order_map_tree(root_node, _add_id)
+    pre_order_traversal(root_node, _add_id)
 
 
 def add_questions(
@@ -622,7 +630,7 @@ def add_questions(
             )
         except Exception:
             logger.error(
-                "Error in using the language model to create " 
+                "Error in using the language model to create "
                 "questions."
             )
         return response
@@ -679,7 +687,7 @@ def add_summaries(
             )
         except Exception:
             logger.error(
-                "Error in using the language model to create " 
+                "Error in using the language model to create "
                 "summaries."
             )
 

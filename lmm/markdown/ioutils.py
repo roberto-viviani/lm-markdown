@@ -154,9 +154,10 @@ def _detect_encoding(file_path: Path, logger: LoggerBase) -> str:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             f.read(1024)  # Read first 1KB to test
-        logger.info(f"File {file_path} detected as UTF-8 encoding")
+        logger.info(f"Loading {file_path} (UTF-8 encoding)")
         return 'utf-8'
     except UnicodeDecodeError:
+        logger.warning("Unicode error in reading file")
         pass
 
     # Try to use chardet if available

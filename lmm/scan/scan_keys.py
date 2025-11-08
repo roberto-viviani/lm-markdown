@@ -19,6 +19,7 @@ UUID_KEY = 'UUID'
 GROUP_UUID_KEY = 'group_UUID'
 SOURCE_KEY = 'source'
 SKIP_KEY = 'skip'
+WARNING_KEY = 'WARNING'
 
 TITLES_KEY = 'titles'
 QUESTIONS_KEY = 'questions'

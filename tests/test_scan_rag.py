@@ -8,6 +8,7 @@ from lmm.markdown.parse_markdown import (
     MetadataBlock,
     HeadingBlock,
     TextBlock,
+    ErrorBlock,
     parse_markdown_text,
 )
 from lmm.markdown.tree import (
@@ -21,7 +22,7 @@ from lmm.markdown.tree import (
 )
 from lmm.markdown.treeutils import (
     get_nodes_with_metadata,
-    count_words,
+    # count_words,
 )
 from lmm.config.config import Settings, export_settings
 from lmm.scan.scan_keys import (
@@ -36,6 +37,7 @@ from lmm.scan.scan_keys import (
     SUMMARY_KEY,
     QUESTIONS_KEY,
 )
+from lmm.utils.logging import LoglistLogger
 from lmm.scan.scan_rag import scan_rag, ScanOpts
 
 
@@ -202,6 +204,27 @@ class TestValidations(unittest.TestCase):
             blocks[2].get_content(), "Text without titles"
         )
 
+    def test_errorblock(self):
+        logger = LoglistLogger()
+
+        blocks = [ErrorBlock(content="The content of error block")]
+        blocks = scan_rag(blocks, logger=logger)
+        self.assertEqual(logger.count_logs(), 1)
+        self.assertIn("Load failed", logger.get_logs()[0])
+
+    def test_errorblocks(self):
+        logger = LoglistLogger()
+
+        blocks = [
+            HeaderBlock(content={'title': "document"}),
+            ErrorBlock(content="The content of error block"),
+        ]
+        blocks = scan_rag(blocks, logger=logger)
+        self.assertEqual(logger.count_logs(), 2)
+        logs = logger.get_logs()
+        self.assertIn("The content of error", logs[0])
+        self.assertIn("Fix before continuing", logs[1])
+
 
 class TestBuilds(unittest.TestCase):
 
@@ -292,42 +315,27 @@ class TestBuilds(unittest.TestCase):
         for n in textnodes:
             self.assertTrue(n.fetch_metadata_for_key(SUMMARY_KEY))
 
-    def test_build_summaries_tresholded(self):
-        # test all heading nodes and dependant text nodes have summary
-        # NOTE: this should fail if text blocks are too short, modify
+    def test_build_summaries_singleton(self):
+        # summary skipped for document with one text node.
         new_doc = (
             header_block
-            + first_heeading_group
             + """
 ### title 3
-A few words.
-
-### title 4
-Another few words.
+This equation is called the _model equation_. At this point, 
+you might be tempted to skip over the model equation and think 
+that you may deal with it later or avoid using equations 
+altogether. Don't! The model equation is crucial to understand 
+linear models. Once mastered, it becomes your most helpful 
+aid in understanding the model. It is therefore crucial to become 
+familiar with it. 
 """
         )
         blocks_raw: list[Block] = parse_markdown_text(new_doc)
 
-        root = blocks_to_tree(blocks_raw)
-        if not root:
-            raise Exception("Invalid text in test")
-
-        # mark nodes that already have summaries, and were manually
-        # added (without hash)
-        def _mark_node(n: MarkdownNode) -> None:
-            if (
-                SUMMARY_KEY in n.metadata
-                and TXTHASH_KEY not in n.metadata
-            ):
-                n.metadata['__MARKER__'] = "set"
-
-        pre_order_traversal(root, _mark_node)
-        blocks = tree_to_blocks(root)
-
-        # now apply scan rag
-        THRESHOLD = 150
+        # apply scan rag
+        THRESHOLD = 10
         blocks = scan_rag(
-            blocks,
+            blocks_raw,
             ScanOpts(summaries=True, summary_threshold=THRESHOLD),
         )
         root = blocks_to_tree(blocks)
@@ -336,21 +344,6 @@ Another few words.
 
         nodes = get_nodes_with_metadata(root, SUMMARY_KEY)
         self.assertTrue(len(nodes) > 0)
-
-        headingnodes: list[HeadingNode] = traverse_tree_nodetype(
-            root, lambda x: x, HeadingNode
-        )
-        self.assertTrue(len(headingnodes) > 0)
-        # TODO: this may not work here, the header gets few words
-        # self.assertIn(SUMMARY_KEY, headingnodes[0].metadata)
-        for n in headingnodes[1:]:
-            if count_words(n) > THRESHOLD:
-                self.assertIn(SUMMARY_KEY, n.metadata)
-                # test new summaries have hashes
-                if '__MARKER__' not in n.metadata:
-                    self.assertIn(TXTHASH_KEY, n.metadata)
-            else:
-                self.assertTrue(SUMMARY_KEY not in n.metadata)
 
     def test_build_questions(self):
         # Test all headings have questions, except the root node

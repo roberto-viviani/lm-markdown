@@ -175,7 +175,7 @@ class MetadataBlock(BaseModel):
             a value of type value_type.
 
         Note:
-            To code for a checkable None:
+            To code for a checkable None (but violate the type model)
             ```python
             value = get_key_type('title', str | None, None)
             ```
@@ -1022,13 +1022,21 @@ def blocklist_get_info(blocks: list[Block]) -> str:
 
 
 def load_blocks(
-    source: str | Path, logger: LoggerBase
+    source: str | Path,
+    *,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
+    logger: LoggerBase,
 ) -> list[Block]:
     """Load a pandoc markdown file into structured blocks. Used in
     development.
 
     Args:
         source: Path to a markdown file.
+        max_size_mb: the max size, in MB, of the file to load
+        warn_size_mb: the size of the input file that results in
+            a warning
+        logger: a logger object (defaults to console logging)
 
     Returns:
         List of Block objects (HeaderBlock, MetadataBlock,
@@ -1039,7 +1047,7 @@ def load_blocks(
     # Load the markdown
     from .ioutils import load_markdown
 
-    content = load_markdown(source, logger)
+    content = load_markdown(source, logger, max_size_mb, warn_size_mb)
     if not content:
         return []
 

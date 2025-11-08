@@ -88,6 +88,9 @@ def scan(blocks: list[Block]) -> list[Block]:
 def markdown_scan(
     sourcefile: str | Path,
     save: bool | str | Path = True,
+    *,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
 ) -> list[Block]:
     """General check that the markdown is suitable for work,
@@ -98,6 +101,9 @@ def markdown_scan(
         save: if False, does not save; if True, saves back to
             original markdown file; if a filename, saves to
             file.
+        max_size_mb: the max size, in MB, of the file to load
+        warn_size_mb: the size of the input file that results in
+            a warning
         logger: a logger object (defaults to console logging)
 
     Returns:
@@ -117,7 +123,12 @@ def markdown_scan(
 
     # load_blocks is guaranteed to return an empty list or a list
     # of blocks.
-    blocks = mkd.load_blocks(source, logger)
+    blocks = mkd.load_blocks(
+        source,
+        max_size_mb=max_size_mb,
+        warn_size_mb=warn_size_mb,
+        logger=logger,
+    )
     if not blocks:  # Empty list check
         logger.warning(f"No blocks found in file: {source}")
         return []
