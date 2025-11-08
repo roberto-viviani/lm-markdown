@@ -9,6 +9,7 @@ Main functions:
     remove_messages: removes message content from metadata
 """
 
+from _collections_abc import dict_keys
 from pathlib import Path
 from pydantic import validate_call
 from requests.exceptions import ConnectionError
@@ -23,6 +24,7 @@ from lmm.markdown.parse_markdown import (
 from lmm.markdown.blockutils import clear_metadata_properties
 from lmm.markdown.parse_yaml import MetadataValue
 from lmm.markdown.tree import (
+    MarkdownTree,
     MarkdownNode,
     HeadingNode,
     TextNode,
@@ -57,7 +59,7 @@ from .scan import scan, markdown_scan
 from .scanutils import post_order_hashed_aggregation
 
 # Set up logger
-logger = get_logger(__name__)
+logger: LoggerBase = get_logger(__name__)
 
 
 def _fetch_kernel(
@@ -77,8 +79,9 @@ def _fetch_kernel(
     assert node is None
 
     if node is None:
-        model = create_runnable(kernel_name=kernel_name)
+        model: RunnableType = create_runnable(kernel_name=kernel_name)
     else:
+        # unreacheable, future extension
         INCLUDE_HEADER = True
         model_properties: MetadataValue = node.fetch_metadata_for_key(
             str(kernel_name), INCLUDE_HEADER
@@ -111,14 +114,16 @@ def _fetch_summary(node: MarkdownNode) -> str:
     Raises:
         ConnectionError, ValueError
     """
-    model = _fetch_kernel(kernel_name="summarizer")
+    model: RunnableType = _fetch_kernel(kernel_name="summarizer")
     post_order_hashed_aggregation(
         node,
         lambda x: model.invoke({'text': "\n".join(x)}),
         SUMMARY_KEY,
         True,  # i.e, hashed to TXTHASH_KEY
     )
-    summary = node.get_metadata_string_for_key(SUMMARY_KEY, "")
+    summary: str | None = node.get_metadata_string_for_key(
+        SUMMARY_KEY, ""
+    )
     return summary if summary else ""
 
 
@@ -158,14 +163,16 @@ def _scan_queries(
 
     # check this query was not already answered
     if CHAT_KEY in node.metadata:
-        chatvalues = node.get_metadata_for_key(CHAT_KEY)
-        chat = (
+        chatvalues: MetadataValue = node.get_metadata_for_key(
+            CHAT_KEY
+        )
+        chat: MetadataValue | list[MetadataValue] = (
             chatvalues
             if isinstance(chatvalues, list)
             else [chatvalues]
         )
         if chat and query in chat:
-            idx = chat.index(query)
+            idx: int = chat.index(query)
             if len(chat) - 1 > idx:
                 return node
 
@@ -174,10 +181,10 @@ def _scan_queries(
         context: str = ""
         match node:
             case HeadingNode() as h:
-                content = "\n".join(collect_text(h))
+                content: str = "\n".join(collect_text(h))
             case TextNode() as t:
                 content = t.get_content()
-                parent = t.get_parent()
+                parent: HeadingNode | None = t.get_parent()
                 if parent:
                     context = _fetch_summary(parent)
             case _:
@@ -209,7 +216,7 @@ def _scan_queries(
     try:
         response: str
         if context:
-            model = _fetch_kernel("query_with_context")
+            model: RunnableType = _fetch_kernel("query_with_context")
             response = model.invoke(
                 {
                     'query': query,
@@ -256,12 +263,14 @@ def _scan_queries(
 def _scan_messages(
     root: MarkdownNode, logger: LoggerBase = logger
 ) -> MarkdownNode:
+    logger.warning("scan_messages not yet implemented.")
     return root
 
 
 def _scan_edits(
     root: MarkdownNode, logger: LoggerBase = logger
 ) -> MarkdownNode:
+    logger.warning("scan_edits not yet implemented.")
     return root
 
 
@@ -300,12 +309,14 @@ def scan_messages(
         logger.warning("Problems in markdown, fix before continuing")
         return blocks
 
-    root = blocks_to_tree(blocklist_copy(blocks), logger)
+    root: MarkdownTree = blocks_to_tree(
+        blocklist_copy(blocks), logger
+    )
     if not root:
         return []
 
-    root = _process_chain(root, logger)
-    return tree_to_blocks(root)
+    processed_root: MarkdownNode = _process_chain(root, logger)
+    return tree_to_blocks(processed_root)
 
 
 def remove_messages(
@@ -327,7 +338,7 @@ def remove_messages(
     for b in blocks:
         if isinstance(b, MetadataBlock):
             newb: MetadataBlock = b.deep_copy()
-            kks = newb.content.keys()
+            kks: dict_keys[str, MetadataValue] = newb.content.keys()
             if QUERY_KEY in kks:
                 newb.content.pop(QUERY_KEY)
             if MESSAGE_KEY in kks:
@@ -349,6 +360,9 @@ def remove_messages(
 def markdown_messages(
     sourcefile: str | Path,
     save: bool | str | Path = True,
+    *,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
 ) -> None:
     """
@@ -367,7 +381,13 @@ def markdown_messages(
     """
 
     SAVE_FILE = False
-    blocks = markdown_scan(sourcefile, SAVE_FILE, logger=logger)
+    blocks: list[Block] = markdown_scan(
+        sourcefile,
+        SAVE_FILE,
+        max_size_mb=max_size_mb,
+        warn_size_mb=warn_size_mb,
+        logger=logger,
+    )
     if not blocks:
         return
     if blocklist_haserrors(blocks):
@@ -375,12 +395,14 @@ def markdown_messages(
         logger.warning("Problems in markdown, fix before continuing")
         return
 
-    root = blocks_to_tree(blocklist_copy(blocks), logger)
+    root: MarkdownTree = blocks_to_tree(
+        blocklist_copy(blocks), logger
+    )
     if not root:
         return
 
-    root = _process_chain(root, logger)
-    blocks = tree_to_blocks(root)
+    processed_root: MarkdownNode = _process_chain(root, logger)
+    blocks = tree_to_blocks(processed_root)
     if not blocks:
         return
 
@@ -420,7 +442,9 @@ def markdown_remove_messages(
     """
 
     SAVE_FILE = False
-    blocks = markdown_scan(sourcefile, SAVE_FILE, logger=logger)
+    blocks: list[Block] = markdown_scan(
+        sourcefile, SAVE_FILE, logger=logger
+    )
     if not blocks:
         return
 
