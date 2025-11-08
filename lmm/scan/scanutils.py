@@ -6,7 +6,8 @@ Important functions:
     post_order_hashed_aggregation
 """
 
-from typing import Callable, TypeGuard
+from typing import TypeGuard
+from collections.abc import Callable
 import re
 
 from lmm.markdown.tree import (
@@ -51,9 +52,9 @@ def post_order_hashed_aggregation(
         calling the aggregate function.
 
     Note:
-        aggregate_func is only called if there is content to 
+        aggregate_func is only called if there is content to
             aggregate.
-        This avoids calls to llm's without content. aggregate_func 
+        This avoids calls to llm's without content. aggregate_func
             itself may return empty for insufficient content.
 
     Args:
@@ -72,7 +73,7 @@ def post_order_hashed_aggregation(
             value is empty.
         hash_key: the key in the metadata where the hash ist read
             and stored.
-        filter_func: a predicate function on the nodes to be 
+        filter_func: a predicate function on the nodes to be
             aggregated. Only nodes where filter_func(node) is True
             will be aggregated.
         logger: a logger object.
@@ -162,10 +163,11 @@ def post_order_hashed_aggregation(
                     # Collect content from direct TextBlock children
                     collected_content.append(child.get_content())
                 else:
-                    # Collect synthetic outputs from heading children 
+                    # Collect synthetic outputs from heading children
                     # that have them, and if not look in children
-                    text: str | None = \
+                    text: str | None = (
                         child.get_metadata_string_for_key(output_key)
+                    )
 
                     if text:
                         collected_content.append(text)

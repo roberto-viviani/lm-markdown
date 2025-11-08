@@ -34,7 +34,7 @@ Main superordinate functions:
 """
 
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 # LM markdown
@@ -445,7 +445,9 @@ def markdown_rag(
     # header if it is missing, but we check for pyright's benefit
     if isinstance(blocks[0], HeaderBlock):
         header: HeaderBlock = blocks[0]
-        options = header.get_key_type(OPTIONS_KEY, dict, {})
+        options: dict[str, object] = header.get_key_type(
+            OPTIONS_KEY, dict, {}
+        )
         if bool(options):
             logger.info("Reading opts specifications from header")
             try:

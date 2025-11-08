@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """The `parse_markdown` module contains a parser for a simplified
 version of Pandoc Markdown, converting it into a list of blocks.
 
@@ -64,7 +66,8 @@ with the following exceptions:
 # content  -> .*     # everything else
 
 from pathlib import Path
-from typing import Tuple, Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 from pydantic import BaseModel, ValidationError
 from typing_extensions import Literal
 from enum import Enum
@@ -76,7 +79,7 @@ from .parse_yaml import MetadataDict, MetadataValue
 from lmm.utils.logging import LoggerBase
 import yaml
 
-from typing import TypeVar, Type
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -159,7 +162,7 @@ class MetadataBlock(BaseModel):
         )
 
     def get_key_type(
-        self, key: str, value_type: Type[T], default: T
+        self, key: str, value_type: type[T], default: T
     ) -> T:
         """Get a metadata value if of type T. The argument
         default must be given.
@@ -196,7 +199,7 @@ class MetadataBlock(BaseModel):
 
     @staticmethod
     def _from_tokens(
-        stack: list[Tuple['Token', str]],
+        stack: list[tuple['Token', str]],
         mapped_keys: Mapping[str, str] | None = None,
     ) -> 'MetadataBlock | ErrorBlock':
         if not stack:
@@ -352,7 +355,7 @@ class HeaderBlock(MetadataBlock):
 
     @staticmethod
     def _from_tokens(
-        stack: list[Tuple['Token', str]],
+        stack: list[tuple['Token', str]],
         mapped_keys: Mapping[str, str] | None = None,
     ) -> 'HeaderBlock | ErrorBlock':
         block = MetadataBlock._from_tokens(stack, mapped_keys)
@@ -430,7 +433,7 @@ class HeadingBlock(BaseModel):
 
     @staticmethod
     def _from_tokens(
-        stack: list[Tuple['Token', str]],
+        stack: list[tuple['Token', str]],
     ) -> 'HeadingBlock | ErrorBlock':
         # we assume that this is a single token with a heading content
         if len(stack) > 1:
@@ -563,7 +566,7 @@ class TextBlock(BaseModel):
         return self.model_copy(deep=True)
 
     @staticmethod
-    def _from_tokens(stack: list[Tuple['Token', str]]) -> 'TextBlock':
+    def _from_tokens(stack: list[tuple['Token', str]]) -> 'TextBlock':
         # we assume that the first token is a content
         # and the last one is a blank line
         content = '\n'.join([y for (_, y) in stack[0:-1]])
@@ -648,7 +651,7 @@ Token = Enum(
 )
 
 
-def _tokenizer(lines: list[str]) -> list[Tuple[Token, str]]:
+def _tokenizer(lines: list[str]) -> list[tuple[Token, str]]:
     """Tokenize markdown lines into a sequence of token types and
     their content.
 
@@ -678,7 +681,7 @@ def _tokenizer(lines: list[str]) -> list[Tuple[Token, str]]:
     ]
     regex_patterns = [(re.compile(x), y) for (x, y) in token_patterns]
 
-    tokens: list[Tuple[Token, str]] = []
+    tokens: list[tuple[Token, str]] = []
     for line in lines:
         for regex, token_type in regex_patterns:
             if regex.match(line):
@@ -688,7 +691,7 @@ def _tokenizer(lines: list[str]) -> list[Tuple[Token, str]]:
 
 
 def _parser(
-    tokens: list[Tuple[Token, str]],
+    tokens: list[tuple[Token, str]],
     mapped_keys: Mapping[str, str] | None = None,
 ) -> list[Block]:
     """Parse a list of tokens into a list of blocks.
@@ -736,7 +739,7 @@ def _parser(
         return []
 
     # the shift-reduce loop.
-    block_stack: list[Tuple[Token, str]] = []
+    block_stack: list[tuple[Token, str]] = []
     current_token: Token = Token.UNDEFINED
     for token_type, line in tokens:
         # shift the line onto the stack

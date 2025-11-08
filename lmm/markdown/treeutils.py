@@ -33,7 +33,8 @@ Select nodes:
 # protected members of Block used
 # pyright: reportPrivateUsage=false
 
-from typing import Callable, TypeVar
+from typing import TypeVar
+from collections.abc import Callable
 
 from .tree import (
     MarkdownNode,

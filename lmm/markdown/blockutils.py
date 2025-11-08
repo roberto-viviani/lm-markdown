@@ -4,7 +4,7 @@ Note: call blocklist_copy before using these functions
     to maintain referential transparency.
 """
 
-from typing import Callable
+from collections.abc import Callable
 from functools import reduce
 import re
 

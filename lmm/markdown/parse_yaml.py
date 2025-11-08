@@ -35,7 +35,8 @@ parsable or that contain stuctures other than MetadataDict
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false
 
-from typing import Any, Mapping, TypeGuard
+from typing import Any, TypeGuard
+from collections.abc import Mapping
 import yaml
 import re
 

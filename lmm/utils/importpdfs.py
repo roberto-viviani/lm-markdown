@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 try:
     import pdfplumber
@@ -74,7 +73,7 @@ def convert_pdf_to_md(pdf_path: Path, output_dir: Path) -> None:
     """
     print(f"Processing: {pdf_path.name}")
 
-    markdown_content: List[str] = []
+    markdown_content: list[str] = []
     output_filename = pdf_path.stem + ".md"
     output_path = output_dir / output_filename
 

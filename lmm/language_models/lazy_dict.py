@@ -23,7 +23,8 @@ definitions are provided, provide keys of EnumStr of BaseModel-derived
 types (for example, see the documentation of the class).
 """
 
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 # ValueT is the parameter for the stored valued, KeyT for the keys.
 ValueT = TypeVar('ValueT')

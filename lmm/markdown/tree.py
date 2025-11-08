@@ -61,7 +61,8 @@ Note:
 # pyright: reportPrivateUsage=false
 
 from abc import ABC, abstractmethod
-from typing import Callable, TypeVar, Self, Sequence
+from typing import TypeVar, Self
+from collections.abc import Callable, Sequence
 import copy
 from pathlib import Path
 

@@ -5,7 +5,7 @@ This module provides functionality to create iterators that generate sequential 
 Used to feed message through a fake language model.
 """
 
-from typing import Iterator
+from collections.abc import Iterator
 
 
 class MessageIterator:

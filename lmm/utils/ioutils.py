@@ -4,7 +4,7 @@ Errors are not propagated, but functions return null value.
 """
 
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 from pydantic import validate_call
 
