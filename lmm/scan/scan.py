@@ -115,7 +115,7 @@ def markdown_scan(
     """
 
     # Source validation
-    source = iou.validate_file(sourcefile, logger)
+    source: Path | None = iou.validate_file(sourcefile, logger)
     if not source:
         return []
     # For type-checking
@@ -123,7 +123,7 @@ def markdown_scan(
 
     # load_blocks is guaranteed to return an empty list or a list
     # of blocks.
-    blocks = mkd.load_blocks(
+    blocks: list[Block] = mkd.load_blocks(
         source,
         max_size_mb=max_size_mb,
         warn_size_mb=warn_size_mb,
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     from lmm.markdown.parse_markdown import blocklist_haserrors
 
     def call_markdown_scan(filename: str, target: str) -> list[Block]:
-        blocks = markdown_scan(filename, target)
+        blocks: list[Block] = markdown_scan(filename, target)
         if not blocklist_haserrors(blocks):
             print("No errors in markdown.")
         return blocks
