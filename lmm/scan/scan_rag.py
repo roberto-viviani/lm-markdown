@@ -230,11 +230,11 @@ def scan_rag(
     # function used to skip over when SKIP_KEY is true
     def _filt_func(n: MarkdownNode) -> bool:
         """To use in aggregate function to exclude nodes with
-        SKIP_KEY in meatadata"""
+        SKIP_KEY in metadata"""
         flag = bool(
             n.fetch_metadata_for_key(SKIP_KEY, False, False)
             if isinstance(n, HeadingNode)
-            else n.get_metadata_for_key(SKIP_KEY, False)
+            else n.fetch_metadata_for_key(SKIP_KEY, False)
         )
         return not flag
 

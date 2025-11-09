@@ -19,6 +19,8 @@ from lmm.markdown.tree import (
     TextNode,
     pre_order_traversal,
     traverse_tree_nodetype,
+    get_text_nodes,
+    get_heading_nodes,
 )
 from lmm.markdown.treeutils import (
     get_nodes_with_metadata,
@@ -147,12 +149,14 @@ document = (
     + composite_text_group
 )
 
+opts = ScanOpts(titles=True)
+
 
 class TestValidations(unittest.TestCase):
 
     def test_empty(self):
         # test valid blocklist produced from empty lists
-        blocks = scan_rag([])
+        blocks = scan_rag([], opts)
 
         self.assertEqual(len(blocks), 1)
         self.assertTrue(isinstance(blocks[0], HeaderBlock))
@@ -162,7 +166,7 @@ class TestValidations(unittest.TestCase):
 
     def test_heading(self):
         # test valid blocklist produced from just heading
-        blocks = scan_rag(parse_markdown_text("# Heading 1"))
+        blocks = scan_rag(parse_markdown_text("# Heading 1"), opts)
 
         self.assertEqual(len(blocks), 3)
         self.assertTrue(isinstance(blocks[0], HeaderBlock))
@@ -174,7 +178,9 @@ class TestValidations(unittest.TestCase):
 
     def test_text(self):
         # test valid blocklist produced from just text
-        blocks = scan_rag(parse_markdown_text("Text without titles"))
+        blocks = scan_rag(
+            parse_markdown_text("Text without titles"), opts
+        )
 
         self.assertEqual(len(blocks), 2)
         self.assertTrue(isinstance(blocks[0], HeaderBlock))
@@ -208,7 +214,7 @@ class TestValidations(unittest.TestCase):
         logger = LoglistLogger()
 
         blocks = [ErrorBlock(content="The content of error block")]
-        blocks = scan_rag(blocks, logger=logger)
+        blocks = scan_rag(blocks, opts, logger=logger)
         self.assertEqual(logger.count_logs(), 1)
         self.assertIn("Load failed", logger.get_logs()[0])
 
@@ -219,7 +225,7 @@ class TestValidations(unittest.TestCase):
             HeaderBlock(content={'title': "document"}),
             ErrorBlock(content="The content of error block"),
         ]
-        blocks = scan_rag(blocks, logger=logger)
+        blocks = scan_rag(blocks, opts, logger=logger)
         self.assertEqual(logger.count_logs(), 2)
         logs = logger.get_logs()
         self.assertIn("The content of error", logs[0])
@@ -228,10 +234,9 @@ class TestValidations(unittest.TestCase):
     def test_no_rag_options(self):
         # test valid blocklist produced from just heading
         blocks: list[Block] = parse_markdown_text("# Heading 1")
-        opts = ScanOpts()  # empty scan opts
 
         logger = LoglistLogger()
-        blocks = scan_rag(blocks, opts, logger)
+        blocks = scan_rag(blocks, ScanOpts(), logger)
         self.assertGreater(logger.count_logs(), 0)
         self.assertIn(
             "No RAG changes specified", logger.get_logs()[-1]
@@ -588,20 +593,22 @@ skip: True
 ...
 ## Heading 2 (Skip)
 
-Text under heading 2 that should be skipped.
+This is a skipped text block.
 
 ### Heading 3 (Also Skip)
 
 Text under heading 3.
 
----
-skip: True
-...
 This is a skipped text block.
 
 # Heading 4 (Process)
 
-Final text block.
+This is not a skipped text block.
+
+---
+skip: True
+...
+This is a skipped text block.
 """
         self.blocks = parse_markdown_text(self.doc_with_skip)
 
@@ -615,7 +622,7 @@ Final text block.
             root, lambda x: x, TextNode
         )
 
-        self.assertEqual(len(text_nodes), 5)
+        self.assertEqual(len(text_nodes), 6)
 
         processed_text_nodes = [
             n for n in text_nodes if TEXTID_KEY in n.metadata
@@ -625,8 +632,8 @@ Final text block.
         ]
 
         # 4 text blocks should have textid, 1 should be skipped
-        self.assertEqual(len(processed_text_nodes), 4)
-        self.assertEqual(len(skipped_text_nodes), 1)
+        self.assertEqual(len(processed_text_nodes), 2)
+        self.assertEqual(len(skipped_text_nodes), 4)
 
         self.assertEqual(
             skipped_text_nodes[0].get_content(),
@@ -642,9 +649,7 @@ Final text block.
         root = blocks_to_tree(blocks)
         self.assertIsNotNone(root)
 
-        heading_nodes = traverse_tree_nodetype(
-            root, lambda x: x, HeadingNode
-        )
+        heading_nodes = get_heading_nodes(root)
 
         # Root + 4 headings = 5
         self.assertEqual(len(heading_nodes), 5)
@@ -715,7 +720,7 @@ Final text block.
 
     def test_skip_source(self):
         """Test that source is not added to skipped heading blocks."""
-        blocks = scan_rag(self.blocks)
+        blocks = scan_rag(self.blocks, opts)
         root = blocks_to_tree(blocks)
         self.assertIsNotNone(root)
 
@@ -742,6 +747,71 @@ Final text block.
         }
         self.assertIn("Heading 2 (Skip)", skipped_contents)
         self.assertIn("Heading 3 (Also Skip)", skipped_contents)
+
+    def test_reverse_skip_textid(self):
+        """Test that textid is not added to skipped text blocks."""
+        markdown_text = """
+---
+title: Document with skips
+---
+
+# Heading 1 (Process)
+
+Text under heading 1.
+
+---
+skip: True
+---
+## Heading 2 (Skip)
+
+Text under heading 2 that should be skipped.
+
+## Heading 2 bis (Process)
+
+---
+skip: True
+---
+This is a skipped text block.
+
+---
+skip: False
+...
+This is NOT a skipped text block.
+
+# Heading 4 (Process)
+
+Final text block.
+"""
+
+        blocks: list[Block] = parse_markdown_text(markdown_text)
+        self.assertTrue(blocks)
+
+        blocks = scan_rag(blocks, ScanOpts(textid=True))
+        root = blocks_to_tree(blocks)
+        self.assertIsNotNone(root)
+
+        text_nodes: list[TextNode] = get_text_nodes(root)
+
+        self.assertEqual(len(text_nodes), 5)
+
+        processed_text_nodes: list[TextNode] = [
+            n for n in text_nodes if TEXTID_KEY in n.metadata
+        ]
+        skipped_text_nodes: list[TextNode] = [
+            n for n in text_nodes if TEXTID_KEY not in n.metadata
+        ]
+
+        # 4 text blocks should have textid, 1 should be skipped
+        self.assertEqual(len(processed_text_nodes), 3)
+        self.assertEqual(len(skipped_text_nodes), 2)
+
+        self.assertEqual(
+            skipped_text_nodes[0].get_content(),
+            "Text under heading 2 that should be skipped.",
+        )
+        self.assertTrue(
+            skipped_text_nodes[0].get_metadata_for_key(SKIP_KEY)
+        )
 
 
 class TestFileOperationSecurity(unittest.TestCase):
