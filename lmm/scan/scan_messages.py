@@ -55,7 +55,7 @@ from .scan_keys import (
     EDIT_KEY,
     SUMMARY_KEY,
 )
-from .scan import scan, markdown_scan
+from .scan import blocklist_scan, markdown_scan
 from .scanutils import post_order_hashed_aggregation
 
 # Set up logger
@@ -287,7 +287,7 @@ def _process_chain(
     return root
 
 
-def scan_messages(
+def blocklist_messages(
     blocks: list[Block], logger: LoggerBase = logger
 ) -> list[Block]:
     """
@@ -304,7 +304,7 @@ def scan_messages(
     if not blocks:
         return []
 
-    blocks = scan(blocks)
+    blocks = blocklist_scan(blocks)
     if blocklist_haserrors(blocks):
         logger.warning("Problems in markdown, fix before continuing")
         return blocks
@@ -319,7 +319,7 @@ def scan_messages(
     return tree_to_blocks(processed_root)
 
 
-def remove_messages(
+def blocklist_clear_messages(
     blocks: list[Block], keys: list[str] | None = None
 ) -> list[Block]:
     """Remove language model interactions from metadata. If specific
@@ -364,7 +364,7 @@ def markdown_messages(
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
-) -> None:
+) -> list[Block]:
     """
     Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
@@ -389,22 +389,22 @@ def markdown_messages(
         logger=logger,
     )
     if not blocks:
-        return
+        return []
     if blocklist_haserrors(blocks):
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
-        return
+        return []
 
     root: MarkdownTree = blocks_to_tree(
         blocklist_copy(blocks), logger
     )
     if not root:
-        return
+        return []
 
     processed_root: MarkdownNode = _process_chain(root, logger)
     blocks = tree_to_blocks(processed_root)
     if not blocks:
-        return
+        return []
 
     match save:
         case False:
@@ -416,14 +416,16 @@ def markdown_messages(
         case _:  # ignore
             pass
 
+    return blocks
+
 
 @validate_call(config={'arbitrary_types_allowed': True})
-def markdown_remove_messages(
+def markdown_clear_messages(
     sourcefile: str | Path,
     keys: list[str] | None = None,
     save: bool | str | Path = True,
     logger: LoggerBase = logger,
-) -> None:
+) -> list[Block]:
     """
     Removes the messages from a markdown. If keys is specified,
     removes the metadata properties specified by keys.
@@ -446,14 +448,14 @@ def markdown_remove_messages(
         sourcefile, SAVE_FILE, logger=logger
     )
     if not blocks:
-        return
+        return []
 
     if blocklist_haserrors(blocks):
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
-        return
+        return []
 
-    blocks = remove_messages(blocks, keys)
+    blocks = blocklist_clear_messages(blocks, keys)
 
     match save:
         case False:
@@ -465,10 +467,74 @@ def markdown_remove_messages(
         case _:  # ignore
             pass
 
+    return blocks
+
+
+def scan_messages(
+    sourcefile: str | Path,
+    save: bool | str | Path = True,
+    *,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
+    logger: LoggerBase = logger,
+) -> None:
+    """
+    Carries out the interaction with the language model,
+    returning a list of blocks with a header block first.
+
+    Args:
+        sourcefile: the file to load the markdown from
+        save: if False, does not save; if True, saves back to
+            original markdown file; if a filename, saves to
+            file.
+
+    Note:
+        stub of markdown_messages for interface build
+    """
+
+    try:
+        markdown_messages(
+            sourcefile,
+            save,
+            max_size_mb=max_size_mb,
+            warn_size_mb=warn_size_mb,
+            logger=logger,
+        )
+    except Exception as e:
+        logger.error(str(e))
+
+
+def scan_clear_messages(
+    sourcefile: str | Path,
+    keys: list[str] | None = None,
+    save: bool | str | Path = True,
+    logger: LoggerBase = logger,
+) -> None:
+    """
+    Removes the messages from a markdown. If keys is specified,
+    removes the metadata properties specified by keys.
+
+    Args:
+        sourcefile: the file to load the markdown from
+        keys (optional): the keys of messages or any property to
+            remove
+        save: if False, does not save; if True, saves back to
+            original markdown file; if a filename, saves to
+            file.
+
+    Note:
+        stub of markdown_clear_messages for interface build
+    """
+
+    try:
+        markdown_clear_messages(sourcefile, keys, save, logger)
+    except Exception as e:
+        logger.error(str(e))
+
 
 if __name__ == "__main__":
     """Interactive loop to test module"""
     import sys
     from lmm.utils.ioutils import create_interface
 
-    create_interface(markdown_messages, sys.argv)
+    create_interface(scan_messages, sys.argv)

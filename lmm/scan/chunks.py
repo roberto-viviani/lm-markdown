@@ -135,7 +135,7 @@ from lmm.markdown.parse_yaml import MetadataDict
 from lmm.markdown.tree import MarkdownTree, MarkdownNode, TextNode
 from lmm.markdown.tree import blocks_to_tree, traverse_tree_nodetype
 from lmm.markdown.treeutils import inherit_metadata, prune_tree
-from lmm.scan.scan_rag import scan_rag, ScanOpts
+from lmm.scan.scan_rag import blocklist_rag, ScanOpts
 from lmm.scan.scan_keys import (
     TXTHASH_KEY,
     CHAT_KEY,
@@ -385,7 +385,7 @@ def blocks_to_chunks(
             )
 
     # collect or create required metadata for RAG: uuid, textid
-    blocks: list[Block] = scan_rag(
+    blocks: list[Block] = blocklist_rag(
         blocklist_copy(blocklist),
         ScanOpts(textid=True, UUID=True),
         logger,

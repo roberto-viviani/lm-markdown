@@ -2,7 +2,7 @@
 
 import unittest
 
-from lmm.scan.scan import scan, markdown_scan
+from lmm.scan.scan import blocklist_scan, markdown_scan
 from lmm.markdown.parse_markdown import (
     Block,
     HeaderBlock,
@@ -30,7 +30,7 @@ This is a markdown file with a starting metadata block that has no title tag.
 class TestHeaders(unittest.TestCase):
 
     def test_empty(self):
-        blocks: list[Block] = scan([])
+        blocks: list[Block] = blocklist_scan([])
 
         self.assertTrue(len(blocks), 1)
         self.assertIsInstance(blocks[0], HeaderBlock)
@@ -39,7 +39,7 @@ class TestHeaders(unittest.TestCase):
 
     def test_empty2(self):
         blocks: list[Block] = parse_markdown_text("")
-        blocks = scan(blocks)
+        blocks = blocklist_scan(blocks)
 
         self.assertTrue(len(blocks), 1)
         self.assertIsInstance(blocks[0], HeaderBlock)
@@ -50,7 +50,7 @@ class TestHeaders(unittest.TestCase):
         blocks: list[Block] = parse_markdown_text(
             test_md_only_heading
         )
-        blocks = scan(blocks)
+        blocks = blocklist_scan(blocks)
 
         self.assertTrue(len(blocks), 1)
         self.assertIsInstance(blocks[0], HeaderBlock)
@@ -61,7 +61,7 @@ class TestHeaders(unittest.TestCase):
         blocks: list[Block] = parse_markdown_text(
             test_md_no_header_text
         )
-        blocks = scan(blocks)
+        blocks = blocklist_scan(blocks)
 
         self.assertTrue(len(blocks), 2)
         self.assertIsInstance(blocks[0], HeaderBlock)
@@ -75,7 +75,7 @@ class TestHeaders(unittest.TestCase):
         blocks: list[Block] = parse_markdown_text(
             test_md_no_header_heading
         )
-        blocks = scan(blocks)
+        blocks = blocklist_scan(blocks)
 
         self.assertTrue(len(blocks), 3)
         self.assertIsInstance(blocks[0], HeaderBlock)
@@ -88,7 +88,7 @@ class TestHeaders(unittest.TestCase):
 
     def test_md_no_title(self):
         blocks: list[Block] = parse_markdown_text(test_md_no_title)
-        blocks = scan(blocks)
+        blocks = blocklist_scan(blocks)
 
         self.assertTrue(len(blocks), 3)
         self.assertIsInstance(blocks[0], HeaderBlock)

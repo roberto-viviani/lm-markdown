@@ -143,11 +143,11 @@ class TestChunkFormation(unittest.TestCase):
 class TestChunkInheritance(unittest.TestCase):
 
     def test_annotate_questions(self):
-        from lmm.scan.scan_rag import scan_rag, ScanOpts
+        from lmm.scan.scan_rag import blocklist_rag, ScanOpts
         from lmm.markdown.parse_markdown import blocklist_copy
 
         self.assertEqual(len(blocks), lenblocks)
-        blocklist = scan_rag(
+        blocklist = blocklist_rag(
             blocklist_copy(blocks),
             ScanOpts(titles=True, questions=True),
         )
@@ -239,7 +239,7 @@ class TestChunkEncoding(unittest.TestCase):
 
 
 from lmm.markdown.parse_markdown import parse_markdown_text
-from lmm.scan.scan_rag import scan_rag, ScanOpts
+from lmm.scan.scan_rag import blocklist_rag, ScanOpts
 from lmm.config.config import Settings, export_settings
 
 
@@ -296,7 +296,7 @@ Final text block.
 
     def test_skip_blocks(self):
         """Test that only non-skipped blocks are chunked."""
-        blocks = scan_rag(self.blocks)
+        blocks = blocklist_rag(self.blocks)
         chunks = blocks_to_chunks(blocks, EncodingModel.CONTENT)
 
         # only 2 blocks left
@@ -306,7 +306,7 @@ Final text block.
         """Test all chunked blocks have id"""
         from lmm.scan.scan_keys import TEXTID_KEY
 
-        blocks = scan_rag(self.blocks)
+        blocks = blocklist_rag(self.blocks)
         chunks = blocks_to_chunks(blocks, EncodingModel.CONTENT)
         for c in chunks:
             self.assertIn(TEXTID_KEY, c.metadata)
@@ -315,7 +315,7 @@ Final text block.
         """Test all chunked blocks have id"""
         from lmm.scan.scan_keys import QUESTIONS_KEY
 
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             self.blocks,
             ScanOpts(questions=True, questions_threshold=0),
         )
@@ -329,7 +329,7 @@ Final text block.
         """Test all chunked blocks have id"""
         from lmm.scan.scan_keys import SUMMARIES_KEY
 
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             self.blocks,
             ScanOpts(summaries=True, summary_threshold=0),
         )
@@ -343,7 +343,7 @@ Final text block.
         """Test all chunked blocks have id"""
         from lmm.scan.scan_keys import TITLES_KEY
 
-        blocks = scan_rag(self.blocks, ScanOpts(titles=True))
+        blocks = blocklist_rag(self.blocks, ScanOpts(titles=True))
         chunks = blocks_to_chunks(
             blocks, EncodingModel.SPARSE_CONTENT, [TITLES_KEY]
         )

@@ -70,9 +70,9 @@ from lmm.language_models.langchain.runnables import (
 from requests.exceptions import ConnectionError
 
 # scan
-from lmm.scan.scan import markdown_scan, scan
+from lmm.scan.scan import markdown_scan, blocklist_scan
 from lmm.scan.scanutils import post_order_hashed_aggregation
-from lmm.scan.scan_messages import remove_messages
+from lmm.scan.scan_messages import blocklist_clear_messages
 from lmm.scan.scan_keys import (
     DOCID_KEY,
     TEXTID_KEY,
@@ -177,7 +177,7 @@ class ScanOpts(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
-def scan_rag(
+def blocklist_rag(
     blocks: list[Block],
     opts: ScanOpts = ScanOpts(),
     logger: LoggerBase = logger,
@@ -261,7 +261,7 @@ def scan_rag(
         return blocks
 
     # Validate for lm markdown
-    blocks = scan(blocks)
+    blocks = blocklist_scan(blocks)
 
     # Further document validation
     if not blocks:
@@ -283,7 +283,7 @@ def scan_rag(
     blocks = blocklist_copy(blocks)
 
     if opts.remove_messages:
-        blocks = remove_messages(blocks)
+        blocks = blocklist_clear_messages(blocks)
 
     # Process directives
     root: MarkdownTree = blocks_to_tree(blocks, logger)
@@ -318,7 +318,9 @@ def scan_rag(
         if not _filt_func(node):
             return
         if isinstance(node, TextNode):
-            uuid_base = node.get_metadata_string_for_key(TEXTID_KEY)
+            uuid_base: str | None = node.get_metadata_string_for_key(
+                TEXTID_KEY
+            )
             if uuid_base is not None:
                 node.set_metadata_for_key(
                     UUID_KEY,
@@ -339,7 +341,9 @@ def scan_rag(
         if isinstance(node, HeadingNode):
             if node.is_header_node():
                 return
-            source = node.fetch_metadata_string_for_key(DOCID_KEY)
+            source: str | None = node.fetch_metadata_string_for_key(
+                DOCID_KEY
+            )
             if source:
                 node.metadata[SOURCE_KEY] = source
 
@@ -404,7 +408,7 @@ def markdown_rag(
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
-) -> None:
+) -> list[Block]:
     """Carries out the interaction with the language model,
     returning a list of blocks with a header block first.
 
@@ -445,11 +449,11 @@ def markdown_rag(
         logger=logger,
     )
     if not blocks:
-        return
+        return []
     if blocklist_haserrors(blocks):
         save_markdown(sourcefile, blocks, logger)
         logger.warning("Problems in markdown, fix before continuing")
-        return
+        return []
 
     # Take over options if specified in header. The isinstance check
     # will always be true since markdown_scan provides a default
@@ -466,15 +470,15 @@ def markdown_rag(
                 opts = ScanOpts(**options)  # type: ignore
             except Exception as e:
                 logger.error(f"Invalid scan specification:\n{e}")
-                return
+                return []
     else:
         raise RuntimeError(
             "Unreachable code reached: header block missing"
         )
 
-    blocks = scan_rag(blocks, opts, logger)
+    blocks = blocklist_rag(blocks, opts, logger)
     if not blocks:
-        return
+        return []
 
     match save:
         case False:
@@ -483,6 +487,71 @@ def markdown_rag(
             save_markdown(sourcefile, blocks, logger)
         case str() | Path():
             save_markdown(save, blocks, logger)
+
+    return blocks
+
+
+def scan_rag(
+    sourcefile: str | Path,
+    opts: ScanOpts = ScanOpts(),
+    save: bool | str | Path = True,
+    *,
+    titles: bool = False,
+    questions: bool = False,
+    questions_threshold: int = 15,
+    summaries: bool = False,
+    summary_threshold: int = 50,
+    remove_messages: bool = False,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
+    logger: LoggerBase = logger,
+) -> None:
+    """Carries out the interaction with the language model,
+            returning a list of blocks with a header block first.
+
+            opts defines what operations are conducted on the document,
+            but if the header of the document contains an opts field,
+            the specifications in the header are used.
+
+            Args:
+                sourcefile: the file to load the markdown from
+    -           titles (False)    add hierarchical titles to headings
+                questions (False) add questions to headings
+                questions_threshold (15) ignored if questions == False
+                summaries (False) add summaries to headings
+                summary_threshold (50) ignored if summaries == False
+                remove_messages (False)
+                save: if False, does not save; if True, saves back to
+                    original markdown file; if a filename, saves to
+                    file. Defaults to True.
+                max_size_mb: the max size, in MB, of the file to load
+                warn_size_mb: the size of the input file that results in
+                    a warning
+                logger: a logger object. Defaults to console logger.
+
+            Note:
+                this is a stub of markdown_rag for interface bulding
+    """
+
+    try:
+        opts = ScanOpts(
+            titles=titles,
+            questions=questions,
+            questions_threshold=questions_threshold,
+            summaries=summaries,
+            summary_threshold=summary_threshold,
+            remove_messages=remove_messages,
+        )
+        markdown_rag(
+            sourcefile,
+            opts,
+            save,
+            max_size_mb=max_size_mb,
+            warn_size_mb=warn_size_mb,
+            logger=logger,
+        )
+    except Exception as e:
+        logger.error(str(e))
 
 
 def add_titles_to_headings(
@@ -531,7 +600,7 @@ def add_titles_to_headings(
             )
         return
 
-    return pre_order_traversal(root, map_func)
+    pre_order_traversal(root, map_func)
 
 
 def add_id_to_nodes(
@@ -674,7 +743,7 @@ def add_summaries(
     logger: LoggerBase,
     *,
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
-):
+) -> None:
     """Add summaries of text using a language model.
 
     Args:

@@ -40,7 +40,7 @@ from lmm.scan.scan_keys import (
     QUESTIONS_KEY,
 )
 from lmm.utils.logging import LoglistLogger
-from lmm.scan.scan_rag import scan_rag, ScanOpts
+from lmm.scan.scan_rag import blocklist_rag, ScanOpts
 
 
 header_block = """
@@ -156,7 +156,7 @@ class TestValidations(unittest.TestCase):
 
     def test_empty(self):
         # test valid blocklist produced from empty lists
-        blocks = scan_rag([], opts)
+        blocks = blocklist_rag([], opts)
 
         self.assertEqual(len(blocks), 1)
         self.assertTrue(isinstance(blocks[0], HeaderBlock))
@@ -166,7 +166,9 @@ class TestValidations(unittest.TestCase):
 
     def test_heading(self):
         # test valid blocklist produced from just heading
-        blocks = scan_rag(parse_markdown_text("# Heading 1"), opts)
+        blocks = blocklist_rag(
+            parse_markdown_text("# Heading 1"), opts
+        )
 
         self.assertEqual(len(blocks), 3)
         self.assertTrue(isinstance(blocks[0], HeaderBlock))
@@ -178,7 +180,7 @@ class TestValidations(unittest.TestCase):
 
     def test_text(self):
         # test valid blocklist produced from just text
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             parse_markdown_text("Text without titles"), opts
         )
 
@@ -193,7 +195,7 @@ class TestValidations(unittest.TestCase):
         )
 
     def test_text_textid(self):
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             parse_markdown_text("Text without titles"),
             ScanOpts(textid=True),
         )
@@ -214,7 +216,7 @@ class TestValidations(unittest.TestCase):
         logger = LoglistLogger()
 
         blocks = [ErrorBlock(content="The content of error block")]
-        blocks = scan_rag(blocks, opts, logger=logger)
+        blocks = blocklist_rag(blocks, opts, logger=logger)
         self.assertEqual(logger.count_logs(), 1)
         self.assertIn("Load failed", logger.get_logs()[0])
 
@@ -225,7 +227,7 @@ class TestValidations(unittest.TestCase):
             HeaderBlock(content={'title': "document"}),
             ErrorBlock(content="The content of error block"),
         ]
-        blocks = scan_rag(blocks, opts, logger=logger)
+        blocks = blocklist_rag(blocks, opts, logger=logger)
         self.assertEqual(logger.count_logs(), 2)
         logs = logger.get_logs()
         self.assertIn("The content of error", logs[0])
@@ -236,7 +238,7 @@ class TestValidations(unittest.TestCase):
         blocks: list[Block] = parse_markdown_text("# Heading 1")
 
         logger = LoglistLogger()
-        blocks = scan_rag(blocks, ScanOpts(), logger)
+        blocks = blocklist_rag(blocks, ScanOpts(), logger)
         self.assertGreater(logger.count_logs(), 0)
         self.assertIn(
             "No RAG changes specified", logger.get_logs()[-1]
@@ -296,10 +298,10 @@ class TestBuilds(unittest.TestCase):
         # now apply scan rag
         with self.assertRaises(ValidationError):
             # summary threshold at least 0
-            blocks = scan_rag(
+            blocks = blocklist_rag(
                 blocks, ScanOpts(summaries=True, summary_threshold=-1)
             )
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             blocks, ScanOpts(summaries=True, summary_threshold=21)
         )
 
@@ -351,7 +353,7 @@ familiar with it.
 
         # apply scan rag
         THRESHOLD = 10
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             blocks_raw,
             ScanOpts(summaries=True, summary_threshold=THRESHOLD),
         )
@@ -365,7 +367,7 @@ familiar with it.
     def test_build_questions(self):
         # Test all headings have questions, except the root node
         blocks_raw: list[Block] = parse_markdown_text(document)
-        blocks = scan_rag(blocks_raw, ScanOpts(questions=True))
+        blocks = blocklist_rag(blocks_raw, ScanOpts(questions=True))
         root = blocks_to_tree(blocks)
         if not root:
             raise Exception("Invalid text in test")
@@ -406,7 +408,7 @@ familiar with it.
                 model="Debug/debug"
             ),
         )
-        blocks = scan_rag(blocks_raw, opts)
+        blocks = blocklist_rag(blocks_raw, opts)
         root = blocks_to_tree(blocks)
         if not root:
             raise Exception("Invalid text in test")
@@ -438,7 +440,7 @@ familiar with it.
     def test_build_titles(self):
         # Test all headings have questions
         blocks_raw: list[Block] = parse_markdown_text(document)
-        blocks = scan_rag(blocks_raw, ScanOpts(titles=True))
+        blocks = blocklist_rag(blocks_raw, ScanOpts(titles=True))
         root = blocks_to_tree(blocks)
         if not root:
             raise Exception("Invalid text in test")
@@ -467,7 +469,7 @@ familiar with it.
     def test_build_headingid(self):
         # Test all headings have headingid
         blocks_raw: list[Block] = parse_markdown_text(document)
-        blocks = scan_rag(blocks_raw, ScanOpts(headingid=True))
+        blocks = blocklist_rag(blocks_raw, ScanOpts(headingid=True))
         root = blocks_to_tree(blocks)
         if not root:
             raise Exception("Invalid text in test")
@@ -489,7 +491,7 @@ familiar with it.
     def test_build_textid(self):
         # test all text nodes have textid
         blocks_raw: list[Block] = parse_markdown_text(document)
-        blocks = scan_rag(blocks_raw, ScanOpts(textid=True))
+        blocks = blocklist_rag(blocks_raw, ScanOpts(textid=True))
         root = blocks_to_tree(blocks)
         if not root:
             raise Exception("Invalid text in test")
@@ -511,7 +513,7 @@ familiar with it.
     def test_build_UUID(self):
         # test all text nodes have textid
         blocks_raw: list[Block] = parse_markdown_text(document)
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             blocks_raw, ScanOpts(textid=True, UUID=True)
         )
 
@@ -536,7 +538,7 @@ familiar with it.
     def test_build_UUID2(self):
         # test all text nodes have textid
         blocks_raw: list[Block] = parse_markdown_text(document)
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             blocks_raw, ScanOpts(textid=False, UUID=True)  # ignored
         )
 
@@ -614,7 +616,7 @@ This is a skipped text block.
 
     def test_skip_textid(self):
         """Test that textid is not added to skipped text blocks."""
-        blocks = scan_rag(self.blocks, ScanOpts(textid=True))
+        blocks = blocklist_rag(self.blocks, ScanOpts(textid=True))
         root = blocks_to_tree(blocks)
         self.assertIsNotNone(root)
 
@@ -645,7 +647,7 @@ This is a skipped text block.
 
     def test_skip_headingid(self):
         """Test that headingid is not added to skipped heading blocks."""
-        blocks = scan_rag(self.blocks, ScanOpts(headingid=True))
+        blocks = blocklist_rag(self.blocks, ScanOpts(headingid=True))
         root = blocks_to_tree(blocks)
         self.assertIsNotNone(root)
 
@@ -675,7 +677,7 @@ This is a skipped text block.
 
     def test_skip_questions(self):
         """Test that questions are not added to skipped headings."""
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             self.blocks,
             ScanOpts(questions=True, questions_threshold=1),
         )
@@ -698,7 +700,7 @@ This is a skipped text block.
 
     def test_skip_summaries(self):
         """Test that summaries are not added to skipped headings."""
-        blocks = scan_rag(
+        blocks = blocklist_rag(
             self.blocks, ScanOpts(summaries=True, summary_threshold=1)
         )
         root = blocks_to_tree(blocks)
@@ -720,7 +722,7 @@ This is a skipped text block.
 
     def test_skip_source(self):
         """Test that source is not added to skipped heading blocks."""
-        blocks = scan_rag(self.blocks, opts)
+        blocks = blocklist_rag(self.blocks, opts)
         root = blocks_to_tree(blocks)
         self.assertIsNotNone(root)
 
@@ -786,7 +788,7 @@ Final text block.
         blocks: list[Block] = parse_markdown_text(markdown_text)
         self.assertTrue(blocks)
 
-        blocks = scan_rag(blocks, ScanOpts(textid=True))
+        blocks = blocklist_rag(blocks, ScanOpts(textid=True))
         root = blocks_to_tree(blocks)
         self.assertIsNotNone(root)
 
@@ -900,7 +902,7 @@ bad: yaml: structure:
 
     def test_file_preserved_on_processing_failure(self):
         """
-        Test that original file is preserved when scan_rag returns
+        Test that original file is preserved when blocklist_rag returns
         empty list (processing failure).
         """
         from lmm.scan.scan_rag import markdown_rag
@@ -912,8 +914,10 @@ bad: yaml: structure:
 
         logger = LoglistLogger()
 
-        # Mock scan_rag to simulate processing failure
-        with patch('lmm.scan.scan_rag.scan_rag') as mock_scan_rag:
+        # Mock blocklist_rag to simulate processing failure
+        with patch(
+            'lmm.scan.scan_rag.blocklist_rag'
+        ) as mock_scan_rag:
             mock_scan_rag.return_value = []  # Empty list = failure
 
             markdown_rag(

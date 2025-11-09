@@ -33,7 +33,7 @@ from lmm.utils.logging import LoggerBase, get_logger
 logger: LoggerBase = get_logger(__name__)
 
 
-def scan(blocks: list[Block]) -> list[Block]:
+def blocklist_scan(blocks: list[Block]) -> list[Block]:
     """General check that the markdown is suitable for work,
     returning a list of blocks with a header block first.
 
@@ -173,7 +173,7 @@ def markdown_scan(
             pass
 
     # call naked version
-    blocks = scan(blocks)
+    blocks = blocklist_scan(blocks)
     if not blocks:
         return []
 
@@ -189,6 +189,46 @@ def markdown_scan(
             pass
 
     return blocks
+
+
+def scan(
+    sourcefile: str | Path,
+    save: bool | str | Path = True,
+    *,
+    max_size_mb: float = 50.0,
+    warn_size_mb: float = 10.0,
+    logger: LoggerBase = logger,
+) -> None:
+    """General check that the markdown is suitable for work,
+    returning a list of blocks with a header block first.
+
+    Args:
+        sourcefile: the file to load the markdown from
+        save: if False, does not save; if True, saves back to
+            original markdown file; if a filename, saves to
+            file.
+        max_size_mb: the max size, in MB, of the file to load
+        warn_size_mb: the size of the input file that results in
+            a warning
+        logger: a logger object (defaults to console logging)
+
+    Returns:
+        the processed list of blocks.
+
+    Note:
+        this is a stub of markdown_scan for interface building
+    """
+
+    try:
+        markdown_scan(
+            sourcefile,
+            save,
+            max_size_mb=max_size_mb,
+            warn_size_mb=warn_size_mb,
+            logger=logger,
+        )
+    except Exception as e:
+        logger.error(str(e))
 
 
 if __name__ == "__main__":
