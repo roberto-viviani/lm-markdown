@@ -678,6 +678,92 @@ class TextNode(MarkdownNode):
         """Set the content of the node"""
         self.block.content = content
 
+    def get_metadata(self, key: str | None = None) -> MetadataDict:
+        """
+        Get the metadata of the current node. If the text node has no
+        metadata, the metadata of the heading.
+
+        Returns:
+            a conformant dictionary.
+        """
+        if not key:
+            return copy.deepcopy(self.metadata)
+        elif self.metadata and key in self.metadata:
+            return {key: self.metadata[key]}
+        elif (
+            self.parent is not None
+            and self.parent.metadata
+            and key in self.parent.metadata
+        ):
+            return {key: self.parent.metadata[key]}
+        return {}
+
+    def get_metadata_for_key(
+        self, key: str, default: MetadataValue = None
+    ) -> MetadataValue:
+        """
+        Get the key value in the metadata of the current node. If the
+        key is not in the node, return the key of the heading.
+
+        Args:
+            key: the key for which the metadata is searched
+            default: a default value if the key is absent
+
+        Returns:
+            the key value, or a default value if the key is not
+                found (None if no default specified).
+        """
+        if key in self.metadata:
+            return self.metadata[key]
+        elif self.parent is not None and key in self.parent.metadata:
+            return self.parent.metadata[key]
+        return default
+
+    def get_metadata_string_for_key(
+        self, key: str, default: str | None = None
+    ) -> str | None:
+        """
+        Get the string representation of the key value in the
+        metadata of the current node. If the value is a dict
+        of list, return None. If the key is not present, return
+        a default value. If the key is not in the metadata,
+        return the key value of the heading.
+
+        Args:
+            key: the key for which the metadata is searched
+            default: a default value if the key is absent
+
+        Returns:
+            the key value, a default value if the key is not
+                found (None if no default specified). If the value
+                is not a primitive value of the int, float, str, or
+                bool type, returns None.
+        """
+        if key in self.metadata:
+            value: MetadataValue = self.metadata[key]
+            if is_metadata_primitive(value):
+                return str(value)
+            else:
+                return None
+        elif self.parent is not None and key in self.parent.metadata:
+            value: MetadataValue = self.parent.metadata[key]
+            if is_metadata_primitive(value):
+                return str(value)
+            else:
+                return None
+        return default
+
+    def set_metadata_for_key(
+        self, key: str, value: MetadataValue
+    ) -> None:
+        """Set the metadata value at key of the current node.
+
+        Args:
+            key: the key where the value should be set
+            value: the metadata value
+        """
+        self.metadata[key] = value
+
     def get_info(self, indent: int = 0) -> str:
         """
         Reports information about a node, including its type, content,
