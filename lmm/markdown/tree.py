@@ -1296,6 +1296,19 @@ def propagate_content(
     return root_node
 
 
+# utility to get a reference to node types ------------------------
+
+
+def get_text_nodes(root: MarkdownNode) -> list[TextNode]:
+    """Return (references to) text nodes in tree"""
+    return traverse_tree_nodetype(root, lambda x: x, TextNode)
+
+
+def get_heading_nodes(root: MarkdownNode) -> list[HeadingNode]:
+    """Return (references to) heading nodes in tree"""
+    return traverse_tree_nodetype(root, lambda x: x, HeadingNode)
+
+
 # utilities to load and save to file ------------------------------
 def load_tree(source: str | Path, logger: LoggerBase) -> MarkdownTree:
     """Load a pandoc markdown file or string into a tree.
