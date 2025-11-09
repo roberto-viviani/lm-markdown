@@ -225,6 +225,18 @@ class TestValidations(unittest.TestCase):
         self.assertIn("The content of error", logs[0])
         self.assertIn("Fix before continuing", logs[1])
 
+    def test_no_rag_options(self):
+        # test valid blocklist produced from just heading
+        blocks: list[Block] = parse_markdown_text("# Heading 1")
+        opts = ScanOpts()  # empty scan opts
+
+        logger = LoglistLogger()
+        blocks = scan_rag(blocks, opts, logger)
+        self.assertGreater(logger.count_logs(), 0)
+        self.assertIn(
+            "No RAG changes specified", logger.get_logs()[-1]
+        )
+
 
 class TestBuilds(unittest.TestCase):
 

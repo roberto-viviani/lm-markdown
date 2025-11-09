@@ -249,6 +249,17 @@ def scan_rag(
         logger.info("scan_rag: text id's built to form UUID")
         build_textids = True
 
+    if not (
+        build_titles
+        or build_questions
+        or build_summaries
+        or build_textids
+        or build_headingids
+        or build_UUID
+    ):
+        logger.info("No RAG changes specified for document.")
+        return blocks
+
     # Validate for lm markdown
     blocks = scan(blocks)
 
