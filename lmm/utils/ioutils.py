@@ -223,3 +223,72 @@ def parse_external_boolean(value: object) -> bool:
         # Handle other string interpretations as needed
     # Fallback to Python's default truthiness for other types
     return bool(value)
+
+
+def list_files_with_extensions(
+    folder_path: str | Path, extensions: str
+) -> list[str]:
+    """
+    Lists all files in a given folder that match a set of specified extensions.
+
+    Args:
+        folder_path: The full path to the folder to search.
+        extensions: A semicolon-separated string of file extensions
+            (e.g., ".txt;.md;py"). Extensions may or may not start with a dot.
+
+    Returns:
+        A list of full paths (as strings) for all matching files. Returns an
+        empty list if no files are found.
+
+    Raises:
+        FileNotFoundError: If the specified folder_path does not exist.
+        NotADirectoryError: If the specified folder_path is not a directory.
+        ValueError: If the extensions string contains invalid characters for
+            a filename.
+    """
+    # 1. Validate folder path
+    p_folder = Path(folder_path)
+    if not p_folder.exists():
+        raise FileNotFoundError(
+            f"The folder does not exist: '{folder_path}'"
+        )
+    if not p_folder.is_dir():
+        raise NotADirectoryError(
+            f"The specified path is not a directory: '{folder_path}'"
+        )
+
+    # 2. Validate and process extensions
+    if not extensions:
+        return []
+
+    # Define invalid characters for filenames on Windows and Unix-like systems
+    invalid_chars = r'<>:"/\|?*' + "".join(map(chr, range(32)))
+
+    processed_extensions: set[str] = set()
+    for ext in extensions.split(';'):
+        ext = ext.strip()
+        if not ext:
+            continue
+
+        # Check for invalid characters
+        if any(char in invalid_chars for char in ext):
+            raise ValueError(
+                f"Invalid character found in extension '{ext}'. Extensions cannot "
+                f"contain any of the following: {invalid_chars}"
+            )
+
+        # Prepend dot if missing
+        if not ext.startswith('.'):
+            processed_extensions.add('.' + ext)
+        else:
+            processed_extensions.add(ext)
+
+    # 3. Find matching files
+    matching_files: list[str] = [
+        str(file_path)
+        for file_path in p_folder.iterdir()
+        if file_path.is_file()
+        and file_path.suffix in processed_extensions
+    ]
+
+    return matching_files
