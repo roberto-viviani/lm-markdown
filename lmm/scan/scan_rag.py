@@ -270,7 +270,7 @@ def blocklist_rag(
             + "should not return an empty list"
         )
     if len(blocks) == 1 and isinstance(blocks[0], ErrorBlock):
-        logger.error("Load failed:\n" + blocks[0].get_content())
+        logger.error("Load failed:\n" + str(blocks[0].get_content()))
         return []
     if blocklist_haserrors(blocks):
         # convert markdown errors into logger errors
@@ -409,8 +409,9 @@ def markdown_rag(
     warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
 ) -> list[Block]:
-    """Carries out the interaction with the language model,
-    returning a list of blocks with a header block first.
+    """
+    Scans the markdown file and adds information required for the
+    ingestion in the vector database.
 
     opts defines what operations are conducted on the document,
     but if the header of the document contains an opts field,
@@ -436,6 +437,9 @@ def markdown_rag(
         warn_size_mb: the size of the input file that results in
             a warning
         logger: a logger object. Defaults to console logger.
+
+    Returns:
+        a list of blocks, starting with a header block.
 
     Note: if an error occurs and the blocklist becomes empty,
         it does not alter the source file.
