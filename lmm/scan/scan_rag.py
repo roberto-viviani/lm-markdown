@@ -50,6 +50,7 @@ from lmm.markdown.parse_markdown import (
     blocklist_errors,
     blocklist_copy,
 )
+from lmm.markdown.blockutils import clear_metadata_properties
 from lmm.markdown.tree import (
     MarkdownNode,
     HeadingNode,
@@ -85,6 +86,7 @@ from lmm.scan.scan_keys import (
     OPTIONS_KEY,
     SKIP_KEY,
     WARNING_KEY,
+    TITLES_TEMP_KEY,
 )
 
 from lmm.utils.logging import LoggerBase, get_logger
@@ -291,6 +293,9 @@ def blocklist_rag(
         return []
     logger.info("Processing " + root.get_content())
 
+    # add titles for internal use
+    add_titles_to_headings(root, logger, key=TITLES_TEMP_KEY)
+
     # add docid
     if DOCID_KEY not in root.metadata:
         # generate a random string to form doc id
@@ -395,6 +400,9 @@ def blocklist_rag(
 
     # Re-create blocklist
     blocks = tree_to_blocks(root)
+
+    # remove internal titles
+    blocks = clear_metadata_properties(blocks, [TITLES_TEMP_KEY])
 
     return blocks
 

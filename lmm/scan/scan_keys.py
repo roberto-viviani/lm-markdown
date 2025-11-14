@@ -20,6 +20,7 @@ GROUP_UUID_KEY = 'group_UUID'
 SOURCE_KEY = 'source'
 SKIP_KEY = 'skip'
 WARNING_KEY = 'WARNING'
+TITLES_TEMP_KEY = "~__titles__"
 
 TITLES_KEY = 'titles'
 QUESTIONS_KEY = 'questions'

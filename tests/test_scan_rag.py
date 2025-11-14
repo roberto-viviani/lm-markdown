@@ -896,7 +896,8 @@ bad: yaml: structure:
         )
 
         # Verify file was saved with error blocks but not with processed content
-        final = open(self.test_file, 'r', encoding='utf-8').read()
+        with open(self.test_file, 'r', encoding='utf-8') as f:
+            final = f.read()
         # The file should contain error information
         self.assertIn('---', final)
 
@@ -1152,11 +1153,13 @@ This is test content.
         )
 
         # Check file1 has textid
-        content1 = open(file1, 'r', encoding='utf-8').read()
+        with open(file1, 'r', encoding='utf-8') as f:
+            content1 = f.read()
         self.assertIn('textid', content1)
 
         # Check file2 has headingid
-        content2 = open(file2, 'r', encoding='utf-8').read()
+        with open(file2, 'r', encoding='utf-8') as f:
+            content2 = f.read()
         self.assertIn('headingid', content2)
 
     def test_empty_file_handling(self):

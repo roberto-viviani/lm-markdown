@@ -18,7 +18,7 @@ from lmm.markdown.tree import (
 )
 from lmm.utils.hash import base_hash
 from lmm.utils.logging import LoggerBase, ConsoleLogger
-from .scan_keys import TXTHASH_KEY, FREEZE_KEY
+from .scan_keys import TXTHASH_KEY, FREEZE_KEY, TITLES_TEMP_KEY
 
 
 def preproc_for_markdown(response: str) -> str:
@@ -94,6 +94,13 @@ def post_order_hashed_aggregation(
         node: MarkdownNode,
     ) -> TypeGuard[HeadingNode]:
         return isinstance(node, HeadingNode)
+
+    # this again for type checker, setting None to ""
+    def _node_property(
+        node: MarkdownNode, key: str, append: str = ""
+    ) -> str:
+        prpty: str | None = node.get_metadata_string_for_key(key, "")
+        return (prpty + append) if prpty else ""
 
     # Validate output_key (treated as coding error)
     if not output_key or not output_key.strip():
@@ -193,6 +200,13 @@ def post_order_hashed_aggregation(
                     and hash_key in node.metadata
                 ):
                     if node.metadata[hash_key] == new_hash:
+                        logger.info(
+                            _node_property(
+                                node,
+                                TITLES_TEMP_KEY,
+                                " skipped: text unchanged",
+                            )
+                        )
                         any_content_processed = True
                         return
             # If not hashed, check that output is already there
@@ -203,10 +217,20 @@ def post_order_hashed_aggregation(
                     and node.metadata[output_key]
                 ):
                     any_content_processed = True
+                    logger.info(
+                        _node_property(
+                            node,
+                            TITLES_TEMP_KEY,
+                            " skipped: " + output_key + " present",
+                        )
+                    )
                     return
 
             # the hash differs or the output is missing. we need to
             # recompute
+            logger.info(
+                "Aggregating " + _node_property(node, TITLES_TEMP_KEY)
+            )
             synth_content = aggregate_func(joined_content)
             if not synth_content:
                 return
@@ -229,14 +253,21 @@ def post_order_hashed_aggregation(
     # Warn if no content was processed (all nodes were filtered out,
     # or aggregate_func refused to compute aggregation)
     if not any_content_processed:
-        logger.warning(
-            "No aggregation was performed. This may indicate an "
-            "overly restrictive filter, non-aggregable metadata, "
-            "or an empty/small document.",
+        heading_titles: str = _node_property(
+            root_node, TITLES_TEMP_KEY, ": "
         )
-    # else:
-    #     print("Collected content:")
-    #     print("\n".join(any_content_processed))
+        if root_node.is_root_node():
+            logger.warning(
+                heading_titles
+                + "No aggregation was performed. This may indicate an "
+                "overly restrictive filter, non-aggregable metadata, "
+                "or an empty/small document.",
+            )
+        else:
+            if len(root_node.get_text_children()) > 0:
+                logger.warning(
+                    heading_titles + "No aggregation was performed."
+                )
 
 
 def aggregate_hash(
