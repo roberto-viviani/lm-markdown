@@ -555,9 +555,11 @@ def format_pydantic_error_message(error_message: str) -> str:
     Returns:
         Cleaned error message without verbose help text
     """
-    lines = error_message.split('\n')
+    import re
+
+    lines: list[str] = error_message.split('\n')
     filtered_lines = [
-        line
+        re.sub(r'\[type=.*?\]', "", line)
         for line in lines
         if "For further information visit" not in line
     ]
