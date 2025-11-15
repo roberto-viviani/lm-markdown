@@ -227,8 +227,14 @@ def _create_runnable(
                     "These are questions the text answers."
                 )
             case 'check_content':
-                language_model_settings.provider_params = (
-                    _runnable_par_to_dict(model.params)
+                param_dict = _runnable_par_to_dict(model.params)
+                param_value = param_dict.pop(
+                    'allowed_content', ['statistics']
+                )
+                if isinstance(param_value, list):
+                    param_value = str(param_value[0])
+                language_model_settings.provider_params['message'] = (
+                    str(param_value)
                 )
             case _:
                 # generic fake chat model in all other cases
