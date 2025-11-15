@@ -369,7 +369,7 @@ def create_runnable(
         settings: LanguageModelSettings,
         kernel_name: KernelNames,
         system_prompt: str | None,
-        kwargs: dict[str, MetadataPrimitiveWithList] = {},
+        **kwargs: MetadataPrimitiveWithList,
     ) -> RunnableType:
         model: RunnableDefinition = RunnableDefinition(
             kernel_name=kernel_name,
@@ -419,7 +419,7 @@ def create_runnable(
                 settings.aux,
                 kernel_name,
                 "You are a helpful assistant",
-                kwargs,
+                **kwargs,
             )
         case str():
             # allows custom chat kernels to be constructed from custom
