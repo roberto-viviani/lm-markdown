@@ -282,20 +282,34 @@ def _create_embedding_instance(
             return OpenAIEmbeddings(model=model_name)
 
         case 'SentenceTransformers':
-            # not clear what may be missing, leave original error
+            from huggingface_hub.errors import LocalEntryNotFoundError
             from langchain_huggingface import HuggingFaceEmbeddings
 
             source_name = "sentence-transformers"
-            # Fix: model_name should remain a string, not converted
-            # to tuple
             full_model_name = f"{source_name}/{model_name}"
-            model_kwargs = {'device': 'cpu'}
+            model_kwargs = {'device': 'cpu', 'local_files_only': True}
             encode_kwargs = {'normalize_embeddings': True}
-            return HuggingFaceEmbeddings(
-                model_name=full_model_name,
-                model_kwargs=model_kwargs,
-                encode_kwargs=encode_kwargs,
-            )
+            model_: HuggingFaceEmbeddings
+            try:
+                model_ = HuggingFaceEmbeddings(
+                    model_name=full_model_name,
+                    model_kwargs=model_kwargs,
+                    encode_kwargs=encode_kwargs,
+                )
+            except LocalEntryNotFoundError:
+                print(
+                    f"downloading sentence transformer {model_name}"
+                )
+                model_kwargs = {
+                    'device': 'cpu',
+                    'local_files_only': False,
+                }
+                model_ = HuggingFaceEmbeddings(
+                    model_name=full_model_name,
+                    model_kwargs=model_kwargs,
+                    encode_kwargs=encode_kwargs,
+                )
+            return model_
 
 
 # Public interface----------------------------------------------
