@@ -71,8 +71,15 @@ class TestDefaultModels(unittest.TestCase):
             ),
         )
 
+    def test_check_content_invalid(self):
+        # Missing kernel params
+        with self.assertRaises(ValueError):
+            create_kernel("check_content")
+
     def test_check_content(self):
-        model = create_kernel("check_content")
+        model = create_kernel(
+            "check_content", allowed_content=["statictics"]
+        )
         self.assertEqual(
             model.get_name(),
             _get_name(

@@ -64,7 +64,7 @@ from lmm.config.config import (
     EmbeddingSettings,
     ModelSource,
 )
-from lmm.markdown.parse_yaml import MetadataPrimitive
+from lmm.markdown.parse_yaml import MetadataPrimitiveWithList
 
 
 # Factory function to create model. Here, the model definition is
@@ -93,7 +93,7 @@ def _create_model_instance(
                 ) from e
 
             # Build kwargs dict to handle optional parameters
-            kwargs = {
+            kwargs: dict[str, MetadataPrimitiveWithList | None] = {
                 "model_name": model_name,
                 "temperature": model.temperature,
                 "max_tokens_to_sample": model.max_tokens or 1024,
@@ -313,8 +313,12 @@ def _create_embedding_instance(
 
 
 # Public interface----------------------------------------------
-langchain_factory = LazyLoadingDict(_create_model_instance)
-langchain_embeddings = LazyLoadingDict(_create_embedding_instance)
+langchain_factory: LazyLoadingDict[
+    LanguageModelSettings, BaseChatModel
+] = LazyLoadingDict(_create_model_instance)
+langchain_embeddings: LazyLoadingDict[
+    EmbeddingSettings, Embeddings
+] = LazyLoadingDict(_create_embedding_instance)
 
 
 def create_model_from_spec(
@@ -324,7 +328,7 @@ def create_model_from_spec(
     max_tokens: int | None = None,
     max_retries: int = 2,
     timeout: float | None = None,
-    provider_params: dict[str, MetadataPrimitive] = {},
+    provider_params: dict[str, MetadataPrimitiveWithList] = {},
 ) -> BaseChatModel:
     """
     Create langchain model from specifications.

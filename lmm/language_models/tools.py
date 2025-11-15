@@ -94,7 +94,9 @@ KernelNames = Literal[
 
 # A functional returning the tool definitions. This is used for
 # the typed dictionary containing the prompt texts.
-def _create_tool(kernel_name: KernelNames) -> ToolDefinition:
+def _create_tool(
+    kernel_name: KernelNames, **kwargs: object | list[object]
+) -> ToolDefinition:
     match kernel_name:
         case "summarizer":  # --- kernel case definition
             return ToolDefinition(
@@ -160,19 +162,55 @@ YOUR RESPONSE:
 """,
             )
         case "check_content":  # --- kernel case definition
+            param: object | list[object] = kwargs.pop(
+                'allowed_content', None
+            )
+            match param:
+                case list():
+                    try:
+                        allowed_content: list[str] = [
+                            f"'{c}'" for c in param  # type: ignore
+                        ]
+                    except Exception as e:
+                        raise ValueError(
+                            "Kernel check_content: invalid provider_param"
+                        ) from e
+                case str():
+                    allowed_content = [param]
+                case None:
+                    allowed_content = []
+                case _:
+                    raise ValueError(
+                        "Invalid check_content kernel spec: "
+                        f"invalid provider_param: {param}"
+                    )
+
+            if not (allowed_content):
+                raise ValueError(
+                    "Invalid check_content kernel spec: "
+                    "missing provider_param"
+                )
+
+            content_list: str = ", ".join(allowed_content)
             return ToolDefinition(
                 name=kernel_name,
                 prompt="""
 Classify the category of the content of the following text. 
-Examples of categories are: 'statistics', 'medicine', 'software programming', 'apology', 'human interaction', 'general knowledge'. 
-
+Examples of categories are: """
+                + content_list
+                + """, 'apology', 'human interaction', 'general knowledge'. 
 
 Example: 
+TEXT CONTENT:
 "Thank you for your explanation"
+
+RESPONSE:
 'human interaction'
 
 TEXT CONTENT:
 {text}
+
+RESPONSE:
 """,
             )
         case _:  # do not remove this

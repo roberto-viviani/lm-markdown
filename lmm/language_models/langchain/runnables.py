@@ -100,6 +100,10 @@ from lmm.config.config import (
     LanguageModelSettings,
     EmbeddingSettings,
 )
+from lmm.markdown.parse_yaml import (
+    MetadataPrimitive,
+    MetadataPrimitiveWithList,
+)
 from .models import (
     create_model_from_settings,
     create_embedding_model_from_settings,
@@ -110,7 +114,41 @@ from ..tools import (
     ToolDefinition,
     KernelNames,
     tool_library,
+    _create_tool,  # type: ignore
 )
+
+RunnableParameterValue = (
+    MetadataPrimitive | tuple[MetadataPrimitive, ...]
+)
+RunnableParameterType = frozenset[tuple[str, RunnableParameterValue]]
+
+
+def _runnable_par_to_dict(
+    pars: RunnableParameterType,
+) -> dict[str, MetadataPrimitiveWithList]:
+    """Converts frozenset pars into dictionary"""
+    temp: dict[str, RunnableParameterValue] = dict(pars)
+    result: dict[str, MetadataPrimitiveWithList] = {}
+    for item in temp.items():
+        if isinstance(item[1], tuple):
+            result[item[0]] = list(item[1])
+        else:
+            result[item[0]] = item[1]
+    return result
+
+
+def _dict_to_runnable_par(
+    pars: dict[str, MetadataPrimitiveWithList],
+) -> RunnableParameterType:
+    """Convert pars into frozenset with tuple elements instead of lists"""
+    temp: dict[str, RunnableParameterValue] = {}
+    for item in pars.items():
+        value_: MetadataPrimitiveWithList = item[1]
+        if isinstance(value_, list):
+            temp[item[0]] = tuple(value_)
+        else:
+            temp[item[0]] = value_
+    return frozenset(temp.items())
 
 
 # Defines the runnable
@@ -120,6 +158,7 @@ class RunnableDefinition(BaseModel):
     kernel_name: KernelNames
     settings: LanguageModelSettings
     system_prompt_override: str | None = None
+    params: RunnableParameterType = frozenset()
 
     # required for hashability
     model_config = ConfigDict(frozen=True, extra='forbid')
@@ -140,9 +179,16 @@ def _create_runnable(
     and a language model as specified by a LanguageModelSettings."""
 
     # fetch the kernel definition from the library
-    kernel_definition: ToolDefinition = tool_library[
-        model.kernel_name
-    ]
+    # If there are params, we need to call _create_tool directly with them
+    if model.params:
+        params_dict = _runnable_par_to_dict(model.params)
+        kernel_definition: ToolDefinition = _create_tool(
+            model.kernel_name, **params_dict
+        )
+    else:
+        kernel_definition: ToolDefinition = tool_library[
+            model.kernel_name
+        ]
     system_prompt = (
         kernel_definition.system_prompt
         if model.system_prompt_override is None
@@ -181,8 +227,8 @@ def _create_runnable(
                     "These are questions the text answers."
                 )
             case 'check_content':
-                language_model_settings.provider_params['message'] = (
-                    "statistics"
+                language_model_settings.provider_params = (
+                    _runnable_par_to_dict(model.params)
                 )
             case _:
                 # generic fake chat model in all other cases
@@ -213,8 +259,12 @@ def _create_embedding(
 
 
 # global project-wide repository of kernels
-runnable_library = LazyLoadingDict(_create_runnable)
-embeddings_library = LazyLoadingDict(_create_embedding)
+runnable_library: LazyLoadingDict[
+    RunnableDefinition, RunnableSerializable[dict[str, str], str]
+] = LazyLoadingDict(_create_runnable)
+embeddings_library: LazyLoadingDict[EmbeddingSettings, Embeddings] = (
+    LazyLoadingDict(_create_embedding)
+)
 
 
 # Provides the shunting of the model to the major, minor, or aux
@@ -225,6 +275,7 @@ def create_runnable(
         dict[str, str] | LanguageModelSettings | Settings | None
     ) = None,
     system_prompt: str | None = None,
+    **kwargs: MetadataPrimitiveWithList,
 ) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
     """
     Creates a Langchain kernel (a 'runnable') by combining tools/prompts
@@ -318,11 +369,13 @@ def create_runnable(
         settings: LanguageModelSettings,
         kernel_name: KernelNames,
         system_prompt: str | None,
+        kwargs: dict[str, MetadataPrimitiveWithList] = {},
     ) -> RunnableType:
         model: RunnableDefinition = RunnableDefinition(
             kernel_name=kernel_name,
             settings=settings,
             system_prompt_override=system_prompt,
+            params=_dict_to_runnable_par(kwargs),
         )
         return runnable_library[model]
 
@@ -366,6 +419,7 @@ def create_runnable(
                 settings.aux,
                 kernel_name,
                 "You are a helpful assistant",
+                kwargs,
             )
         case str():
             # allows custom chat kernels to be constructed from custom

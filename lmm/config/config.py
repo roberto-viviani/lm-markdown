@@ -15,7 +15,7 @@ Expected behaviour:
 
 from pathlib import Path
 from typing import Any, Literal, Self
-from lmm.markdown.parse_yaml import MetadataPrimitive
+from lmm.markdown.parse_yaml import MetadataPrimitiveWithList
 from lmm.utils.logging import ExceptionConsoleLogger, LoggerBase
 
 from pydantic import (
@@ -89,7 +89,7 @@ class LanguageModelSettings(BaseModel):
     )
 
     # Provider-specific parameters
-    provider_params: dict[str, MetadataPrimitive] = Field(
+    provider_params: dict[str, MetadataPrimitiveWithList] = Field(
         default_factory=dict,
         description="Provider-specific parameters (e.g., frequency_penalty for OpenAI)",
     )
@@ -127,7 +127,9 @@ class LanguageModelSettings(BaseModel):
         max_tokens: int | None = None,
         max_retries: int | None = None,
         timeout: float | None = None,
-        provider_params: dict[str, MetadataPrimitive] | None = None,
+        provider_params: (
+            dict[str, MetadataPrimitiveWithList] | None
+        ) = None,
     ) -> 'LanguageModelSettings':
         return LanguageModelSettings(
             model=model if model is not None else self.model,

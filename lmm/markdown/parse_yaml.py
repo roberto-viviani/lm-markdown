@@ -47,12 +47,14 @@ import re
 # in the type definition, because , but defining recursive types is a
 # challenge with Pydantic and python versions
 MetadataPrimitive = str | int | bool | float
+MetadataPrimitiveWithList = (
+    MetadataPrimitive | list[MetadataPrimitive]
+)
 
 MetadataValue = (
     None
-    | MetadataPrimitive
-    | list[MetadataPrimitive]
-    | dict[str, MetadataPrimitive | list[MetadataPrimitive]]
+    | MetadataPrimitiveWithList
+    | dict[str, MetadataPrimitiveWithList]
 )
 MetadataDict = dict[str, MetadataValue]
 ParsedYaml = tuple[dict[str, MetadataValue], list[object]]
