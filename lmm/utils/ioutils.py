@@ -292,3 +292,31 @@ def list_files_with_extensions(
     ]
 
     return matching_files
+
+
+def check_allowed_content(
+    input_string: str, allowed_list: list[str]
+) -> bool:
+    """
+    Extracts strings delimited by single quotes from input_string and checks
+    if any of them are in the allowed_list.
+
+    Args:
+        input_string: The string to extract quoted content from.
+        allowed_list: List of strings to check against.
+
+    Returns:
+        True if any extracted string is in allowed_list, False otherwise.
+    """
+    import re
+
+    # Extract all strings delimited by single quotes
+    pattern = r"'([^']*)'"
+    extracted_strings = re.findall(pattern, input_string)
+
+    # Check if any extracted string is in the allowed list
+    for extracted in extracted_strings:
+        if extracted in allowed_list:
+            return True
+
+    return False
