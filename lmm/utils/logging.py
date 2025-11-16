@@ -323,6 +323,11 @@ class LoglistLogger(LoggerBase):
         """Clear the logs from the cache"""
         self.logs.clear()
 
+    def print_logs(self, level: int = 0) -> None:
+        logs: list[str] = self.get_logs(level)
+        for log in logs:
+            print(log)
+
 
 class ExceptionConsoleLogger(LoggerBase):
     """
