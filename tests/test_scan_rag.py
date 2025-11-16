@@ -560,6 +560,47 @@ familiar with it.
         )
         self.assertEqual(len(nodes), len(textnodes))
 
+    def test_get_changed_titles(self):
+        # Test all headings have questions, except the root node
+        from lmm.scan.scan_rag import get_changed_titles
+        from lmm.utils.logging import LoglistLogger
+
+        logger = LoglistLogger()
+
+        doc = """
+---
+title: doc
+---
+
+Some text here.
+
+# Title level one.
+
+## Title 1 level two.
+
+Text for 1 level two
+
+## Title 2 level two
+
+Text for 2 level two
+"""
+        blocks_raw: list[Block] = parse_markdown_text(doc)
+        # add questions to create hash
+        blocks: list[Block] = blocklist_rag(
+            blocks_raw,
+            ScanOpts(questions=True, questions_threshold=1),
+            logger=logger,
+        )
+
+        # now the text is marked with hashes
+        titles = get_changed_titles(blocks, logger=logger)
+        self.assertEqual(len(titles), 0)
+
+        # adding text will change heading two and parent
+        blocks.append(TextBlock.from_text("New text"))
+        titles = get_changed_titles(blocks, logger=logger)
+        self.assertEqual(len(titles), 2)
+
 
 class TestSkippedNodes(unittest.TestCase):
     # setup and teardown replace config.toml to avoid

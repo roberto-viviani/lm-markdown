@@ -801,6 +801,83 @@ def add_summaries(
     )
 
 
+def get_changed_titles(
+    blocks: list[Block], logger: LoggerBase
+) -> list[str]:
+    """List the titles of all changed text. This is the
+    headings that would be updated in a scan operation."""
+    from ..markdown.treeutils import (
+        get_nodes_with_metadata,
+        get_headingnodes,
+    )
+    from .scan_keys import TXTHASH_KEY
+    from ..utils.logging import LoglistLogger
+
+    internal_logger = LoglistLogger()
+
+    blocklist: list[Block] = blocklist_copy(blocks)
+    root: HeadingNode | None = blocks_to_tree(blocklist, logger)
+    if root is None:
+        return []
+
+    TITLES_KEY = "~__TITLES__"
+    OUTPUT_KEY = "~__OUTPUT__"
+
+    # check there are any hashes
+    nodes: list[HeadingNode] = get_nodes_with_metadata(
+        root, TXTHASH_KEY, HeadingNode
+    )
+    if not nodes:
+        logger.info(
+            "No hashes in document (the document has "
+            "not been scanned yet)."
+        )
+        return []
+
+    # add titles to report
+    add_titles_to_headings(root, internal_logger, key=TITLES_KEY)
+    if internal_logger.count_logs(level=2):
+        for log in internal_logger.get_logs(level=2):
+            logger.error(log)
+        return []
+
+    # execute hashing. Create output first as otherwise will
+    # be reformed irrespective of hash.
+    def _add_metadata_func(n: MarkdownNode) -> None:
+        n.metadata[OUTPUT_KEY] = "fixed"
+
+    post_order_traversal(root, _add_metadata_func)
+    post_order_hashed_aggregation(
+        root,
+        lambda _: "changed",
+        OUTPUT_KEY,
+        True,
+        logger=internal_logger,
+    )
+    if internal_logger.count_logs(level=2):
+        for log in internal_logger.get_logs(level=2):
+            logger.error(log)
+        return []
+
+    # get nodes when hash discrebancy led to recompute
+    nodes: list[HeadingNode] = get_headingnodes(
+        root,
+        True,
+        lambda n: n.get_metadata_string_for_key(OUTPUT_KEY, "")
+        == "changed"
+        and not n.is_header_node(),
+    )
+    print(len(nodes))
+
+    titles: list[str] = []
+    for n in nodes:
+        title: str | None = n.get_metadata_string_for_key(TITLES_KEY)
+        if title:
+            titles.append(title)
+
+    return titles
+
+
 if __name__ == "__main__":
     """Interactive loop to test module"""
     import sys
