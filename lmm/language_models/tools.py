@@ -171,6 +171,9 @@ YOUR RESPONSE:
                         allowed_content: list[str] = [
                             f"'{c}'" for c in param  # type: ignore
                         ]
+                        allowed_content = list(
+                            set(allowed_content)
+                        )  # unique
                     except Exception as e:
                         raise ValueError(
                             "Kernel check_content: invalid provider_param"
