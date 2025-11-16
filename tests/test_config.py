@@ -199,5 +199,146 @@ class TestSettings(unittest.TestCase):
         os.unlink("temp_config.toml")
 
 
+class TestGenericLoadSettings(unittest.TestCase):
+    """Test the generic load_settings functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from pydantic_settings import (
+            BaseSettings,
+            PydanticBaseSettingsSource,
+            SettingsConfigDict,
+            TomlConfigSettingsSource,
+        )
+        from pydantic import Field
+
+        # Define a custom settings class for testing
+        class CustomSettings(BaseSettings):
+            """A custom settings class for testing generics."""
+
+            custom_field: str = Field(
+                default="default_value",
+                description="A custom field for testing",
+            )
+            custom_number: int = Field(
+                default=42, description="A custom number field"
+            )
+
+            model_config = SettingsConfigDict(
+                toml_file="custom_config.toml",
+                extra='forbid',
+            )
+
+            @classmethod
+            def settings_customise_sources(
+                cls,
+                settings_cls: type[BaseSettings],
+                init_settings: PydanticBaseSettingsSource,
+                env_settings: PydanticBaseSettingsSource,
+                dotenv_settings: PydanticBaseSettingsSource,
+                file_secret_settings: PydanticBaseSettingsSource,
+            ) -> tuple[PydanticBaseSettingsSource, ...]:
+                """Customize the order of settings sources."""
+                return (
+                    init_settings,
+                    TomlConfigSettingsSource(settings_cls),
+                    env_settings,
+                )
+
+        self.CustomSettings = CustomSettings
+        self.test_file = "test_custom_config.toml"
+
+    def tearDown(self):
+        """Clean up test files."""
+        if os.path.exists(self.test_file):
+            os.unlink(self.test_file)
+
+    def test_generic_load_with_custom_settings(self):
+        """Test that load_settings works with a custom BaseSettings class."""
+        # Create a custom settings instance
+        custom = self.CustomSettings(
+            custom_field="test_value", custom_number=100
+        )
+
+        # Export to a test file
+        export_settings(custom, self.test_file)
+
+        # Load it back using the generic function
+        loaded = load_settings(
+            file_name=self.test_file,
+            settings_class=self.CustomSettings,
+        )
+
+        # Verify it loaded correctly
+        self.assertIsNotNone(loaded, "Settings should not be None")
+        self.assertIsInstance(
+            loaded,
+            self.CustomSettings,
+            "Should be CustomSettings instance",
+        )
+        self.assertEqual(
+            loaded.custom_field, "test_value", "Field should match"
+        )
+        self.assertEqual(
+            loaded.custom_number, 100, "Number should match"
+        )
+
+    def test_generic_type_inference(self):
+        """Test that type inference works correctly with generic function."""
+        # Create and export custom settings
+        custom = self.CustomSettings(
+            custom_field="inference_test", custom_number=999
+        )
+        export_settings(custom, self.test_file)
+
+        # Load with explicit type
+        loaded = load_settings(
+            file_name=self.test_file,
+            settings_class=self.CustomSettings,
+        )
+
+        self.assertIsNotNone(loaded)
+        # These attribute accesses should not raise AttributeError
+        field_value: str = loaded.custom_field
+        number_value: int = loaded.custom_number
+
+        self.assertEqual(field_value, "inference_test")
+        self.assertEqual(number_value, 999)
+
+    def test_backward_compatibility_default_settings(self):
+        """Test that default Settings class still works (backward compatibility)."""
+        # Create and export default settings
+        settings = Settings()
+        test_file = "test_default_compat_config.toml"
+
+        try:
+            export_settings(settings, test_file)
+
+            # Load without specifying settings_class (should default to Settings)
+            loaded = load_settings(file_name=test_file)
+
+            self.assertIsNotNone(
+                loaded, "Settings should not be None"
+            )
+            self.assertIsInstance(
+                loaded, Settings, "Should be Settings instance"
+            )
+            self.assertTrue(
+                hasattr(loaded, 'major'),
+                "Should have 'major' attribute",
+            )
+            self.assertTrue(
+                hasattr(loaded, 'minor'),
+                "Should have 'minor' attribute",
+            )
+            self.assertTrue(
+                hasattr(loaded, 'aux'), "Should have 'aux' attribute"
+            )
+
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+
+
 if __name__ == "__main__":
     unittest.main()

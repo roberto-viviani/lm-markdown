@@ -14,7 +14,7 @@ Expected behaviour:
 """
 
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, TypeVar, cast
 from lmm.markdown.parse_yaml import MetadataPrimitiveWithList
 from lmm.utils.logging import ExceptionConsoleLogger, LoggerBase
 
@@ -46,6 +46,9 @@ SparseModel = Literal['prithivida/Splade_PP_en_v1', 'Qdrant/bm25']
 
 # Constants for better maintainability
 DEFAULT_CONFIG_FILE = "config.toml"
+
+# TypeVar for generic settings loading
+T = TypeVar('T', bound=BaseSettings)
 
 
 class LanguageModelSettings(BaseModel):
@@ -420,11 +423,14 @@ def export_settings(
 
 def create_default_config_file(
     file_path: str | Path | None = None,
+    settings_class: type[T] = Settings,  # type: ignore[assignment]
 ) -> None:
     """Create a default settings file.
 
     Args:
         file_path: Target file path (defaults to config.toml)
+        settings_class: The settings class to instantiate (defaults to Settings).
+            Must be a subclass of pydantic_settings.BaseSettings.
 
     Raises:
         ImportError: If tomlkit is not available
@@ -438,6 +444,12 @@ def create_default_config_file(
 
         # Creates custom config file
         create_default_settings_file(file_path="custom_config.toml")
+
+        # Creates config file with custom settings class
+        create_default_settings_file(
+            file_path="custom_config.toml",
+            settings_class=CustomSettings
+        )
         ```
     """
     if file_path is None:
@@ -447,10 +459,12 @@ def create_default_config_file(
 
     if file_path.exists():
         # otherwise, it will be read in
+        print("Deleting old configuration file...")
         file_path.unlink()
 
-    settings = Settings()
+    settings: T = settings_class()
 
+    print("Saving new config file: " + str(file_path))
     export_settings(settings, file_path)
 
 
@@ -471,15 +485,20 @@ def load_settings(
     *,
     file_name: str | Path | None = None,
     logger: LoggerBase = ExceptionConsoleLogger(),
-) -> Settings | None:
+    settings_class: type[T] = Settings,  # type: ignore[assignment]
+) -> T | None:
     """Load settings from TOML file.
+
+    This function is generic and can load any BaseSettings subclass.
 
     Args:
         file_name: Path to settings file (defaults to config.toml)
         logger: logger to use. Defaults to a exception-raising logger.
+        settings_class: The settings class to instantiate (defaults to Settings).
+            Must be a subclass of pydantic_settings.BaseSettings.
 
     Returns:
-        Loaded settings object, or None if exception raised.
+        Loaded settings object of type settings_class, or None if exception raised.
 
     Note:
         Use of an ExceptionConsoleLogger still requires to check that
@@ -505,6 +524,19 @@ def load_settings(
             raise ValueError("Could not read config.toml")
         ```
 
+    Example:
+        Using with custom settings class:
+
+        ```python
+        class CustomSettings(BaseSettings):
+            custom_field: str = "default"
+
+        custom = load_settings(
+            file_name="custom_config.toml",
+            settings_class=CustomSettings
+        )
+        ```
+
     """
     if file_name is None:
         file_name = DEFAULT_CONFIG_FILE
@@ -517,7 +549,7 @@ def load_settings(
 
     try:
         # Create a temporary settings class with the specified file
-        class TempSettings(Settings):
+        class TempSettings(settings_class):  # type: ignore[misc, valid-type]
             model_config = SettingsConfigDict(
                 toml_file=str(file_path),
                 env_prefix="LMM_",
@@ -526,7 +558,7 @@ def load_settings(
                 extra='allow',
             )
 
-        return TempSettings()
+        return cast(T, TempSettings())
     except TOMLDecodeError:
         logger.error(
             "An invalid value was found in the config file "
