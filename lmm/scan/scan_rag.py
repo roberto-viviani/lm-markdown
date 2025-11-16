@@ -179,6 +179,18 @@ class ScanOpts(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
+# function used to skip over when SKIP_KEY is true
+def _filt_func(n: MarkdownNode) -> bool:
+    """To use in aggregate function to exclude nodes with
+    SKIP_KEY in metadata"""
+    flag = bool(
+        n.fetch_metadata_for_key(SKIP_KEY, False, False)
+        if isinstance(n, HeadingNode)
+        else n.fetch_metadata_for_key(SKIP_KEY, False)
+    )
+    return not flag
+
+
 def blocklist_rag(
     blocks: list[Block],
     opts: ScanOpts = ScanOpts(),
@@ -228,17 +240,6 @@ def blocklist_rag(
         blocks = scan_rag(blocks, opts)
         ```
     """
-
-    # function used to skip over when SKIP_KEY is true
-    def _filt_func(n: MarkdownNode) -> bool:
-        """To use in aggregate function to exclude nodes with
-        SKIP_KEY in metadata"""
-        flag = bool(
-            n.fetch_metadata_for_key(SKIP_KEY, False, False)
-            if isinstance(n, HeadingNode)
-            else n.fetch_metadata_for_key(SKIP_KEY, False)
-        )
-        return not flag
 
     # Validation
     build_titles = bool(opts.titles)
@@ -852,6 +853,7 @@ def get_changed_titles(
         lambda _: "changed",
         OUTPUT_KEY,
         True,
+        filter_func=_filt_func,
         logger=internal_logger,
     )
     if internal_logger.count_logs(level=2):
@@ -859,7 +861,7 @@ def get_changed_titles(
             logger.error(log)
         return []
 
-    # get nodes when hash discrebancy led to recompute
+    # get nodes when hash discrepancy led to recompute
     nodes: list[HeadingNode] = get_headingnodes(
         root,
         True,
@@ -867,7 +869,6 @@ def get_changed_titles(
         == "changed"
         and not n.is_header_node(),
     )
-    print(len(nodes))
 
     titles: list[str] = []
     for n in nodes:
