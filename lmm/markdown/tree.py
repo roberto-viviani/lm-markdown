@@ -191,6 +191,19 @@ class MarkdownNode(ABC):
         """Set text of headings or of text nodes."""
         pass
 
+    def has_metadata_key(
+        self,
+        key: str,
+        inherit: bool = False,
+        include_header: bool = False,
+    ) -> bool:
+        if inherit:
+            return (
+                self.fetch_metadata_for_key(key, include_header)
+                is not None
+            )
+        return bool(self.metadata) and (key in self.metadata)
+
     def get_metadata(self, key: str | None = None) -> MetadataDict:
         """
         Get the metadata of the current node. For the header node,
