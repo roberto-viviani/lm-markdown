@@ -103,12 +103,12 @@ def post_order_hashed_aggregation(
         return (prpty + append) if prpty else ""
 
     # Validate output_key (treated as coding error)
-    output_key = output_key.strip()
-    if not output_key:
+    if not output_key or not output_key.strip():
         raise ValueError(
             "output_key must be a non-empty string. "
             f"Received: {repr(output_key)}"
         )
+    output_key = output_key.strip()
 
     # Validate that output_key and hash_key are different when
     # hashing is enabled (treated as coding error)
