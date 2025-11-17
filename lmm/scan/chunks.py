@@ -387,7 +387,7 @@ def blocks_to_chunks(
     # collect or create required metadata for RAG: uuid, textid
     blocks: list[Block] = blocklist_rag(
         blocklist_copy(blocklist),
-        ScanOpts(textid=True, UUID=True),
+        ScanOpts(textid=True, textUUID=True),
         logger,
     )
     if blocklist_haserrors(blocks):

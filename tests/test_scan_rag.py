@@ -514,7 +514,7 @@ familiar with it.
         # test all text nodes have textid
         blocks_raw: list[Block] = parse_markdown_text(document)
         blocks = blocklist_rag(
-            blocks_raw, ScanOpts(textid=True, UUID=True)
+            blocks_raw, ScanOpts(textid=True, textUUID=True)
         )
 
         root = blocks_to_tree(blocks)
@@ -539,7 +539,8 @@ familiar with it.
         # test all text nodes have textid
         blocks_raw: list[Block] = parse_markdown_text(document)
         blocks = blocklist_rag(
-            blocks_raw, ScanOpts(textid=False, UUID=True)  # ignored
+            blocks_raw,
+            ScanOpts(textid=False, textUUID=True),  # ignored
         )
 
         root = blocks_to_tree(blocks)
@@ -559,6 +560,31 @@ familiar with it.
             root, lambda x: x, TextNode
         )
         self.assertEqual(len(nodes), len(textnodes))
+
+    def test_build_headingUUID(self):
+        # test all text nodes have textid
+        blocks_raw: list[Block] = parse_markdown_text(document)
+        blocks = blocklist_rag(
+            blocks_raw, ScanOpts(textid=True, headingUUID=True)
+        )
+
+        root = blocks_to_tree(blocks)
+        if not root:
+            raise Exception("Invalid text in test")
+
+        nodes = get_nodes_with_metadata(root, UUID_KEY)
+        self.assertTrue(len(nodes) > 0)
+        ids: list[str] = []
+        for n in nodes:
+            self.assertTrue(isinstance(n, HeadingNode))
+            ids.append(n.get_metadata_for_key(UUID_KEY))
+
+        self.assertEqual(len(nodes), len(set(ids)))
+
+        headingnodes: list[HeadingNode] = traverse_tree_nodetype(
+            root, lambda x: x, HeadingNode
+        )
+        self.assertEqual(len(nodes), len(headingnodes))
 
     def test_get_changed_titles(self):
         # Test all headings have questions, except the root node

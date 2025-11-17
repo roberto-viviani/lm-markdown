@@ -109,7 +109,8 @@ class ScanOpts(BaseModel):
         summaries_threshold: min word count to trigger summaries
         textid: adds a text id to text blocks
         headingid: adds a heading id to headings
-        UUID: adds a UUID to text blocks
+        textUUID: adds a UUID to text blocks
+        headingUUID: adds a UUID to headings
 
     Example of use:
         ```python
@@ -162,10 +163,15 @@ class ScanOpts(BaseModel):
         description="Add unique heading identifiers to heading blocks"
         + " for tracking and reference in the vector database",
     )
-    UUID: bool = Field(
+    textUUID: bool = Field(
         default=False,
         description="Add universally unique identifiers (UUIDs) to "
         + "text blocks for creation of id's in vector database",
+    )
+    headingUUID: bool = Field(
+        default=False,
+        description="Add universally unique identifiers (UUIDs) to "
+        + "heading blocks for creation of group id's in vector database",
     )
     language_model_settings: (
         Settings | LanguageModelSettings | None
@@ -247,10 +253,14 @@ def blocklist_rag(
     build_summaries = bool(opts.summaries)
     build_textids = bool(opts.textid)
     build_headingids = bool(opts.headingid)
-    build_UUID = bool(opts.UUID)
-    if build_UUID and (not build_textids):
+    build_textUUID = bool(opts.textUUID)
+    build_headingUUID = bool(opts.headingUUID)
+    if build_textUUID and (not build_textids):
         logger.info("scan_rag: text id's built to form UUID")
         build_textids = True
+    if build_headingUUID and (not build_headingids):
+        logger.info("scan_rag: text id's built to form UUID")
+        build_headingids = True
 
     if not (
         build_titles
@@ -258,7 +268,8 @@ def blocklist_rag(
         or build_summaries
         or build_textids
         or build_headingids
-        or build_UUID
+        or build_textUUID
+        or build_headingUUID
     ):
         logger.info("No RAG changes specified for document.")
         return blocks
@@ -319,8 +330,28 @@ def blocklist_rag(
         filt_func=_filt_func,
     )
 
-    # Add UUID to text nodes
-    def add_UUID_func(node: MarkdownNode) -> None:
+    # Add UUID to text and heading nodes
+    def add_headingUUID_func(node: MarkdownNode) -> None:
+        if not _filt_func(node):
+            return
+        if isinstance(node, HeadingNode):
+            uuid_base: str | None = node.get_metadata_string_for_key(
+                HEADINGID_KEY
+            )
+            if uuid_base is not None:
+                node.set_metadata_for_key(
+                    UUID_KEY,
+                    generate_uuid(uuid_base),
+                )
+            else:
+                # should not happen given we have generated TXTID's
+                logger.warning("Could not set uuid for object")
+
+    if build_headingUUID:
+        logger.info("Adding UUIDs to hedings.")
+        pre_order_traversal(root, add_headingUUID_func)
+
+    def add_textUUID_func(node: MarkdownNode) -> None:
         if not _filt_func(node):
             return
         if isinstance(node, TextNode):
@@ -336,9 +367,9 @@ def blocklist_rag(
                 # should not happen given we have generated TXTID's
                 logger.warning("Could not set uuid for object")
 
-    if build_UUID:
-        logger.info("Adding UUIDs to identify blocks.")
-        pre_order_traversal(root, add_UUID_func)
+    if build_textUUID:
+        logger.info("Adding UUIDs to text blocks.")
+        pre_order_traversal(root, add_textUUID_func)
 
     # Add source
     def add_source_func(node: MarkdownNode) -> None:
@@ -437,7 +468,8 @@ def markdown_rag(
             remove_messages (False)
             textid (False)    add textid to text blocks
             headingid (False) add headingid to headings
-            UUID (False)      add UUID to text blocks
+            textUUID (False)  add UUID to text blocks
+            headingUUID (False) add UUID to heading blocks
             pool_threshold (0) pooling of text blocks
         save: if False, does not save; if True, saves back to
             original markdown file; if a filename, saves to
