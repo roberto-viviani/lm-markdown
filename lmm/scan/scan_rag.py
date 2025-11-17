@@ -334,6 +334,8 @@ def blocklist_rag(
     def add_headingUUID_func(node: MarkdownNode) -> None:
         if not _filt_func(node):
             return
+        if node.has_metadata_key(UUID_KEY):
+            return
         if isinstance(node, HeadingNode):
             uuid_base: str | None = node.get_metadata_string_for_key(
                 HEADINGID_KEY
@@ -353,6 +355,8 @@ def blocklist_rag(
 
     def add_textUUID_func(node: MarkdownNode) -> None:
         if not _filt_func(node):
+            return
+        if node.has_metadata_key(UUID_KEY):
             return
         if isinstance(node, TextNode):
             uuid_base: str | None = node.get_metadata_string_for_key(
