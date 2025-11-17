@@ -110,6 +110,54 @@ def inherit_metadata(
     return node
 
 
+def bequeath_properties(
+    node: HeadingNode,
+    keys: list[str],
+    inherit: bool = False,
+    include_header: bool = False,
+    filter_func: Callable[[HeadingNode], bool] = lambda _: True,
+) -> HeadingNode:
+    """Extract a property from the metadata of a heading node and
+    bequeeth it into the child text nodes.
+
+    Args:
+        node: the root or branch node to work on
+        keys: the properties to be given to the text nodes
+        inherited: keys are bequeethed to grandchildren down
+            the tree.
+
+    Returns:
+        the root node of the modified branch
+
+    Note:
+        This function differs from inherit_metadata in that here
+        the keys that are inherited are specified.
+    """
+    from lmm.markdown.tree import post_order_traversal
+    from lmm.markdown.parse_yaml import MetadataValue
+
+    def process_node(n: HeadingNode) -> HeadingNode:
+        for child in n.get_text_children():
+            for k in keys:
+                value: MetadataValue = (
+                    child.fetch_metadata_for_key(k, include_header)
+                    if inherit
+                    else child.get_metadata_for_key(k)
+                )
+                if value:
+                    child.set_metadata_for_key(k, value)
+        return n
+
+    traverse_tree_nodetype(
+        node,
+        process_node,
+        HeadingNode,
+        filter_func,
+        post_order_traversal,
+    )
+    return node
+
+
 def propagate_property(
     node: HeadingNode,
     key: str,

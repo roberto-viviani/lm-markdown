@@ -205,7 +205,7 @@ class TestPropagateProperty(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree(blocks)
         if not root:
             raise (Exception("Invalid blocks"))
-        rootnode = propagate_property(root, key, True)
+        rootnode = propagate_property(root, key, add_key_info=True)
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 2)
         self.assertFalse(key in heading.metadata)
@@ -242,7 +242,9 @@ class TestPropagateProperty(unittest.TestCase):
             ),
             1,
         )
-        rootnode = propagate_property(root, key, False, True)
+        rootnode = propagate_property(
+            root, key, add_key_info=False, select=True
+        )
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 1)
         self.assertFalse(key in heading.metadata)
@@ -287,7 +289,9 @@ class TestPropagateProperty(unittest.TestCase):
             ),
             1,
         )
-        rootnode = propagate_property(root, key, False, True)
+        rootnode = propagate_property(
+            root, key, add_key_info=False, select=True
+        )
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 1)
         self.assertEqual(len(heading.get_heading_children()), 1)
@@ -325,7 +329,9 @@ class TestPropagateProperty(unittest.TestCase):
             ),
             1,
         )
-        rootnode = propagate_property(root, key, False, True)
+        rootnode = propagate_property(
+            root, key, add_key_info=False, select=True
+        )
         heading: HeadingNode = rootnode.get_heading_children()[0]
         self.assertEqual(len(heading.get_text_children()), 0)
         self.assertEqual(len(heading.get_heading_children()), 1)
@@ -337,7 +343,9 @@ class TestPropagateProperty(unittest.TestCase):
         root: MarkdownTree = blocks_to_tree([blocks[0]])
         if not root:
             raise (Exception("Invalid blocks"))
-        rootnode = propagate_property(root, key, False, False)
+        rootnode = propagate_property(
+            root, key, add_key_info=False, select=False
+        )
         self.assertEqual(rootnode.count_children(), 1)
         self.assertEqual(
             rootnode.get_text_children()[0].get_content(),
@@ -430,6 +438,27 @@ class TestInheritedProperty(unittest.TestCase):
             self.assertFalse("~chat" in t.metadata)
             self.assertFalse("questions" in t.metadata)
             self.assertFalse("summary" in t.metadata)
+
+    def test_bequeath(self):
+        blocks = blocklist_copy(blocklist)
+        root = blocks_to_tree(blocks)
+        if not root:
+            raise (Exception("Invalid blocks"))
+        # excludes ~chat, inherit rest
+        node = bequeath_properties(root, ["questions", "summary"])
+        textkids: list[TextNode] = node.get_heading_children()[
+            0
+        ].get_text_children()
+        for t in textkids:
+            self.assertFalse("~chat" in t.metadata)
+            self.assertTrue("questions" in t.metadata)
+            self.assertEqual(
+                t.metadata["questions"], metadata.content["questions"]
+            )
+            self.assertTrue("summary" in t.metadata)
+            self.assertEqual(
+                t.metadata["summary"], metadata.content["summary"]
+            )
 
 
 class TestMapTree(unittest.TestCase):
