@@ -113,6 +113,8 @@ def inherit_metadata(
 def propagate_property(
     node: HeadingNode,
     key: str,
+    *,
+    inherited_keys: list[str] = [],
     add_key_info: bool = True,
     select: bool = False,
 ) -> HeadingNode:
@@ -123,6 +125,7 @@ def propagate_property(
     Args:
         node: the root or branch node to work on
         key: the property to be moved into a text node
+        inherited_keys: the keys that the new text node inherits
         add_key_info: if True, the metadata of the added text child
             node will have a 'type' property with the value of the
             transferred property.
@@ -143,6 +146,11 @@ def propagate_property(
             content=str(n.metadata.pop(key)),
             metadata={'type': key} if add_key_info else {},
         )
+        for k in inherited_keys:
+            if n.has_metadata_key(k):
+                node.set_metadata_for_key(
+                    k, n.get_metadata_for_key(k)
+                )
         return node
 
     return propagate_content(
