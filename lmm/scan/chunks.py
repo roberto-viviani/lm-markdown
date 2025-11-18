@@ -429,11 +429,11 @@ def blocks_to_chunks(
         for key in annotation_model.inherited_properties:
             value = n.fetch_metadata_string_for_key(key, False)
             if value:
-                annlist.append(value)
+                annlist.append(value.strip())
         for key in annotation_model.own_properties:
             value = n.get_metadata_string_for_key(key)
             if value:
-                annlist.append(value)
+                annlist.append(value.strip())
 
         # metadata for payload
         meta: MetadataDict = copy.deepcopy(n.metadata)
@@ -441,7 +441,7 @@ def blocks_to_chunks(
             meta.pop(key, None)
         chunk: Chunk = Chunk(
             content=n.get_content(),
-            annotations="\n".join(annlist),
+            annotations=", ".join(annlist),
             uuid=str(meta.pop(UUID_KEY, "")),
             metadata=meta,
         )
