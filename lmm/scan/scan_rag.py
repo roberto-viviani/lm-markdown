@@ -33,6 +33,7 @@ Main superordinate functions:
     markdown_rag: applies scan_rag to file
 """
 
+import re
 from pathlib import Path
 from collections.abc import Callable
 from pydantic import BaseModel, ConfigDict, Field, validate_call
@@ -234,7 +235,7 @@ def blocklist_rag(
     Example of use:
         ```python
         opts = ScanOpts(titles = True) # add titles
-        blocks = scan_rag(blocks, opts)
+        blocks = blocklist_rag(blocks, opts)
 
         # override language model from config.toml
         opts = ScanOpts(
@@ -243,7 +244,7 @@ def blocklist_rag(
                 model = "OpenAI/gpt-4o"
             )
         )
-        blocks = scan_rag(blocks, opts)
+        blocks = blocklist_rag(blocks, opts)
         ```
     """
 
@@ -256,10 +257,10 @@ def blocklist_rag(
     build_textUUID = bool(opts.textUUID)
     build_headingUUID = bool(opts.headingUUID)
     if build_textUUID and (not build_textids):
-        logger.info("scan_rag: text id's built to form UUID")
+        logger.info("bloclist_rag: text id's built to form UUID")
         build_textids = True
     if build_headingUUID and (not build_headingids):
-        logger.info("scan_rag: text id's built to form UUID")
+        logger.info("blocklist_rag: text id's built to form UUID")
         build_headingids = True
 
     if not (
@@ -764,7 +765,10 @@ def add_questions(
                 "Error in using the language model to create "
                 "questions."
             )
-        return response
+
+        # replace numbers
+        pattern = r"\s*\d+[.)]?\s*"
+        return re.sub(pattern, " - ", response)
 
     # use for development/debug purposes
     quest_func: Callable[[str], str] = lambda x: (  # type: ignore # noqa: 841
