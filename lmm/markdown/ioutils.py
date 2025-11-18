@@ -71,6 +71,7 @@ Performance Characteristics:
 """
 
 import io
+import re
 from pathlib import Path
 from pydantic import validate_call
 
@@ -437,3 +438,44 @@ def _report_multiple_error_blocks(
                 ]
             )
         logger.warning("\n".join(error_parts))
+
+
+def convert_dollar_latex_delimiters(response: str) -> str:
+    r"""
+    Convert LaTeX delimiters from $$ and $ format to \[ \] and \( \) format.
+    Avoids converting escaped dollar signs (\$).
+    """
+
+    # Convert $$ expressions (display math) - avoid escaped \$$
+    # Negative lookbehind (?<!\\) ensures we don't match \$$
+    pattern = r'(?<!\\)\$\$\s*(.*?)\s*\$\$'
+    replacement = r'\\[\1\\]'
+    response = re.sub(pattern, replacement, response, flags=re.DOTALL)
+
+    # Convert $ expressions (inline math) - avoid escaped \$
+    pattern = r'(?<!\\)\$\s*(.*?)\s*\$'
+    replacement = r'\\(\1\\)'
+    response = re.sub(pattern, replacement, response, flags=re.DOTALL)
+
+    return response
+
+
+def convert_backscape_latex_delimiters(response: str) -> str:
+    r"""
+    Convert LaTeX delimiters from \[ \] and \( \) format to $$ and $ format.
+    This is the inverse of convert_latex_delimiters.
+    """
+
+    # Convert \[...\] expressions (display math) to $$...$$
+    # Match \[ followed by content, then \]
+    pattern = r'\\\[\s*(.*?)\s*\\\]'
+    replacement = r'$$\1$$'
+    response = re.sub(pattern, replacement, response, flags=re.DOTALL)
+
+    # Convert \(...\) expressions (inline math) to $...$
+    # Match \( followed by content, then \)
+    pattern = r'\\\(\s*(.*?)\s*\\\)'
+    replacement = r'$\1$'
+    response = re.sub(pattern, replacement, response, flags=re.DOTALL)
+
+    return response
