@@ -297,6 +297,8 @@ def blocklist_rag(
     # Preproc text blocks prior to annotations
     blocks = blocklist_copy(blocks)
 
+    # this removes metadata properties that are not relevant
+    # to RAG, such as chats
     if opts.remove_messages:
         blocks = blocklist_clear_messages(blocks)
 
@@ -309,7 +311,8 @@ def blocklist_rag(
     # add titles for internal use
     add_titles_to_headings(root, logger, key=TITLES_TEMP_KEY)
 
-    # add docid
+    # add docid. This should identify the document uniquely.
+    # It may be provided by the human user too.
     if DOCID_KEY not in root.metadata:
         # generate a random string to form doc id
         root.metadata[DOCID_KEY] = generate_random_string()
@@ -683,7 +686,7 @@ def add_id_to_nodes(
             to process
         base_hash (str, optional): A base hash to use for identifier
             generation. If not provided, a hash is generated from the
-            root node's content.
+            root node's content (and will differ from that content).
 
     Identifier Format:
     - For text blocks: "{base_hash}.{sequential_number}"
@@ -692,8 +695,8 @@ def add_id_to_nodes(
       Example: "abc123.h1", "abc123.h2"
 
     Note:
-        - Identifiers are always added irrespective of whether they
-            already exist in the node's metadata
+        - Identifiers are _always_ added irrespective of whether they
+            already exist in the node's metadata.
     """
 
     textid = bool(textid)
@@ -704,9 +707,15 @@ def add_id_to_nodes(
     if not base_hash:
         from lmm.utils.hash import base_hash as hash_func
 
-        base_hash = hash_func(root_node.get_content())
+        title: str = root_node.get_content()
+        docid: str = root_node.get_metadata_string_for_key(  # type: ignore
+            DOCID_KEY, title  # title is default if DOCID missing
+        )
+        # don't just use docid, make it same length and intuitively
+        # not something to tamper with.
+        base_hash = hash_func(docid)
 
-    counter = {'text': 0, 'heading': 0}
+    counter: dict[str, int] = {'text': 0, 'heading': 0}
     textkey = TEXTID_KEY
     headingkey = HEADINGID_KEY
 
