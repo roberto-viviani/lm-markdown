@@ -685,7 +685,7 @@ def _tokenizer(lines: list[str]) -> list[tuple[Token, str]]:
     for line in lines:
         for regex, token_type in regex_patterns:
             if regex.match(line):
-                tokens.append((Token(token_type), line))
+                tokens.append((Token(token_type), line.rstrip()))
                 break
     return tokens
 
