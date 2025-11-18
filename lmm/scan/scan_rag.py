@@ -776,8 +776,9 @@ def add_questions(
             )
 
         # replace numbers
-        pattern = r"\s*\d+[.)]?\s*"
-        return re.sub(pattern, " - ", response)
+        pattern = r"\s*\d+[.)]\s*"
+        response = re.sub(pattern, "~_~", response)
+        return " - ".join(response.split("~_~"))
 
     # use for development/debug purposes
     quest_func: Callable[[str], str] = lambda x: (  # type: ignore # noqa: 841
