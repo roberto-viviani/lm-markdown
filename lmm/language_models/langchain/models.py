@@ -287,7 +287,10 @@ def _create_embedding_instance(
 
             source_name = "sentence-transformers"
             full_model_name = f"{source_name}/{model_name}"
-            model_kwargs = {'device': 'cpu', 'local_files_only': True}
+            model_kwargs = {
+                'device': 'cpu',
+                'local_files_only': False,  # it does not throw the expected error if True
+            }
             encode_kwargs = {'normalize_embeddings': True}
             model_: HuggingFaceEmbeddings
             try:
