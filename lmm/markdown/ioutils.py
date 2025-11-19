@@ -460,7 +460,7 @@ def convert_dollar_latex_delimiters(response: str) -> str:
     return response
 
 
-def convert_backscape_latex_delimiters(response: str) -> str:
+def convert_backslash_latex_delimiters(response: str) -> str:
     r"""
     Convert LaTeX delimiters from \[ \] and \( \) format to $$ and $ format.
     This is the inverse of convert_latex_delimiters.
