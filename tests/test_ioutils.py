@@ -3,7 +3,10 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from lmm.utils.ioutils import list_files_with_extensions
+from lmm.utils.ioutils import (
+    list_files_with_extensions,
+    clean_text_concat,
+)
 
 
 class TestListFilesWithExtensions(unittest.TestCase):
@@ -138,6 +141,49 @@ class TestListFilesWithExtensions(unittest.TestCase):
         extensions = ".txt; .md\0"
         with self.assertRaises(ValueError):
             list_files_with_extensions(self.test_dir, extensions)
+
+
+class TestCleanTextConcat(unittest.TestCase):
+    """Unit tests for the clean_text_concat function."""
+
+    def test_standard_overlap(self):
+        """Test standard overlap merging with multiple segments."""
+        segments = [
+            "The quick brown fox",
+            "fox jumps over",
+            "jumps over the lazy dog.",
+        ]
+        result = clean_text_concat(segments)
+        expected = "The quick brown fox jumps over the lazy dog."
+        self.assertEqual(result, expected)
+
+    def test_subword_mismatch(self):
+        """Test that sub-word (partial) overlaps should NOT merge."""
+        segments = ["I have a ten", "entire day"]
+        result = clean_text_concat(segments)
+        # Should NOT merge into "I have a tentire day"
+        expected = "I have a ten entire day"
+        self.assertEqual(result, expected)
+
+    def test_punctuation_in_overlap(self):
+        """Test overlap that includes punctuation."""
+        segments = ["This is the end.", "end. Start new."]
+        result = clean_text_concat(segments)
+        expected = "This is the end. Start new."
+        self.assertEqual(result, expected)
+
+    def test_no_overlap(self):
+        """Test concatenation when there is no overlap between segments."""
+        segments = ["Hello world.", "My name is Python."]
+        result = clean_text_concat(segments)
+        expected = "Hello world. My name is Python."
+        self.assertEqual(result, expected)
+
+    def test_empty_list(self):
+        """Test with an empty list of segments."""
+        result = clean_text_concat([])
+        expected = ""
+        self.assertEqual(result, expected)
 
 
 if __name__ == "__main__":

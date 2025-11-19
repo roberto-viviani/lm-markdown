@@ -320,3 +320,118 @@ def check_allowed_content(
             return True
 
     return False
+
+
+def clean_text_concat(text_segments: list[str]) -> str:
+    """
+    Concatenates a list of strings, merging overlapping tails/heads
+    if the overlap constitutes at least one whole word.
+
+    The merge condition requires:
+    1. The tail of text A matches the head of text B.
+    2. The match represents a complete word boundary on both sides:
+       - The character preceding the overlap in A must not be alphanumeric (or A starts with the overlap).
+       - The character following the overlap in B must not be alphanumeric (or B ends with the overlap).
+    3. The overlap contains at least one alphanumeric character (to ensure it's "at least a word"
+       and not just whitespace/punctuation).
+
+    Args:
+        text_segments: A list of strings to concatenate.
+
+    Returns:
+        A single concatenated string with overlaps merged.
+    """
+    if not text_segments:
+        return ""
+
+    # Initialize with the first segment
+    result_text = text_segments[0]
+
+    for next_segment in text_segments[1:]:
+        result_text = _merge_segments(result_text, next_segment)
+
+    return result_text
+
+
+def _merge_segments(left: str, right: str) -> str:
+    """
+    Helper function to merge two strings handling strict word-boundary overlap.
+    """
+    # Optimization: We only care about the end of 'left' and start of 'right'
+    # We limit the check to the smaller of the two lengths.
+    max_overlap = min(len(left), len(right))
+
+    # Iterate from largest possible overlap down to 1
+    for i in range(max_overlap, 0, -1):
+        # 1. Check strict string equality
+        candidate = left[-i:]
+        if right.startswith(candidate):
+
+            # 2. Check "At least a word" content
+            # The overlap must contain at least one alphanumeric character.
+            # Otherwise, we might merge on just ". " or " ".
+            if not any(char.isalnum() for char in candidate):
+                continue
+
+            # 3. Check Left Boundary (in 'left' string)
+            # If the character immediately before the overlap is alphanumeric,
+            # we are slicing a word in half. (e.g. "content" -> overlap "tent" -> 'n' is alnum)
+            left_boundary_ok = True
+            if len(left) > i:
+                char_before = left[-(i + 1)]
+                if char_before.isalnum():
+                    left_boundary_ok = False
+
+            # 4. Check Right Boundary (in 'right' string)
+            # If the character immediately after the overlap is alphanumeric,
+            # we are slicing a word in half.
+            right_boundary_ok = True
+            if len(right) > i:
+                char_after = right[i]
+                if char_after.isalnum():
+                    right_boundary_ok = False
+
+            if left_boundary_ok and right_boundary_ok:
+                # Valid overlap found. Merge and return.
+                # We take 'left' as is, and append the non-overlapping part of 'right'.
+                return left + right[i:]
+
+    # If no valid overlap found, strictly concatenate with a separator if needed.
+    # Logic: If left ends with space or right starts with space, just concat.
+    # Otherwise add a space.
+    if left.endswith(" ") or right.startswith(" "):
+        return left + right
+    return left + " " + right
+
+
+if __name__ == "__main__":
+    # Test Cases to verify edge cases discussed
+
+    # 1. Standard Overlap
+    segments1 = [
+        "The quick brown fox",
+        "fox jumps over",
+        "jumps over the lazy dog.",
+    ]
+    print(f"Test 1 (Standard): {clean_text_concat(segments1)}")
+    # Expected: "The quick brown fox jumps over the lazy dog."
+
+    # 2. Sub-word (Partial) Overlap - Should NOT merge
+    segments2 = ["I have a ten", "entire day"]
+    print(
+        f"Test 2 (Sub-word mismatch): {clean_text_concat(segments2)}"
+    )
+    # Expected: "I have a ten entire day" (Not "I have a tentire day")
+
+    # 3. Punctuation included in overlap
+    segments3 = ["This is the end.", "end. Start new."]
+    print(f"Test 3 (Punctuation): {clean_text_concat(segments3)}")
+    # Expected: "This is the end. Start new."
+
+    # 4. No Overlap
+    segments4 = ["Hello world.", "My name is Python."]
+    print(f"Test 4 (No Overlap): {clean_text_concat(segments4)}")
+    # Expected: "Hello world. My name is Python."
+
+    # 5. Empty list
+    print(f"Test 5 (Empty): '{clean_text_concat([])}'")
