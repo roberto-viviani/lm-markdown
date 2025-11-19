@@ -228,7 +228,7 @@ class EmbeddingSettings(BaseSettings):
     """
 
     dense_model: str = Field(
-        default="SentenceTransformers/all-MiniLM-L6-v2",
+        default="SentenceTransformers/distiluse-base-multilingual-cased-v2",
         description="Model specification in the form "
         + "'model_provider/model' (e.g., 'OpenAI/text-embedding-3-small')",
     )
@@ -298,7 +298,7 @@ class Settings(BaseSettings):
     # Language model embeddings
     embeddings: EmbeddingSettings = Field(
         default_factory=lambda: EmbeddingSettings(
-            dense_model="SentenceTransformers/all-MiniLM-L6-v2",
+            dense_model="SentenceTransformers/distiluse-base-multilingual-cased-v2",
             sparse_model="Qdrant/bm25",
         ),
         description="Embedding model configuration",
@@ -308,12 +308,14 @@ class Settings(BaseSettings):
     major: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
             model="OpenAI/gpt-4.1-mini",
+            temperature=0.4,
         ),
         description="Primary language model for complex reasoning tasks",
     )
     minor: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
             model="OpenAI/gpt-4.1-nano",
+            temperature=0.1,
         ),
         description="Secondary language model for simple tasks",
     )
