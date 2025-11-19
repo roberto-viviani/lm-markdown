@@ -479,3 +479,82 @@ def convert_backslash_latex_delimiters(response: str) -> str:
     response = re.sub(pattern, replacement, response, flags=re.DOTALL)
 
     return response
+
+
+def collect_markdown_files(
+    folder_path: str, new_file: str = 'collection.Rmd'
+) -> None:
+    """
+    Collects content from all .md and .Rmd files in a given folder and
+    concatenates them into a new file named 'collection.Rmd'.
+
+    Args:
+        folder_path (str): The path to the folder to process.
+    """
+    import os
+
+    # List to hold the content of all collected files
+    all_content: list[str] = []
+
+    # Define the output file path
+    output_filename = 'collection.Rmd'
+    output_file_path: str = os.path.join(folder_path, output_filename)
+
+    print(f"Starting collection in folder: {folder_path}")
+
+    try:
+        # Iterate over all files in the given folder
+        for filename in os.listdir(folder_path):
+            # Construct the full file path
+            file_path: str = os.path.join(folder_path, filename)
+
+            # Check if the path is a file and has the correct extension
+            if os.path.isfile(file_path) and (
+                filename.endswith('.md') or filename.endswith('.Rmd')
+            ):
+
+                print(f"-> Collecting content from: {filename}")
+
+                try:
+                    # Open and read the content of the file
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+
+                        # Add a separator header for clarity in the combined file
+                        separator = f"\n\n# --- Content from {filename} ---\n\n"
+                        all_content.append(separator)
+                        all_content.append(content)
+                        # Ensure a final newline separates this file's content from the next
+                        all_content.append('\n')
+
+                except IOError as e:
+                    print(f"Error reading file {filename}: {e}")
+                except Exception as e:
+                    print(
+                        f"An unexpected error occurred with {filename}: {e}"
+                    )
+
+        # Check if any content was collected before writing
+        if not all_content:
+            print("No .md or .Rmd files found to collect.")
+            return
+
+        # Write all concatenated content to the new 'collection.Rmd' file
+        print(
+            f"\nWriting all collected content to: {output_filename}"
+        )
+        with open(output_file_path, 'w', encoding='utf-8') as outfile:
+            # Join the list of content segments into a single string
+            final_output: str = "".join(all_content).strip()
+            outfile.write(final_output)
+
+        print(
+            f"\nSuccessfully created and populated {output_filename}!"
+        )
+
+    except FileNotFoundError:
+        print(
+            f"Error: The folder path '{folder_path}' was not found."
+        )
+    except Exception as e:
+        print(f"An unexpected error occurred during processing: {e}")
