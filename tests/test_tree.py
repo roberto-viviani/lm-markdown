@@ -7,6 +7,7 @@
 
 import unittest
 
+import logging
 from typing import Sequence
 
 # Attempt to import the functions to be tested
@@ -47,7 +48,7 @@ second: [1, 2, 3]
         }
         logger = LoglistLogger()
         node = load_tree(src, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if node is None:
             raise RuntimeError("Could not parse tree")
         self.assertTrue(node.is_header_node())
@@ -181,14 +182,14 @@ class TestTreeConstruction(unittest.TestCase):
         text = ""
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         self.assertIsNone(root)
 
     def test_construction_text_regular(self):
         text = "Content of text block\non two lines"
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -198,7 +199,7 @@ class TestTreeConstruction(unittest.TestCase):
         text = "# A heading"
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -208,7 +209,7 @@ class TestTreeConstruction(unittest.TestCase):
         text = "# "
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) > 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) > 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -221,7 +222,7 @@ class TestTreeConstruction(unittest.TestCase):
         data = "---\ntitle: Title\n---"
         logger = LoglistLogger()
         root = load_tree(data, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -230,7 +231,7 @@ class TestTreeConstruction(unittest.TestCase):
         data = "---\n---"
         logger = LoglistLogger()
         root = load_tree(data, logger)
-        self.assertTrue(logger.count_logs(level=1) > 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) > 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -245,7 +246,7 @@ class TestTreeConstruction(unittest.TestCase):
         # default dict created for header
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -256,7 +257,7 @@ class TestTreeConstruction(unittest.TestCase):
         # empty dict in metadata replaced with default
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -267,7 +268,7 @@ class TestTreeConstruction(unittest.TestCase):
         # empty dict in metadata replaced with default
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)
@@ -280,7 +281,7 @@ class TestTreeConstruction(unittest.TestCase):
         # expected behaviour: ErrorBlock instead of MetadataBlock
         logger = LoglistLogger()
         root = load_tree(text, logger)
-        self.assertTrue(logger.count_logs(level=1) > 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) > 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 1)
@@ -296,7 +297,7 @@ class TestTreeConstruction(unittest.TestCase):
         # expected behaviour: over-nested dict goes in private_
         logger = LoglistLogger()
         root = load_tree(data, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise RuntimeError("Could not parse tree")
         self.assertEqual(root.count_children(), 0)

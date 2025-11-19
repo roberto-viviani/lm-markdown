@@ -57,8 +57,8 @@ if blocklist_haserrors(blocks)
 
 # add metadata for annotations (here titles)
 blocks = scan_rag(blocks, ScanOpts(titles=True), logger)
-if logger.count_logs(level=1) > 0:
-    raise ValueError("\n".join(logger.get_logs(level=1)))
+if logger.count_logs(level=logging.ERROR) > 0:
+    raise ValueError("\n".join(logger.get_logs(logging.ERROR)))
 
 # transform to chunks specifying titles for annotations
 encoding_model = EncodingModel.SPARSE_CONTENT
@@ -93,7 +93,7 @@ points = upload(
     logger=logger,
 )
 
-if logger.count_logs(level=1) > 0:
+if logger.count_logs(level=logging.ERROR) > 0:
     raise ValueError("Could not ingest blocks")
 ```
 

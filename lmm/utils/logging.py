@@ -182,25 +182,36 @@ class FileConsoleLogger(LoggerBase):
     delegate. Logs messages to a specified file using Python's
     built-in logging module, and relays the messages to the console
     as well.
+
+    This logger allows independent control of logging levels for
+    both file and console outputs.
     """
 
     console_logger: LoggerBase
 
     def __init__(
-        self, name: str = "", log_file: str | Path = "app.log"
+        self,
+        name: str = "",
+        log_file: str | Path = "app.log",
+        console_level: int = logging.INFO,
+        file_level: int = logging.INFO,
     ) -> None:
         """
-        Initialize the FileLogger with a specific logger name and
-        file path.
+        Initialize the FileConsoleLogger with a specific logger name,
+        file path, and separate logging levels for console and file.
 
         Args:
             name: The name of the logger, typically __name__ to use
                 the module name
             log_file: Path to the log file where messages will be
                 written
+            console_level: The logging level for console output
+                (default: logging.INFO)
+            file_level: The logging level for file output
+                (default: logging.INFO)
         """
         self.logger = logging.getLogger(f"{name}_file")
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(file_level)
 
         # Clear any existing handlers to avoid duplicates
         self.logger.handlers.clear()
@@ -218,14 +229,61 @@ class FileConsoleLogger(LoggerBase):
 
         # Delegate for console
         self.console_logger = ConsoleLogger(name)
+        self.console_logger.set_level(console_level)
 
     def set_level(self, level: int) -> None:
-        """Set the logging level for the logger."""
+        """
+        Set the logging level for both file and console loggers.
+
+        Args:
+            level: The logging level to set for both outputs
+        """
         self.logger.setLevel(level)
         self.console_logger.set_level(level)
 
+    def set_console_level(self, level: int) -> None:
+        """
+        Set the logging level for the console logger only.
+
+        Args:
+            level: The logging level for console output
+        """
+        self.console_logger.set_level(level)
+
+    def set_file_level(self, level: int) -> None:
+        """
+        Set the logging level for the file logger only.
+
+        Args:
+            level: The logging level for file output
+        """
+        self.logger.setLevel(level)
+
     def get_level(self) -> int:
-        """Get the current logging level"""
+        """
+        Get the current logging level for the file logger.
+
+        Returns:
+            The file logger's current level
+        """
+        return self.logger.level
+
+    def get_console_level(self) -> int:
+        """
+        Get the current logging level for the console logger.
+
+        Returns:
+            The console logger's current level
+        """
+        return self.console_logger.get_level()
+
+    def get_file_level(self) -> int:
+        """
+        Get the current logging level for the file logger.
+
+        Returns:
+            The file logger's current level
+        """
         return self.logger.level
 
     def info(self, msg: str) -> None:
@@ -292,21 +350,22 @@ class LoglistLogger(LoggerBase):
         Args:
            level: a filter on the logs. Possible values:
                 0 or less: returns all messages
-                1 or less: omit info
-                2 or less: omit warning
-                3 or more: only errors and critical
+                WARNING or less: omit info
+                ERROR or less: omit warning
+                CRITICAL or more: only errors and critical
         """
         logs: list[str] = []
         for entry in self.logs:
             match entry:
                 case {'info': msg}:
-                    if level < 1:
+                    if level <= logging.INFO:
                         logs.append("INFO - " + msg)
                 case {'warning': msg}:
-                    if level < 2:
+                    if level <= logging.WARNING:
                         logs.append("WARNING - " + msg)
                 case {'error': msg}:
-                    logs.append("ERROR - " + msg)
+                    if level <= logging.ERROR:
+                        logs.append("ERROR - " + msg)
                 case {'critical': msg}:
                     logs.append("CRITICAL - " + msg)
                 case _:

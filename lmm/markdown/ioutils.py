@@ -41,7 +41,7 @@ Logger Usage Patterns:
         >>> logger = LoglistLogger()
         >>> content = load_markdown("file.md",
                                     logger=logger)
-        >>> errors = logger.get_logs(level=3)  # Error-level only
+        >>> errors = logger.get_logs(logging.ERROR)  # Error-level only
 
 Module Relationships:
     This module serves as the I/O layer between file system

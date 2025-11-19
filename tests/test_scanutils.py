@@ -7,6 +7,7 @@
 
 import unittest
 from typing import Sequence
+import logging
 
 from lmm.markdown.tree import (
     MarkdownNode,
@@ -666,7 +667,7 @@ Some text.
         )
         # Expect warning, as the aggregate returns empty if the doc
         # is insufficient to generate aggregate
-        self.assertEqual(1, logger.count_logs(level=1))
+        self.assertEqual(1, logger.count_logs(level=logging.WARNING))
         self.assertIn("No aggregation was", logger.get_logs()[-1])
 
         # When aggregate returns empty, output_key should not be set
@@ -1177,7 +1178,7 @@ Direct text in chapter two.
         if logger.count_logs() > 0:
             print("Logs present:")
             print("\n".join(logger.get_logs()))
-        self.assertEqual(0, logger.count_logs(level=1))
+        self.assertEqual(0, logger.count_logs(level=logging.ERROR))
 
         # Verify initial aggregation
         chapter_one = root.get_heading_children()[0]
@@ -1217,7 +1218,7 @@ Direct text in chapter two.
         if logger.count_logs() > 0:
             print("Logs present:")
             print("\n".join(logger.get_logs()))
-        self.assertEqual(0, logger.count_logs(level=1))
+        self.assertEqual(0, logger.count_logs(level=logging.ERROR))
 
         # The aggregate function should NOT have been called for nodes
         # whose text content hash hasn't changed
@@ -1607,7 +1608,7 @@ Some text.
             hashed=True,
             logger=logger,
         )
-        self.assertEqual(0, logger.count_logs(level=1))
+        self.assertEqual(0, logger.count_logs(level=logging.ERROR))
 
         heading_node = root.get_heading_children()[0]
         self.assertIn(OUTPUT_KEY, heading_node.metadata)
@@ -1832,7 +1833,7 @@ Some text content.
             filter_func=filter_nothing,
             logger=logger,
         )
-        logs = logger.get_logs(level=1)
+        logs = logger.get_logs(logging.WARNING)
         self.assertLess(0, len(logs))
 
         self.assertIn(

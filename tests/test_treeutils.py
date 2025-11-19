@@ -7,6 +7,7 @@
 
 import unittest
 
+import logging
 from lmm.markdown.parse_markdown import blocklist_copy
 from lmm.markdown.tree import *
 from lmm.markdown.treeutils import *
@@ -31,7 +32,7 @@ class TestCollectTextBlocks(unittest.TestCase):
         document = "---\ntitle: 'The title'\n---\n\nSome text here.\n"
         logger = LoglistLogger()
         root = load_tree(document, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         blocks = collect_annotated_textblocks(root, inherit=True)
 
         self.assertEqual(len(blocks), 2)
@@ -46,7 +47,7 @@ class TestCollectTextBlocks(unittest.TestCase):
         )
         logger = LoglistLogger()
         root = load_tree(document, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise ValueError("Could not form tree")
         blocks = collect_annotated_textblocks(
@@ -66,7 +67,7 @@ class TestCollectTextBlocks(unittest.TestCase):
         )
         logger = LoglistLogger()
         root = load_tree(document, logger)
-        self.assertTrue(logger.count_logs(level=1) == 0)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) == 0)
         if root is None:
             raise ValueError("Could not form tree")
         blocks = collect_annotated_textblocks(

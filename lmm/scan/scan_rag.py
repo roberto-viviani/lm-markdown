@@ -34,6 +34,7 @@ Main superordinate functions:
 """
 
 import re
+import logging
 from pathlib import Path
 from collections.abc import Callable
 from pydantic import BaseModel, ConfigDict, Field, validate_call
@@ -887,8 +888,8 @@ def get_changed_titles(
 
     # add titles to report
     add_titles_to_headings(root, internal_logger, key=TITLES_KEY)
-    if internal_logger.count_logs(level=2):
-        for log in internal_logger.get_logs(level=2):
+    if internal_logger.count_logs(level=logging.ERROR):
+        for log in internal_logger.get_logs(logging.ERROR):
             logger.error(log)
         return []
 
@@ -906,8 +907,8 @@ def get_changed_titles(
         filter_func=_filt_func,
         logger=internal_logger,
     )
-    if internal_logger.count_logs(level=2):
-        for log in internal_logger.get_logs(level=2):
+    if internal_logger.count_logs(level=logging.ERROR):
+        for log in internal_logger.get_logs(logging.ERROR):
             logger.error(log)
         return []
 

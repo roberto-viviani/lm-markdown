@@ -6,6 +6,7 @@ to the lmm.markdown.ioutils module.
 
 import unittest
 import tempfile
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -715,20 +716,27 @@ class TestLoggerBehavior(unittest.TestCase):
         # Test different filter levels
         all_logs = logger.get_logs(0)  # All messages
         self.assertEqual(len(all_logs), 4)
+        print(all_logs)
 
-        no_info = logger.get_logs(1)  # No info messages
+        no_info = logger.get_logs(logging.WARNING)  # No info messages
         self.assertEqual(len(no_info), 3)
         self.assertFalse(
             any("Info message" in log for log in no_info)
         )
 
-        errors_only = logger.get_logs(3)  # Only errors and critical
+        errors_only = logger.get_logs(
+            logging.ERROR
+        )  # Only errors and critical
         self.assertEqual(len(errors_only), 2)
         self.assertTrue(
             any("Error message" in log for log in errors_only)
         )
+
+        critical_only = logger.get_logs(
+            logging.CRITICAL
+        )  # Only errors and critical
         self.assertTrue(
-            any("Critical message" in log for log in errors_only)
+            any("Critical message" in log for log in critical_only)
         )
 
 
