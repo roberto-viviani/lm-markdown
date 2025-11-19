@@ -263,14 +263,14 @@ def _scan_queries(
 def _scan_messages(
     root: MarkdownNode, logger: LoggerBase = logger
 ) -> MarkdownNode:
-    logger.warning("scan_messages not yet implemented.")
+    # not yet implemented
     return root
 
 
 def _scan_edits(
     root: MarkdownNode, logger: LoggerBase = logger
 ) -> MarkdownNode:
-    logger.warning("scan_edits not yet implemented.")
+    # not yet implemented
     return root
 
 
