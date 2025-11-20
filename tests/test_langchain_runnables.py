@@ -71,19 +71,31 @@ class TestDefaultModels(unittest.TestCase):
             ),
         )
 
-    def test_check_content_invalid(self):
+    def test_context_validation(self):
+        model = create_kernel("context_validator")
+        self.assertEqual(
+            model.get_name(),
+            _get_name(
+                "context_validator",
+                base_settings.aux.get_model_source(),
+                base_settings.aux.get_model_name(),
+            ),
+        )
+
+    def test_check_allowed_content_invalid(self):
         # Missing kernel params
         with self.assertRaises(ValueError):
-            create_kernel("check_content")
+            create_kernel("allowed_content_validator")
 
-    def test_check_content(self):
+    def test_check_allowed_content(self):
         model = create_kernel(
-            "check_content", allowed_content=["statictics"]
+            "allowed_content_validator",
+            allowed_content=["statictics"],
         )
         self.assertEqual(
             model.get_name(),
             _get_name(
-                "check_content",
+                "allowed_content_validator",
                 base_settings.aux.get_model_source(),
                 base_settings.aux.get_model_name(),
             ),

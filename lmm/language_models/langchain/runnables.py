@@ -226,7 +226,7 @@ def _create_runnable(
                 language_model_settings.provider_params['message'] = (
                     "These are questions the text answers."
                 )
-            case 'check_content':
+            case 'allowed_content_validator':
                 param_dict = _runnable_par_to_dict(model.params)
                 param_value = param_dict.pop(
                     'allowed_content', ['statistics']
@@ -292,7 +292,8 @@ def create_runnable(
     language model settings categories. For example,
     - 'query', 'query_with_context' -> major model settings
     - 'question_generator', 'summarizer' -> minor model settings
-    - 'check_content' -> aux model settings
+    - 'allowed_content_validator', 'context_validator' ->
+                                            aux model settings
 
     Settings Hierarchy (highest to lowest priority):
     1. user_settings parameter (if provided)
@@ -420,7 +421,7 @@ def create_runnable(
             return _create_or_get(
                 settings.minor, kernel_name, system_prompt
             )
-        case 'check_content':
+        case 'allowed_content_validator' | 'context_validator':
             return _create_or_get(
                 settings.aux,
                 kernel_name,

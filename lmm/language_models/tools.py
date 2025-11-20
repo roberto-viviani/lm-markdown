@@ -14,7 +14,8 @@ The predefined prompt sets are
     - "question_generator"
     - "query"
     - "query_with_context"
-    - "check_content"
+    - "context_validator"
+    - "allowed_content_validator"
 
 These prompts may be retrieved from the module-level dictionary
 `tool_library`, as shown in the example below.
@@ -88,7 +89,8 @@ KernelNames = Literal[
     "question_generator",
     "query",
     "query_with_context",
-    "check_content",
+    "context_validator",
+    "allowed_content_validator",
 ]
 
 
@@ -118,7 +120,7 @@ EXAMPLES OF QUESTIONS below:
 EXAMPLES OF QUESTIONS:
 - When is it appropriate to use logistic regression? - What is the link function?
 
-TEXT: "{text}"
+TEXT: {text}
 
 QUESTIONS:
 """,
@@ -131,13 +133,13 @@ QUESTIONS:
 Please assist the user QUERY about the following TEXT. 
 Use the CONTEXT if it helps clarifying the query, but base your response on TEXT.
 ----
-CONTEXT: "{context}"
+CONTEXT: {context}
 
 ----
-QUERY:  "{query}"
+QUERY:  {query}
 
 ----
-TEXT:  "{text}"
+TEXT:  {text}
 
 ----
 YOUR RESPONSE:
@@ -151,17 +153,35 @@ YOUR RESPONSE:
                 prompt="""
 Please assist the user and answer the query concerning the following text:
 ----
-QUERY:  "{query}"
+QUERY:  {query}
 
 ----
-TEXT:  "{text}"
+TEXT:  {text}
 
 ----
 YOUR RESPONSE:
 
 """,
             )
-        case "check_content":  # --- kernel case definition
+        case "context_validator":  # --- kernel case definition
+            return ToolDefinition(
+                name=kernel_name,
+                prompt="""
+Your task is to evaluate if the context information provided is relevant to a query and its response.
+You have two options to answer. Either YES or NO.
+Answer YES, if the context information is relevant for the query and response, otherwise NO.
+
+----
+Query and Response: {query}
+
+----
+Context: {context}
+
+----
+Answer:
+""",
+            )
+        case "allowed_content_validator":  # --- kernel case def.
             param: object | list[object] = kwargs.pop(
                 'allowed_content', None
             )
@@ -176,7 +196,7 @@ YOUR RESPONSE:
                         )  # unique
                     except Exception as e:
                         raise ValueError(
-                            "Kernel check_content: invalid provider_param"
+                            "Kernel allowed_content_validator: invalid provider_param"
                         ) from e
                 case str():
                     allowed_content = [param]
@@ -184,13 +204,13 @@ YOUR RESPONSE:
                     allowed_content = []
                 case _:
                     raise ValueError(
-                        "Invalid check_content kernel spec: "
+                        "Invalid allowed_content_validator kernel spec: "
                         f"invalid provider_param: {param}"
                     )
 
             if not (allowed_content):
                 raise ValueError(
-                    "Invalid check_content kernel spec: "
+                    "Invalid allowed_content_validator kernel spec: "
                     "missing provider_param"
                 )
 
