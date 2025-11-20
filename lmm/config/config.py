@@ -309,8 +309,9 @@ class Settings(BaseSettings):
         default_factory=lambda: LanguageModelSettings(
             model="OpenAI/gpt-4.1-mini",
             temperature=0.4,
+            max_tokens=2048,
         ),
-        description="Primary language model for complex reasoning tasks",
+        description="Primary language model for conceptual exposition",
     )
     minor: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
@@ -321,7 +322,9 @@ class Settings(BaseSettings):
     )
     aux: LanguageModelSettings = Field(
         default_factory=lambda: LanguageModelSettings(
-            model="Mistral/mistral-small-latest", temperature=0
+            model="Mistral/mistral-small-latest",
+            temperature=0,
+            max_tokens=128,
         ),
         description="Auxiliary language model for specialized tasks",
     )
