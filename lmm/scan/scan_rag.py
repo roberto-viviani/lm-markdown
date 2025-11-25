@@ -547,8 +547,6 @@ def markdown_rag(
 
 def scan_rag(
     sourcefile: str | Path,
-    opts: ScanOpts = ScanOpts(),
-    save: bool | str | Path = True,
     *,
     titles: bool = False,
     questions: bool = False,
@@ -556,6 +554,7 @@ def scan_rag(
     summaries: bool = False,
     summary_threshold: int = 50,
     remove_messages: bool = False,
+    save: bool | str | Path = True,
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
     logger: LoggerBase = logger,
@@ -626,7 +625,9 @@ def add_titles_to_headings(
     Args:
         root: The root node of the markdown tree to process, or
             any other parent node
-        filt_fun: A predicate the nodes must satisfy for titles to
+        logger: a logger object
+        key: the key under which the titles are added
+        filt_func: A predicate the nodes must satisfy for titles to
             be added
 
     Note:
@@ -685,9 +686,14 @@ def add_id_to_nodes(
     Args:
         root_node (MarkdownNode): The root node of the markdown tree
             to process
+        textid: add id to text nodes (boolean)
+        headingid: add id to heading nodes (boolean)
         base_hash (str, optional): A base hash to use for identifier
             generation. If not provided, a hash is generated from the
             root node's content (and will differ from that content).
+        logger: a logger object.
+        filt_func: a predicate to filter the nodes where the id should
+            be added.
 
     Identifier Format:
     - For text blocks: "{base_hash}.{sequential_number}"
@@ -748,12 +754,15 @@ def add_questions(
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
     """Add questions answered by text using a language model. Will
-    not add qquestions to a header node.
+    not add questions to the header node, but to all heading nodes
+    in the document.
 
     Args:
         root: a markdown node to start the traversal
         opts: options defining thresholds for computing summaries
         logger: a logger object
+        filt_func: a predicated to fiter the heading nodes to add
+            questions to.
     """
 
     def llm_questions(text: str) -> str:
@@ -808,12 +817,15 @@ def add_summaries(
     *,
     filt_func: Callable[[MarkdownNode], bool] = lambda _: True,
 ) -> None:
-    """Add summaries of text using a language model.
+    """Add summaries of text to metadata of headings using a
+    language model.
 
     Args:
         root: a markdown node to start the traversal
         opts: options defining thresholds for computing questions
         logger: a logger object
+        filt_func: a predicate function to filter the heading
+            noted where a summary will be added.
     """
 
     def llm_add_summary(text: str) -> str:

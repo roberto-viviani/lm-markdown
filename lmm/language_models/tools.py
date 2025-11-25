@@ -65,7 +65,7 @@ A runnable with the prompt can then be obtained directly, e.g.
     ```
 
 Note that the name of the runnable kernel is that of the tool set (here
-a set of prompts) that defines the kernal uniquely.
+a set of prompts) that defines the kernel uniquely.
 """
 
 from typing import Literal
@@ -94,8 +94,9 @@ KernelNames = Literal[
 ]
 
 
-# A functional returning the tool definitions. This is used for
-# the typed dictionary containing the prompt texts.
+# A functional returning the tool definitions. This is the factory
+# function that creates the tools (objects containing the prompts
+# in this case).
 def _create_tool(
     kernel_name: KernelNames, **kwargs: object | list[object]
 ) -> ToolDefinition:

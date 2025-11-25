@@ -125,8 +125,12 @@ def bequeath_properties(
         node: the root or branch node to work on
         keys: the properties to be given to the text nodes
         new_keys: the new key names
-        inherited: keys are bequeethed to grandchildren down
+        inherit: keys are bequeethed to grandchildren down
             the tree.
+        include_header: includer header node in the pool of
+            nodes that bequeath properties to children
+        filter_func: a predicate to filter the heading nodes
+            that bequeath properties.
 
     Returns:
         the root node of the modified branch
