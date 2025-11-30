@@ -220,7 +220,7 @@ def _create_model_instance(
 
         case _:
             raise ValueError(
-                "Unreachable code reached: invalid source " f"{model_source}"
+                f"Unreachable code reached: invalid source {model_source}"
             )
 
 
