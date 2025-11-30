@@ -19,6 +19,7 @@ from lmm.markdown.parse_markdown import (
     TextBlock,
     ErrorBlock,
     Block,
+    parse_markdown_text,
 )
 from lmm.scan.scan_keys import (
     QUESTIONS_KEY,
@@ -26,6 +27,9 @@ from lmm.scan.scan_keys import (
     SUMMARY_KEY,
     TITLES_KEY,
 )
+from lmm.scan.scan_rag import blocklist_rag, ScanOpts
+from lmm.config.config import Settings, export_settings
+
 
 header = HeaderBlock(content={'title': "Test blocklist"})
 metadata = MetadataBlock(
@@ -238,11 +242,6 @@ class TestChunkEncoding(unittest.TestCase):
         )
 
 
-from lmm.markdown.parse_markdown import parse_markdown_text
-from lmm.scan.scan_rag import blocklist_rag, ScanOpts
-from lmm.config.config import Settings, export_settings
-
-
 class TestSkips(unittest.TestCase):
     # setup and teardown replace config.toml to avoid
     # calling the language model server
@@ -283,12 +282,16 @@ Text under heading 2 that should be skipped.
 
 Text under heading 3.
 
+# Heading 4 (Process)
+
+Text under heading 4.
+
 ---
 skip: True
 ...
 This is a skipped text block.
 
-# Heading 4 (Process)
+# Heading 5 (Process)
 
 Final text block.
 """
@@ -300,10 +303,10 @@ Final text block.
         chunks = blocks_to_chunks(blocks, EncodingModel.CONTENT)
 
         # only 2 blocks left
-        self.assertEqual(len(chunks), 2)
+        self.assertEqual(len(chunks), 3)
 
     def test_notskipped_haveid(self):
-        """Test all chunked blocks have id"""
+        """Test all non-skipped chunked blocks have id"""
         from lmm.scan.scan_keys import TEXTID_KEY
 
         blocks = blocklist_rag(self.blocks)
@@ -312,7 +315,7 @@ Final text block.
             self.assertIn(TEXTID_KEY, c.metadata)
 
     def test_notskipped_havequestions(self):
-        """Test all chunked blocks have id"""
+        """Test all non-skipped chunked blocks have questions"""
         from lmm.scan.scan_keys import QUESTIONS_KEY
 
         blocks = blocklist_rag(
@@ -326,21 +329,25 @@ Final text block.
             self.assertIn(QUESTIONS_KEY, c.metadata)
 
     def test_notskipped_havesummaries(self):
-        """Test all chunked blocks have id"""
+        """Test all non-skipped chunked blocks have summaries"""
+        from lmm.scan.chunks import serialize_chunks
+        from lmm.markdown.parse_markdown import serialize_blocks
         from lmm.scan.scan_keys import SUMMARIES_KEY
 
         blocks = blocklist_rag(
             self.blocks,
-            ScanOpts(summaries=True, summary_threshold=0),
+            ScanOpts(summaries=True, summary_threshold=2),
         )
+        print(serialize_blocks(blocks))
         chunks = blocks_to_chunks(
             blocks, EncodingModel.SPARSE_CONTENT, [SUMMARIES_KEY]
         )
+        print(serialize_chunks(chunks))
         for c in chunks:
             self.assertIn(SUMMARIES_KEY, c.metadata)
 
     def test_notskipped_havetitles(self):
-        """Test all chunked blocks have id"""
+        """Test all non-skipped chunked blocks have titles"""
         from lmm.scan.scan_keys import TITLES_KEY
 
         blocks = blocklist_rag(self.blocks, ScanOpts(titles=True))

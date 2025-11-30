@@ -189,7 +189,7 @@ def _create_model_instance(
             return ChatOpenAI(**kwargs)
 
         case "Debug":
-            from .message_iterator import (
+            from ..message_iterator import (
                 yield_message,
                 yield_constant_message,
             )

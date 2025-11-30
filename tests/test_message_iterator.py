@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
 """
 Test script for the message iterator module.
 
-This script demonstrates and tests the yield_message function and MessageIterator class.
+This script demonstrates and tests the yield_message function and 
+MessageIterator class.
 """
 
-from lmm.language_models.langchain.message_iterator import (
+from lmm.language_models.message_iterator import (
     yield_message,
     yield_constant_message,
 )
