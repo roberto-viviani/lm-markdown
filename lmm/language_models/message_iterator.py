@@ -1,8 +1,8 @@
 """
 Message Iterator Module
 
-This module provides functionality to create iterators that generate sequential messages.
-Used to feed message through a fake language model.
+This module provides functionality to create iterators that generate
+sequential messages. Used to feed message through a fake language model.
 """
 
 from collections.abc import Iterator
@@ -12,8 +12,9 @@ class MessageIterator:
     """
     An iterator that generates sequential messages with a customizable prefix.
 
-    The iterator is infinite and will continue generating messages indefinitely.
-    Messages follow the pattern: "{prefix} {counter}" where counter starts at 1.
+    The iterator is infinite and will continue generating messages
+    indefinitely. Messages follow the pattern: "{prefix} {counter}" where
+    counter starts at 1.
     """
 
     def __init__(self, prefix: str = "Message") -> None:
@@ -21,7 +22,8 @@ class MessageIterator:
         Initialize the MessageIterator.
 
         Args:
-            prefix: The prefix to use for generated messages. Defaults to "Message".
+            prefix: The prefix to use for generated messages. Defaults to
+            "Message".
         """
         self.prefix = prefix
         self.counter = 1
@@ -51,7 +53,7 @@ def yield_message(prefix: str = "Message") -> MessageIterator:
     generating messages indefinitely.
 
     Args:
-        prefix: The prefix to use for generated messages. Defaults to "Message".
+        prefix: The prefix to use for generated messages. Defaults to "Message"
 
     Returns:
         A MessageIterator instance that generates messages like:
@@ -77,7 +79,8 @@ class ConstantMessageIterator:
     """
     An iterator that generates the same message with which is was intialized.
 
-    The iterator is infinite and will continue generating messages indefinitely.
+    The iterator is infinite and will continue generating messages
+    indefinitely.
     """
 
     def __init__(self, message: str = "Message") -> None:
@@ -85,7 +88,8 @@ class ConstantMessageIterator:
         Initialize the MessageIterator.
 
         Args:
-            message: The message to return in generated messages. Defaults to "Message".
+            message: The message to return in generated messages. Defaults to
+                "Message".
         """
         self.message = message
         self.counter = 0
