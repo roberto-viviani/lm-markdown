@@ -52,8 +52,6 @@ Note:
     LanguageModelSettings.
 """
 
-# pyright: reportArgumentType=false
-
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 
@@ -80,7 +78,7 @@ def _create_model_instance(
     model_source: ModelSource = model.get_model_source()
     model_name: str = model.get_model_name()
     match model_source:
-        case 'Anthropic':
+        case "Anthropic":
             try:
                 from langchain_anthropic.chat_models import (
                     ChatAnthropic,
@@ -107,7 +105,7 @@ def _create_model_instance(
 
             return ChatAnthropic(**kwargs)
 
-        case 'Gemini':
+        case "Gemini":
             try:
                 from langchain_google_genai import (
                     ChatGoogleGenerativeAI,
@@ -135,7 +133,7 @@ def _create_model_instance(
 
             return ChatGoogleGenerativeAI(**kwargs)
 
-        case 'Mistral':
+        case "Mistral":
             try:
                 from langchain_mistralai.chat_models import (
                     ChatMistralAI,
@@ -163,7 +161,7 @@ def _create_model_instance(
 
             return ChatMistralAI(**kwargs)
 
-        case 'OpenAI':
+        case "OpenAI":
             try:
                 from langchain_openai.chat_models import ChatOpenAI
             except ImportError as e:
@@ -190,7 +188,7 @@ def _create_model_instance(
 
             return ChatOpenAI(**kwargs)
 
-        case 'Debug':
+        case "Debug":
             from .message_iterator import (
                 yield_message,
                 yield_constant_message,
@@ -205,13 +203,13 @@ def _create_model_instance(
                     "Could not import GenericFakeChatModel from langchain_core"
                 ) from e
             if (
-                model.provider_params
-                and 'message' in model.provider_params.keys()
+                model.provider_params and
+                    "message" in model.provider_params.keys()
             ):
                 return GenericFakeChatModel(
                     name="Langchain fake messages",
                     messages=yield_constant_message(
-                        str(model.provider_params['message'])
+                        str(model.provider_params["message"])
                     ),
                 )
             else:
@@ -222,8 +220,7 @@ def _create_model_instance(
 
         case _:
             raise ValueError(
-                "Unreachable code reached: invalid source "
-                f"{model_source}"
+                "Unreachable code reached: invalid source " f"{model_source}"
             )
 
 
@@ -238,7 +235,7 @@ def _create_embedding_instance(
     model_source: str = model.get_model_source()
     model_name: str = model.get_model_name()
     match model_source:
-        case 'Gemini':
+        case "Gemini":
             try:
                 from langchain_google_genai import (
                     GoogleGenerativeAIEmbeddings,
@@ -255,7 +252,7 @@ def _create_embedding_instance(
                 task_type="retrieval_document",
             )
 
-        case 'Mistral':
+        case "Mistral":
             try:
                 from langchain_mistralai import MistralAIEmbeddings
             except ImportError as e:
@@ -269,7 +266,7 @@ def _create_embedding_instance(
                 model=model_name,
             )
 
-        case 'OpenAI':
+        case "OpenAI":
             try:
                 from langchain_openai import OpenAIEmbeddings
             except ImportError as e:
@@ -281,17 +278,18 @@ def _create_embedding_instance(
 
             return OpenAIEmbeddings(model=model_name)
 
-        case 'SentenceTransformers':
+        case "SentenceTransformers":
             from huggingface_hub.errors import LocalEntryNotFoundError
             from langchain_huggingface import HuggingFaceEmbeddings
 
             source_name = "sentence-transformers"
             full_model_name = f"{source_name}/{model_name}"
             model_kwargs = {
-                'device': 'cpu',
-                'local_files_only': False,  # it does not throw the expected error if True
+                "device": "cpu",
+                "local_files_only": False,  # not throwing the expected error
+                # if True
             }
-            encode_kwargs = {'normalize_embeddings': True}
+            encode_kwargs = {"normalize_embeddings": True}
             model_: HuggingFaceEmbeddings
             try:
                 model_ = HuggingFaceEmbeddings(
@@ -300,12 +298,10 @@ def _create_embedding_instance(
                     encode_kwargs=encode_kwargs,
                 )
             except LocalEntryNotFoundError:
-                print(
-                    f"downloading sentence transformer {model_name}"
-                )
+                print(f"downloading sentence transformer {model_name}")
                 model_kwargs = {
-                    'device': 'cpu',
-                    'local_files_only': False,
+                    "device": "cpu",
+                    "local_files_only": False,
                 }
                 model_ = HuggingFaceEmbeddings(
                     model_name=full_model_name,
@@ -316,12 +312,10 @@ def _create_embedding_instance(
 
 
 # Public interface----------------------------------------------
-langchain_factory: LazyLoadingDict[
-    LanguageModelSettings, BaseChatModel
-] = LazyLoadingDict(_create_model_instance)
-langchain_embeddings: LazyLoadingDict[
-    EmbeddingSettings, Embeddings
-] = LazyLoadingDict(_create_embedding_instance)
+langchain_factory: LazyLoadingDict[LanguageModelSettings, BaseChatModel] = \
+    LazyLoadingDict(_create_model_instance)
+langchain_embeddings: LazyLoadingDict[EmbeddingSettings, Embeddings] = \
+    LazyLoadingDict(_create_embedding_instance)
 
 
 def create_model_from_spec(
@@ -404,7 +398,7 @@ def create_model_from_settings(
 
 
 def create_embedding_model_from_spec(
-    dense_model: str, *, sparse_model: str = 'Qdrant/bm25'
+    dense_model: str, *, sparse_model: str = "Qdrant/bm25"
 ) -> Embeddings:
     """
     Create langchain embedding model from source_name and
@@ -427,7 +421,8 @@ def create_embedding_model_from_spec(
         ```
     """
     spec = EmbeddingSettings(
-        dense_model=dense_model, sparse_model=sparse_model
+        dense_model=dense_model,
+        sparse_model=sparse_model,
     )
     return langchain_embeddings[spec]
 
