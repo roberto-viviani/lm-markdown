@@ -779,10 +779,10 @@ def add_questions(
                 "Could not connect to language models.\n"
                 + "Check the internet connection."
             )
-        except Exception:
+        except Exception as e:
             logger.error(
                 "Error in using the language model to create "
-                "questions."
+                f"questions: {e}"
             )
 
         # replace numbers
@@ -843,10 +843,10 @@ def add_summaries(
                 "Could not connect to language models.\n"
                 + "Check the internet connection."
             )
-        except Exception:
+        except Exception as e:
             logger.error(
                 "Error in using the language model to create "
-                "summaries."
+                f"summaries: {e}"
             )
 
         return response
