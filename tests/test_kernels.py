@@ -2,7 +2,7 @@
 
 import unittest
 
-from lmm.language_models.tools import (
+from lmm.language_models.prompts import (
     tool_library as kernel_prompts,
     create_prompt,
     ToolDefinition,

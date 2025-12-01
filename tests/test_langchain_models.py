@@ -68,7 +68,7 @@ class TestLazyDict(unittest.TestCase):
         self.assertEqual(len(langchain_factory), model_count)
 
     def test_create_systemprompt(self):
-        from lmm.language_models.tools import (
+        from lmm.language_models.prompts import (
             create_prompt,
         )
 
