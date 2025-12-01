@@ -23,7 +23,7 @@ These prompts may be retrieved from the module-level dictionary
 **Example**:
 
     ```python
-    from lmm.language_models.tools import tool_library
+    from lmm.language_models.prompts import tool_library
     prompt_template: str = tool_library["summarizer"]
     ```
 
@@ -43,7 +43,7 @@ To do this, one can use the `create_prompt` function.
 **Example**:
 
     ```python
-    from lmm.language_models.tools import (
+    from lmm.language_models.prompts import (
         tool_library,
         create_prompt,
     )

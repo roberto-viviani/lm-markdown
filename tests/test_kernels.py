@@ -48,7 +48,7 @@ class TestKernelPrompts(unittest.TestCase):
 
 class TestCustomPrompt(unittest.TestCase):
 
-    def test_custorm_prompt(self):
+    def test_custom_prompt(self):
         prompt_template = """
 Provide the questions to which the text answers.
 

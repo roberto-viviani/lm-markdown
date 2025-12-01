@@ -52,6 +52,8 @@ Note:
     LanguageModelSettings.
 """
 
+# pyright: reportArgumentType=false
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 
@@ -203,8 +205,8 @@ def _create_model_instance(
                     "Could not import GenericFakeChatModel from langchain_core"
                 ) from e
             if (
-                model.provider_params and
-                    "message" in model.provider_params.keys()
+                model.provider_params
+                    and "message" in model.provider_params.keys()
             ):
                 return GenericFakeChatModel(
                     name="Langchain fake messages",
