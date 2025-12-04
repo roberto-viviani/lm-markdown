@@ -208,5 +208,75 @@ class CreateNewDictionary(unittest.TestCase):
         self.assertIsInstance(obj, LanguageModelSpecification)
 
 
+
+class TestDestructor(unittest.TestCase):
+    def test_explicit_destructor(self):
+        destroyed = []
+
+        def destructor(val):
+            destroyed.append(val)
+
+        lzd = LazyLoadingDict(lambda k: f"value_{k}", destructor_func=destructor)
+        
+        # Test __delitem__
+        val = lzd["key1"]
+        del lzd["key1"]
+        self.assertIn("value_key1", destroyed)
+        
+        # Test clear
+        lzd["key2"] = "value_key2"
+        lzd.clear()
+        self.assertIn("value_key2", destroyed)
+
+    def test_protocol_destructor(self):
+        class Disposable:
+            def __init__(self, name):
+                self.name = name
+                self.closed = False
+            
+            def close(self):
+                self.closed = True
+
+        lzd = LazyLoadingDict(lambda k: Disposable(k))
+        
+        # Test __delitem__
+        obj = lzd["key1"]
+        del lzd["key1"]
+        self.assertTrue(obj.closed)
+
+    def test_overwrite_error(self):
+        lzd = LazyLoadingDict(lambda k: k)
+        lzd["key1"] = "val1"
+        
+        with self.assertRaises(ValueError):
+            lzd["key1"] = "val2"
+
+    def test_pop_no_destructor(self):
+        destroyed = []
+        lzd = LazyLoadingDict(lambda k: k, destructor_func=lambda x: destroyed.append(x))
+        
+        lzd["key1"]
+        val = lzd.pop("key1")
+        self.assertEqual(val, "key1")
+        self.assertEqual(destroyed, [])
+
+    def test_del_cleanup(self):
+        import gc
+        destroyed = []
+        
+        # Use a separate scope to ensure lzd is collected
+        def create_and_destroy():
+            lzd = LazyLoadingDict(lambda k: k, destructor_func=lambda x: destroyed.append(x))
+            lzd["key1"]
+            lzd["key2"]
+            # lzd goes out of scope here
+            
+        create_and_destroy()
+        gc.collect()
+        
+        self.assertIn("key1", destroyed)
+        self.assertIn("key2", destroyed)
+
+
 if __name__ == "__main__":
     unittest.main()

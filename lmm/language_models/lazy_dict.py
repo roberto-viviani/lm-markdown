@@ -162,9 +162,20 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
     def __init__(
         self,
         key_creator_func: Callable[[KeyT], ValueT],
+        destructor_func: Callable[[ValueT], None] | None = None,
     ):
         super().__init__()
         self._key_creator_func = key_creator_func
+        self._destructor_func = destructor_func
+
+    def _destroy_value(self, value: ValueT) -> None:
+        """Helper to destroy a value using the configured strategy."""
+        if self._destructor_func:
+            self._destructor_func(value)
+        elif hasattr(value, "close") and callable(value.close): # type: ignore (self-reflection)
+            value.close()  # type: ignore (checked)
+        elif hasattr(value, "dispose") and callable(value.dispose): # type: ignore (self-reflection)
+            value.dispose() # type: ignore (checked)
 
     def __getitem__(self, key: KeyT) -> ValueT:
         # Check if the value is already cached
@@ -182,5 +193,29 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
         This bypasses the factory function for the given key.
         Once set directly, the factory function will not be called
         for this key unless the key is deleted first.
+        
+        Raises:
+            ValueError: If the key already exists in the dictionary.
         """
+        if key in self:
+            raise ValueError(f"Key '{key}' already exists. Delete it first to overwrite.")
         super().__setitem__(key, value)
+
+    def __delitem__(self, key: KeyT) -> None:
+        if key in self:
+            value: ValueT = super().__getitem__(key)
+            self._destroy_value(value)
+        super().__delitem__(key)
+
+    def clear(self) -> None:
+        for value in list(self.values()):
+            self._destroy_value(value)
+        super().clear()
+
+    def __del__(self) -> None:
+        # We need to be careful here during interpreter shutdown
+        try:
+            self.clear()
+        except Exception:
+            # Suppress errors during destruction to avoid noise
+            pass
