@@ -2,6 +2,8 @@
 
 import unittest
 
+from pydantic import validate_call
+
 from enum import StrEnum
 from lmm.language_models.lazy_dict import (
     LazyLoadingDict,
@@ -28,8 +30,6 @@ class LMSource(StrEnum):
 
 # A factory function that creates a model class using the permissible key
 # as an info for its creation.
-from pydantic import validate_call
-
 
 @validate_call
 def create_model_instance(model_name: LMSource) -> ModelClass:
@@ -220,6 +220,7 @@ class TestDestructor(unittest.TestCase):
         
         # Test __delitem__
         val = lzd["key1"]
+        self.assertEqual(val, "value_key1")
         del lzd["key1"]
         self.assertIn("value_key1", destroyed)
         
