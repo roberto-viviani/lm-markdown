@@ -152,7 +152,7 @@ default_logger: LoggerBase = get_logger(__name__)
 
 
 # Encoding model allowed by the system
-from enum import StrEnum  # fmt: skip
+from enum import StrEnum  # fmt: skip  # noqa: E402
 class EncodingModel(StrEnum):
     """
     Enum for encoding strategies
@@ -461,7 +461,7 @@ def blocks_to_chunks(
             case EncodingModel.MERGED:
                 # encode the content merged with metadata annotations
                 chunk.dense_encoding = (
-                    f"{chunk.annotations}: {chunk.content}"
+                    f"{chunk.annotations}. {chunk.content}"
                     if chunk.annotations
                     else chunk.content
                 )
@@ -486,7 +486,7 @@ def blocks_to_chunks(
                 # encoding of merged content and annotations
                 chunk.sparse_encoding = chunk.annotations
                 chunk.dense_encoding = (
-                    f"{chunk.annotations}: {chunk.content}"
+                    f"{chunk.annotations}. {chunk.content}"
                     if chunk.annotations
                     else chunk.content
                 )
