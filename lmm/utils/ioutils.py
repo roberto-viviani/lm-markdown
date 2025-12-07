@@ -226,15 +226,16 @@ def parse_external_boolean(value: object) -> bool:
 
 
 def list_files_with_extensions(
-    folder_path: str | Path, extensions: str
+    folder_path: str | Path, extensions: str | list[str]
 ) -> list[str]:
     """
     Lists all files in a given folder that match a set of specified extensions.
 
     Args:
-        folder_path: The full path to the folder to search.
-        extensions: A semicolon-separated string of file extensions
-            (e.g., ".txt;.md;py"). Extensions may or may not start with a dot.
+        folder_path (str | Path): The full path to the folder to search.
+        extensions (str | list[str]): A single semicolon-separated string of 
+            file extensions (e.g., ".txt;.md;py") OR a standard list of strings 
+            (e.g., ['.txt', 'md']). Extensions may or may not start with a dot.
 
     Returns:
         A list of full paths (as strings) for all matching files. Returns an
@@ -246,7 +247,7 @@ def list_files_with_extensions(
         ValueError: If the extensions string contains invalid characters for
             a filename.
     """
-    # 1. Validate folder path
+    # --- 1. Validate folder path ---
     p_folder = Path(folder_path)
     if not p_folder.exists():
         raise FileNotFoundError(
@@ -257,16 +258,31 @@ def list_files_with_extensions(
             f"The specified path is not a directory: '{folder_path}'"
         )
 
-    # 2. Validate and process extensions
-    if not extensions:
-        return []
+    # --- 2. Process and Normalize Extensions ---
+    raw_extensions: list[str] = []
+    
+    if isinstance(extensions, str):
+        # Handle the semicolon-separated string input
+        if not extensions:
+            return []
+        raw_extensions = extensions.split(';')
+    elif isinstance(extensions, list):  # type: ignore (always met)
+        # Handle the standard list input
+        raw_extensions = extensions
+    else:
+        # Catch unexpected types
+        raise TypeError(
+            "Unreacheable code reached. Extensions supposed to be " 
+            "a string (semicolon-separated) or a list of strings."
+        )
 
-    # Define invalid characters for filenames on Windows and Unix-like systems
+    # Define invalid characters for filenames
+    # This remains critical for security and robustness.
     invalid_chars = r'<>:"/\|?*' + "".join(map(chr, range(32)))
 
     processed_extensions: set[str] = set()
-    for ext in extensions.split(';'):
-        ext = ext.strip()
+    for ext in raw_extensions:
+        ext = str(ext).strip() # Ensure it's a string and strip whitespace
         if not ext:
             continue
 
@@ -277,18 +293,23 @@ def list_files_with_extensions(
                 f"contain any of the following: {invalid_chars}"
             )
 
-        # Prepend dot if missing
+        # Prepend dot if missing and store in the set
         if not ext.startswith('.'):
-            processed_extensions.add('.' + ext)
+            processed_extensions.add('.' + ext.lower()) # Added .lower() for case-insensitivity
         else:
-            processed_extensions.add(ext)
+            processed_extensions.add(ext.lower()) # Added .lower() for case-insensitivity
+            
+    if not processed_extensions:
+        return []
 
-    # 3. Find matching files
+    # --- 3. Find matching files ---
+    # Note: Using Path.suffix is case-sensitive, so we lower-case it here 
+    # to match the lower-cased processed_extensions set.
     matching_files: list[str] = [
         str(file_path)
         for file_path in p_folder.iterdir()
         if file_path.is_file()
-        and file_path.suffix in processed_extensions
+        and file_path.suffix.lower() in processed_extensions
     ]
 
     return matching_files
