@@ -1,10 +1,10 @@
 """
 Operations on markdown blocks to prepare it for RAG (Retrieval
 Augmented Generation) by enhancing it with metadata. This module
-exemplifies how to use functions to change the markdown document
-using its tree representation and higher-order traversal functions.
+uses functions to change the markdown document using its tree
+representation and higher-order traversal functions.
 
-The operation that are supported by the module are
+The operations that are supported by the module are
 
 1. Validating the markdown structure and ensuring a proper header
     block
@@ -22,15 +22,15 @@ This functionality is implemented by the utility functions:
     add_questions
     add_summaries
 
-The functions scan_rag and markdown_rag use these functions to
+The functions blocklist_rag and markdown_rag use these functions to
 carry out the operations as specified by an options record, ScanOpts.
 The advantage of gathering these functions together in a superordinate
 function is that this latter can be sure that the specifications are
 consistent, and the functions are used in the right order.
 
 Main superordinate functions:
-    scan_rag: processes a blocklist adding metadata annotations
-    markdown_rag: applies scan_rag to file
+    blocklist_rag: processes a blocklist adding metadata annotations
+    markdown_rag: applies blocklist_rag to file
 """
 
 import re
