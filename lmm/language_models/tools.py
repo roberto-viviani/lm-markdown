@@ -219,17 +219,12 @@ Answer:
             return ToolDefinition(
                 name=kernel_name,
                 prompt="""
-Classify the category of the content of the following text. 
-Examples of categories are: """
+Classify the following text into one of the following categories: 
+"""
                 + content_list
-                + """, 'apology', 'human interaction', 'general knowledge'. 
+                + """, 'apology', 'human interaction', 'general knowledge'.
 
-Example: 
-TEXT CONTENT:
-"Thank you for your explanation"
-
-RESPONSE:
-'human interaction'
+Output: only the category
 
 TEXT CONTENT:
 {text}
