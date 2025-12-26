@@ -180,12 +180,12 @@ Provide the questions to which the text answers.
 TEXT:
 {text}
 """
-        create_prompt(name="questioner", prompt=prompt_template)
-        prompt = kernel_prompts["questioner"]
+        create_prompt(name="questioner2", prompt=prompt_template)
+        prompt = kernel_prompts["questioner2"]
         self.assertEqual(prompt.prompt, prompt_template)
 
         settings = Settings()
-        model = create_kernel("questioner", settings.major)
+        model = create_kernel("questioner2", settings.major)
         self.assertIn(
             f"{base_settings.major.get_model_source()}/"
             + f"{base_settings.major.get_model_name()}",
@@ -204,6 +204,7 @@ Provide the questions to which the text answers.
 TEXT:
 {text}
 """
+        kernel_prompts.clear()
         create_prompt(name="questioner", prompt=prompt_template)
         prompt = kernel_prompts["questioner"]
         self.assertEqual(prompt.prompt, prompt_template)

@@ -76,7 +76,7 @@ class TestLazyDict(unittest.TestCase):
             TEXT:
             {text}
         '''
-        create_prompt(prompt_template, name="question_generator")
+        create_prompt(prompt_template, name="question_generator_custom")
 
         # create a kernel from the major model in config.toml with
         # this prompts
@@ -87,11 +87,11 @@ class TestLazyDict(unittest.TestCase):
 
         settings = Settings()
         model = create_kernel(
-            "question_generator",
+            "question_generator_custom",
             settings.major,
             "You are a helpful teacher",
         )
-        self.assertIn("question_generator", model.get_name())
+        self.assertIn("Custom", model.get_name())
 
     def test_create3(self):
         # previously cached

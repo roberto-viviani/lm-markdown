@@ -206,7 +206,7 @@ class TestChunkEncoding(unittest.TestCase):
         chunk = chunks[0]
         self.assertEqual(
             chunk.dense_encoding,
-            chunk.annotations + ": " + text.get_content(),
+            chunk.annotations + ". " + text.get_content(),
         )
 
     def test_encoding_SPARSE(self):
@@ -238,7 +238,7 @@ class TestChunkEncoding(unittest.TestCase):
         self.assertEqual(chunk.sparse_encoding, chunk.annotations)
         self.assertEqual(
             chunk.dense_encoding,
-            chunk.annotations + ": " + text.get_content(),
+            chunk.annotations + ". " + text.get_content(),
         )
 
 
