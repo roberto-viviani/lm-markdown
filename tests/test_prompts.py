@@ -3,9 +3,9 @@
 import unittest
 
 from lmm.language_models.prompts import (
-    tool_library as kernel_prompts,
+    prompt_library as kernel_prompts,
     create_prompt,
-    ToolDefinition,
+    PromptDefinition,
 )
 from lmm.config.config import Settings, export_settings
 
@@ -55,10 +55,29 @@ Provide the questions to which the text answers.
 TEXT:
 {text}
 """
-        create_prompt(prompt_template, "questioner")
-        prompt: ToolDefinition = kernel_prompts["questioner"]
+        create_prompt(prompt_template, "new_prompt")
+        prompt: PromptDefinition = kernel_prompts["new_prompt"]
         self.assertEqual(prompt.prompt, prompt_template)
 
+    def test_repeated_custorm_prompt(self):
+        prompt_template = """Will be rejected."""
+
+        # cannot register another prompt with same name
+        with self.assertRaises(ValueError):
+            create_prompt(prompt_template, "new_prompt")
+
+    def test_replaced_custom_prompt(self):
+        prompt_template = """
+Provide a different to which the text answers.
+
+TEXT:
+{text}
+"""
+        # register prompt with same name but replace set
+        create_prompt(prompt_template, "new_prompt", replace=True)
+        prompt: PromptDefinition = kernel_prompts["new_prompt"]
+        self.assertEqual(prompt.prompt, prompt_template)
+        
 
 if __name__ == "__main__":
     unittest.main()

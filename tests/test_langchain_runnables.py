@@ -170,7 +170,7 @@ class TestDefaultModels(unittest.TestCase):
 
     def test_custom_model(self):
         from lmm.language_models.prompts import (
-            tool_library as kernel_prompts,
+            prompt_library as kernel_prompts,
             create_prompt,
         )
 
@@ -194,7 +194,7 @@ TEXT:
 
     def test_custom_model_from_config(self):
         from lmm.language_models.prompts import (
-            tool_library as kernel_prompts,
+            prompt_library as kernel_prompts,
             create_prompt,
         )
 

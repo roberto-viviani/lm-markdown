@@ -15,7 +15,7 @@ from langchain_core.messages import (
 # from lmm.config.config import LanguageModelSettings
 from lmm.language_models.base import BaseChatModel
 from lmm.language_models.messages import Message  # , ToolCall
-from lmm.language_models.prompts import ToolDefinition
+from lmm.language_models.prompts import PromptDefinition
 from lmm.language_models.langchain.models import create_model_from_settings
 
 
@@ -51,7 +51,7 @@ class LangChainChatModel(BaseChatModel):
     def chat(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> Message:
         lc_messages = self._convert_messages(messages)
         model = create_model_from_settings(self.settings)
@@ -64,7 +64,7 @@ class LangChainChatModel(BaseChatModel):
     async def achat(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> Message:
         lc_messages = self._convert_messages(messages)
         model = create_model_from_settings(self.settings)
@@ -75,7 +75,7 @@ class LangChainChatModel(BaseChatModel):
     def stream(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> Iterator[str]:
         lc_messages = self._convert_messages(messages)
         model = create_model_from_settings(self.settings)
@@ -89,7 +89,7 @@ class LangChainChatModel(BaseChatModel):
     async def astream(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> AsyncIterator[str]:
         lc_messages = self._convert_messages(messages)
         model = create_model_from_settings(self.settings)

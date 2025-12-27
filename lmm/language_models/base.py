@@ -8,7 +8,7 @@ import asyncio
 
 from lmm.config.config import LanguageModelSettings
 from lmm.language_models.messages import Message
-from lmm.language_models.prompts import ToolDefinition
+from lmm.language_models.prompts import PromptDefinition
 
 
 class BaseChatModel(ABC):
@@ -21,7 +21,7 @@ class BaseChatModel(ABC):
     def chat(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> Message:
         """
         Get the next message from the model synchronously.
@@ -38,7 +38,7 @@ class BaseChatModel(ABC):
     async def achat(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> Message:
         """
         Get the next message from the model asynchronously.
@@ -51,7 +51,7 @@ class BaseChatModel(ABC):
     def stream(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> Iterator[str]:
         """
         Stream the model's response synchronously.
@@ -66,7 +66,7 @@ class BaseChatModel(ABC):
     async def astream(
         self, 
         messages: list[Message], 
-        tools: list[ToolDefinition] | None = None
+        tools: list[PromptDefinition] | None = None
     ) -> AsyncIterator[str]:
         """
         Stream the model's response asynchronously.

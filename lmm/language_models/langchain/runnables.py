@@ -54,10 +54,10 @@ from .models import (
 
 from ..lazy_dict import LazyLoadingDict
 from ..prompts import (
-    ToolDefinition,
-    KernelNames,
-    tool_library,
-    _create_tool,  # type: ignore
+    PromptDefinition,
+    PromptNames,
+    prompt_library,
+    _create_prompts,  # type: ignore
 )
 from ..agent import Agent
 from .adapter import LangChainChatModel
@@ -101,7 +101,7 @@ def _dict_to_runnable_par(
 class RunnableDefinition(BaseModel):
     """Groups together all properties that define the runnable"""
 
-    kernel_name: KernelNames
+    kernel_name: PromptNames
     settings: LanguageModelSettings
     system_prompt_override: str | None = None
     params: RunnableParameterType = frozenset()
@@ -125,14 +125,14 @@ def _create_runnable(
     and a language model as specified by a LanguageModelSettings."""
 
     # fetch the kernel definition from the library
-    # If there are params, we need to call _create_tool directly with them
+    # If there are params, we need to call _create_prompts directly with them
     if model.params:
         params_dict = _runnable_par_to_dict(model.params)
-        kernel_definition: ToolDefinition = _create_tool(
+        kernel_definition: PromptDefinition = _create_prompts(
             model.kernel_name, **params_dict
         )
     else:
-        kernel_definition: ToolDefinition = tool_library[
+        kernel_definition: PromptDefinition = prompt_library[
             model.kernel_name
         ]
     system_prompt = (
@@ -207,7 +207,7 @@ embeddings_library: LazyLoadingDict[EmbeddingSettings, Embeddings] = (
 # Provides the shunting of the model to the major, minor, or aux
 # specification provided in config.toml
 def create_runnable(
-    kernel_name: KernelNames | str,
+    kernel_name: PromptNames | str,
     user_settings: (
         dict[str, str] | LanguageModelSettings | Settings | None
     ) = None,
@@ -235,7 +235,7 @@ def create_runnable(
 
     def _create_or_get(
         settings: LanguageModelSettings,
-        kernel_name: KernelNames,
+        kernel_name: PromptNames,
         system_prompt: str | None,
         **kwargs: MetadataPrimitiveWithList,
     ) -> RunnableType:
@@ -293,11 +293,11 @@ def create_runnable(
             # allows custom chat kernels to be constructed from custom
             # prompt templates
             language_settings = settings.minor
-            if kernel_name not in tool_library.keys():
+            if kernel_name not in prompt_library.keys():
                 raise ValueError(
                     f"Invalid kernel name: {kernel_name}"
                 )
-            kernel_definition: ToolDefinition = tool_library[kernel_name]  # type: ignore
+            kernel_definition: PromptDefinition = prompt_library[kernel_name]  # type: ignore
             sys_prompt = (
                 kernel_definition.system_prompt
                 if system_prompt is None

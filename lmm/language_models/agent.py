@@ -6,7 +6,7 @@ from typing import Any
 
 from lmm.language_models.base import BaseChatModel
 from lmm.language_models.messages import Message
-from lmm.language_models.prompts import ToolDefinition
+from lmm.language_models.prompts import PromptDefinition
 
 
 class Agent:
@@ -21,7 +21,7 @@ class Agent:
         model: BaseChatModel, 
         prompt: str, 
         system_prompt: str | None = None,
-        tools: list[ToolDefinition] | None = None,
+        tools: list[PromptDefinition] | None = None,
         name: str | None = None,
     ):
         self.model = model
