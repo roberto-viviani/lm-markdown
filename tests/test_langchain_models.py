@@ -2,8 +2,10 @@
 
 import unittest
 
+from langchain_core.language_models.chat_models import BaseChatModel
+
 from lmm.language_models.langchain.models import (
-    langchain_factory,
+    langchain_models,
     langchain_embeddings,
     create_model_from_spec,
     create_model_from_settings,
@@ -15,16 +17,49 @@ from pydantic import ValidationError
 
 
 # reset at end of testing
-def reset_langchain_factory():
+def reset_langchain_models():
     """Reset the langchain factory to empty"""
-    langchain_factory.clear()
+    langchain_models.clear()
     langchain_embeddings.clear()
 
 
 # Reset factory after running all tests
-unittest.TestCase.setUpClass = reset_langchain_factory
-unittest.TestCase.tearDownClass = reset_langchain_factory
+unittest.TestCase.setUpClass = reset_langchain_models
+unittest.TestCase.tearDownClass = reset_langchain_models
 
+class TestDocstring(unittest.TestCase):
+
+    def test_docstring(self):
+        from lmm.language_models.langchain.models import (
+            create_model_from_spec,
+            create_model_from_settings,
+            langchain_models,
+        )
+        from lmm.config.config import LanguageModelSettings
+        # from langchain.chat_models import BaseChatModel
+
+        # Method 1: Using a LanguageModelSettings object
+        settings = LanguageModelSettings(
+            model="OpenAI/gpt-4o",
+            temperature=0.7,
+            max_tokens=1000,
+            max_retries=3
+        )
+        model: BaseChatModel = langchain_models[settings]
+        self.assertIn("OpenAI", model.get_name())
+
+        # Method 2: Using create_model_from_settings function
+        model = create_model_from_settings(settings)
+        self.assertIn("OpenAI", model.get_name())
+
+        # Method 3: Using create_model_from_spec function
+        model = create_model_from_spec(model="OpenAI/gpt-4o")
+        self.assertIn("OpenAI", model.get_name())
+
+        # Method 4: Using dictionary unpacking
+        spec = {'model': "OpenAI/gpt-4o", 'temperature': 0.7}
+        model = create_model_from_spec(**spec)
+        self.assertIn("OpenAI", model.get_name())
 
 class TestLazyDict(unittest.TestCase):
 
@@ -57,15 +92,15 @@ class TestLazyDict(unittest.TestCase):
 
     def test_create(self):
         model_spec = LanguageModelSettings(model="OpenAI/gpt-4o")
-        model = langchain_factory[model_spec]
+        model = langchain_models[model_spec]
         self.assertEqual(model.get_name(), "ChatOpenAI")
-        model_count = len(langchain_factory)
+        model_count = len(langchain_models)
 
         # previously cached. Note this works if defaults are aligned.
         model_spec = {'model': "OpenAI/gpt-4o"}
         model = create_model_from_spec(**model_spec)
         self.assertEqual(model.get_name(), "ChatOpenAI")
-        self.assertEqual(len(langchain_factory), model_count)
+        self.assertEqual(len(langchain_models), model_count)
 
     def test_create_systemprompt(self):
         from lmm.language_models.prompts import (
@@ -100,7 +135,7 @@ class TestLazyDict(unittest.TestCase):
             LanguageModelSettings(**model_spec)
         )
         self.assertEqual(model.get_name(), "ChatOpenAI")
-        model_count = len(langchain_factory)
+        model_count = len(langchain_models)
 
         # new model
         model_spec = {'model': "OpenAI/gpt-4o", 'temperature': 0.7}
@@ -108,14 +143,14 @@ class TestLazyDict(unittest.TestCase):
             LanguageModelSettings(**model_spec)
         )
         self.assertEqual(model.get_name(), "ChatOpenAI")
-        self.assertEqual(len(langchain_factory), model_count + 1)
+        self.assertEqual(len(langchain_models), model_count + 1)
 
         model_spec = {
             'model': "Anthropic/claude-3-5-haiku-latest",
         }
         model = create_model_from_spec(**model_spec)
         self.assertEqual(model.get_name(), "ChatAnthropic")
-        self.assertEqual(len(langchain_factory), model_count + 2)
+        self.assertEqual(len(langchain_models), model_count + 2)
 
     def test_create_novel2(self):
         model_spec = {

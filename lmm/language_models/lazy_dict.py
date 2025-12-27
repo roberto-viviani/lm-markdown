@@ -110,13 +110,13 @@ class LazyLoadingDict(dict[KeyT, ValueT]):
                 )
         ... (rest of code not shown)
 
-    # The memoized dictionary. langchain_factory is parametrized like
+    # The memoized dictionary. langchain_models is parametrized like
     # a dict[LanguageModelSpecification, BaseLM[BaseMSg]]
-    langchain_factory = LazyLoadingDict(_create_model_instance)
+    langchain_models = LazyLoadingDict(_create_model_instance)
 
     # Example of use
     model_spec = {'source_name': "OpenAI", 'model_name': "gpt-4o"}
-    model = langchain_factory[
+    model = langchain_models[
         LanguageModelSpecification(**model_spec)
     ]
     ```

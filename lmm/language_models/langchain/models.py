@@ -1,14 +1,25 @@
 """
 This module implements creation of Langchain language model objects
-("runnables") from specifications given as a LanguageModelSettings
-object, a dictionary, or a spec given as argument to the
-create_model_from_spec function. The LanguageModelSettings is also
-a member of the Settings object that is read from the config file;
-by default, the settings that determine which model is wrapped in the
-Langchain object are those specified in the config.toml file.
+wrapping the message exchange calls of the primitive model API, thus
+allowing a unified programming interface to diverse models,
+abstracting from vendor details. The model objects are stored in 
+two global repositories, langchain_models and langchain_embeddings.
 
-The "runnable" object allow interacting with the language models
-directly, abstracting from vendor details.
+The model objects are the lowest among the abstractions offered by
+LangChain/LangGraph, but they also implement the runnable interface,
+so that they can be called directly through .invoke/.ainvoke.
+
+The creation of these objects connects the LangChain API to 
+configuration settings that may be given programmatically or loaded
+automatically from config.toml. The settings are given as a 
+LanguageModelSettings object, a dictionary with the appropriate fields
+or a spec given as argument to the create_model_from_spec function. 
+The LanguageModelSettings is also a member of the Settings object that
+is read from the config file prividing a default that is loaded from 
+the config.toml file.
+
+Note: the abstract class in the LangChain API that defines the model
+object is `BaseChatModel`.
 
 Examples:
 
@@ -16,28 +27,33 @@ Examples:
 from lmm.language_models.langchain.models import (
     create_model_from_spec,
     create_model_from_settings,
-    langchain_factory,
+    langchain_models,
 )
-from lmm.config import LanguageModelSettings
+from lmm.config.config import LanguageModelSettings
+from langchain.chat_models import BaseChatModel
 
-# Method 1: Using LanguageModelSettings object
+# Method 1: Using a LanguageModelSettings object
 settings = LanguageModelSettings(
     model="OpenAI/gpt-4o",
     temperature=0.7,
     max_tokens=1000,
     max_retries=3
 )
-model = langchain_factory[settings]
+model: BaseChatModel = langchain_models[settings]
+# (this method accesses the repository directly).
 
 # Method 2: Using create_model_from_settings function
 model = create_model_from_settings(settings)
+# (this method memoizes the model in the repository)
 
 # Method 3: Using create_model_from_spec function
 model = create_model_from_spec(model="OpenAI/gpt-4o")
+# (this method memoizes the model in the repository)
 
 # Method 4: Using dictionary unpacking
 spec = {'model': "OpenAI/gpt-4o", 'temperature': 0.7}
 model = create_model_from_spec(**spec)
+# (this method memoizes the model in the repository)
 ```
 
 Behaviour:
@@ -52,7 +68,7 @@ Note:
     LanguageModelSettings.
 """
 
-# pyright: reportArgumentType=false
+from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
@@ -63,6 +79,7 @@ from lmm.config.config import (
     LanguageModelSettings,
     EmbeddingSettings,
     ModelSource,
+    SparseModel,
 )
 from lmm.markdown.parse_yaml import MetadataPrimitiveWithList
 
@@ -93,7 +110,7 @@ def _create_model_instance(
                 ) from e
 
             # Build kwargs dict to handle optional parameters
-            kwargs: dict[str, MetadataPrimitiveWithList | None] = {
+            kwargs: dict[str, Any] = {
                 "model_name": model_name,
                 "temperature": model.temperature,
                 "max_tokens_to_sample": model.max_tokens or 1024,
@@ -281,40 +298,24 @@ def _create_embedding_instance(
             return OpenAIEmbeddings(model=model_name)
 
         case "SentenceTransformers":
-            from huggingface_hub.errors import LocalEntryNotFoundError
             from langchain_huggingface import HuggingFaceEmbeddings
 
             source_name = "sentence-transformers"
             full_model_name = f"{source_name}/{model_name}"
-            model_kwargs = {
-                "device": "cpu",
-                "local_files_only": False,  # not throwing the expected error
-                # if True
-            }
+            # We rely on defaults:
+            # - device: automatically selects "cuda" if available, else "cpu"
+            # - local_files_only: defaults to False (will download if missing)
+            
             encode_kwargs = {"normalize_embeddings": True}
-            model_: HuggingFaceEmbeddings
-            try:
-                model_ = HuggingFaceEmbeddings(
-                    model_name=full_model_name,
-                    model_kwargs=model_kwargs,
-                    encode_kwargs=encode_kwargs,
-                )
-            except LocalEntryNotFoundError:
-                print(f"downloading sentence transformer {model_name}")
-                model_kwargs = {
-                    "device": "cpu",
-                    "local_files_only": False,
-                }
-                model_ = HuggingFaceEmbeddings(
-                    model_name=full_model_name,
-                    model_kwargs=model_kwargs,
-                    encode_kwargs=encode_kwargs,
-                )
-            return model_
+            
+            return HuggingFaceEmbeddings(
+                model_name=full_model_name,
+                encode_kwargs=encode_kwargs,
+            )
 
 
 # Public interface----------------------------------------------
-langchain_factory: LazyLoadingDict[LanguageModelSettings, BaseChatModel] = \
+langchain_models: LazyLoadingDict[LanguageModelSettings, BaseChatModel] = \
     LazyLoadingDict(_create_model_instance)
 langchain_embeddings: LazyLoadingDict[EmbeddingSettings, Embeddings] = \
     LazyLoadingDict(_create_embedding_instance)
@@ -356,7 +357,7 @@ def create_model_from_spec(
         timeout=timeout,
         provider_params=provider_params,
     )
-    return langchain_factory[spec]
+    return langchain_models[spec]
 
 
 def create_model_from_settings(
@@ -396,11 +397,11 @@ def create_model_from_settings(
         response = model.invoke("Why is the grass green?")
         ```
     """
-    return langchain_factory[settings]
+    return langchain_models[settings]
 
 
 def create_embedding_model_from_spec(
-    dense_model: str, *, sparse_model: str = "Qdrant/bm25"
+    dense_model: str, *, sparse_model: SparseModel = "Qdrant/bm25"
 ) -> Embeddings:
     """
     Create langchain embedding model from source_name and
