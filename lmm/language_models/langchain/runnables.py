@@ -86,7 +86,7 @@ from pydantic import BaseModel, ConfigDict
 from langchain_core.runnables.base import (
     RunnableSerializable,
 )
-from langchain.prompts import (
+from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
