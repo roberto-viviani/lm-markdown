@@ -158,7 +158,7 @@ def _dict_to_runnable_par(
 class RunnableDefinition(BaseModel):
     """Groups together all properties that define the runnable"""
 
-    kernel_name: str
+    kernel_name: PromptNames | str
     settings: LanguageModelSettings
     system_prompt_override: str | None = None
     params: RunnableParameterType = frozenset()
@@ -186,11 +186,11 @@ def _create_runnable(
     if model.params:
         params_dict = _runnable_par_to_dict(model.params)
         prompt_definition: PromptDefinition = _create_prompts(
-            model.kernel_name, **params_dict
+            model.kernel_name, **params_dict  # type: ignore
         )
     else:
         prompt_definition: PromptDefinition = prompt_library[
-            model.kernel_name
+            model.kernel_name # type: ignore
         ]
     system_prompt = (
         prompt_definition.system_prompt
@@ -423,26 +423,26 @@ def create_runnable(
     # or prompt_library if we don't (to handle custom prompts).
     if params_dict:
         try:
-           prompt_definition = _create_prompts(kernel_name, **params_dict) # type: ignore
+            prompt_definition = _create_prompts(kernel_name, **params_dict) # type: ignore
         except ValueError:
-             # Fallback: if _create_prompts fails (e.g. custom prompt), 
-             # check library. But strictly custom prompts shouldn't have params 
-             # in current architecture unless handled by _create_prompts.
-             # raising the error is appropriate if params were intended for a 
-             # prompt that doesn't support them.
-             raise
+            # Fallback: if _create_prompts fails (e.g. custom prompt), 
+            # check library. But strictly custom prompts shouldn't have params 
+            # in current architecture unless handled by _create_prompts.
+            # raising the error is appropriate if params were intended for a 
+            # prompt that doesn't support them.
+            raise
     else:
         prompt_definition = prompt_library[kernel_name] # type: ignore
 
     match prompt_definition.model_tier:
         case 'major':
-             settings_to_use = settings.major
+            settings_to_use = settings.major
         case 'minor':
-             settings_to_use = settings.minor
+            settings_to_use = settings.minor
         case 'aux':
-             settings_to_use = settings.aux
+            settings_to_use = settings.aux
         case _:
-             settings_to_use = settings.minor
+            settings_to_use = settings.minor
 
     return _create_or_get(
         settings_to_use, 
@@ -450,7 +450,6 @@ def create_runnable(
         system_prompt,
         **kwargs
     )
-
 
 
 def create_embeddings(
