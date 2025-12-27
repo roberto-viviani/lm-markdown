@@ -30,7 +30,7 @@ from lmm.language_models.langchain.models import (
     langchain_models,
 )
 from lmm.config.config import LanguageModelSettings
-from langchain.chat_models import BaseChatModel
+from langchain_core.language_models.chat_models import BaseChatModel
 
 # Method 1: Using a LanguageModelSettings object
 settings = LanguageModelSettings(
@@ -67,6 +67,7 @@ Note:
     max_tokens, max_retries, and timeout through
     LanguageModelSettings.
 """
+# review g + a
 
 from typing import Any
 
@@ -138,7 +139,7 @@ def _create_model_instance(
                 ) from e
 
             # Build kwargs dict to handle optional parameters
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "model": model_name,
                 "temperature": model.temperature,
             }
@@ -165,7 +166,7 @@ def _create_model_instance(
                 ) from e
 
             # Build kwargs dict to handle optional parameters
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "model_name": model_name,
                 "temperature": model.temperature,
                 "max_retries": model.max_retries,
@@ -191,7 +192,7 @@ def _create_model_instance(
                 ) from e
 
             # Build kwargs dict to handle optional parameters
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "model": model_name,
                 "temperature": model.temperature,
                 "max_retries": model.max_retries,
@@ -221,10 +222,7 @@ def _create_model_instance(
                 raise ImportError(
                     "Could not import GenericFakeChatModel from langchain_core"
                 ) from e
-            if (
-                model.provider_params
-                    and "message" in model.provider_params.keys()
-            ):
+            if model.provider_params and "message" in model.provider_params:
                 return GenericFakeChatModel(
                     name="Langchain fake messages",
                     messages=yield_constant_message(
@@ -298,7 +296,14 @@ def _create_embedding_instance(
             return OpenAIEmbeddings(model=model_name)
 
         case "SentenceTransformers":
-            from langchain_huggingface import HuggingFaceEmbeddings
+            try:
+                from langchain_huggingface import HuggingFaceEmbeddings
+            except ImportError as e:
+                raise ImportError(
+                    "SentenceTransformers models require the "
+                    "'langchain-huggingface' package. "
+                    "Install it with: pip install langchain-huggingface"
+                ) from e
 
             source_name = "sentence-transformers"
             full_model_name = f"{source_name}/{model_name}"
@@ -313,12 +318,19 @@ def _create_embedding_instance(
                 encode_kwargs=encode_kwargs,
             )
 
+        case _:
+            raise ValueError(
+                f"Unsupported embedding source: {model_source}"
+            )
+
 
 # Public interface----------------------------------------------
-langchain_models: LazyLoadingDict[LanguageModelSettings, BaseChatModel] = \
+langchain_models: LazyLoadingDict[LanguageModelSettings, BaseChatModel] = (
     LazyLoadingDict(_create_model_instance)
-langchain_embeddings: LazyLoadingDict[EmbeddingSettings, Embeddings] = \
+)
+langchain_embeddings: LazyLoadingDict[EmbeddingSettings, Embeddings] = (
     LazyLoadingDict(_create_embedding_instance)
+)
 
 
 def create_model_from_spec(
@@ -328,7 +340,7 @@ def create_model_from_spec(
     max_tokens: int | None = None,
     max_retries: int = 2,
     timeout: float | None = None,
-    provider_params: dict[str, MetadataPrimitiveWithList] = {},
+    provider_params: dict[str, MetadataPrimitiveWithList] | None = None,
 ) -> BaseChatModel:
     """
     Create langchain model from specifications.
@@ -340,7 +352,7 @@ def create_model_from_spec(
     Returns:
         a Langchain model object.
 
-    Raises ValuationError, TypeError, ValidationError
+    Raises ValueError, TypeError, ValidationError
 
     Example:
         ```python
@@ -348,6 +360,8 @@ def create_model_from_spec(
         model = create_model_from_spec(**spec)
         ```
     """
+    if provider_params is None:
+        provider_params = {}
 
     spec = LanguageModelSettings(
         model=model,
@@ -374,7 +388,7 @@ def create_model_from_settings(
     Returns:
         a Langchain model object.
 
-    Raises ValuationError, TypeError, ValidationError
+    Raises ValueError, TypeError, ValidationError
 
     Example:
         ```python
@@ -415,7 +429,7 @@ def create_embedding_model_from_spec(
     Returns:
         a Langchain embeddings model object.
 
-    Raises ValuationError, TypeError, ValidationError
+    Raises ValueError, TypeError, ValidationError
 
     Example:
         ```python
@@ -445,7 +459,7 @@ def create_embedding_model_from_settings(
     Returns:
         a Langchain embeddings model object.
 
-    Raises ValuationError, TypeError, ValidationError
+    Raises ValueError, TypeError, ValidationError
 
     Example:
         ```python
