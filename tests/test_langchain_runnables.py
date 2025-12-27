@@ -339,13 +339,14 @@ class TestEmbeddingModel(unittest.TestCase):
         )
         self.assertIsInstance(embmodel, Embeddings)
 
-    def test_spec_embedding_import(self) -> None:
-        with self.assertRaises(ImportError):
-            create_embeddings(
-                {
-                    'dense_model': "SentenceTransformers/all-mpnet-base-v2"
-                }
-            )
+    # sentence transformers now installed.
+    # def test_spec_embedding_import(self) -> None:
+    #     with self.assertRaises(ImportError):
+    #         create_embeddings(
+    #             {
+    #                 'dense_model': "SentenceTransformers/all-mpnet-base-v2"
+    #             }
+    #         )
 
     def test_invalid_spec_embedding(self) -> None:
         with self.assertRaises(ValidationError):

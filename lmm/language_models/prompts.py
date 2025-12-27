@@ -3,9 +3,10 @@ This module centralizes storage and definition of prompts to
 configure language models to perform a specific function. 
 
 These prompts are collected in a PromptDefinition object, which 
-identifies the prompt set (system and user) uniquely. The module
-supports predefined prompts as well as prompts that may be dyna-
-mically added to the centralized repository.
+identifies the prompt set (system and user) uniquely, and specifies
+the language model tier that should be used with the prompt. The 
+module supports predefined prompts as well as prompts that may be 
+dynamically added to the centralized repository.
 
 The predefined prompt sets are
 
@@ -62,6 +63,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from .lazy_dict import LazyLoadingDict
 
+ModelTier = Literal['major', 'minor', 'aux']
+
+
 
 class PromptDefinition(BaseModel):
     """Groups all properties that uniquely define a kernel tool"""
@@ -69,6 +73,7 @@ class PromptDefinition(BaseModel):
     name: str
     prompt: str
     system_prompt: str | None = None
+    model_tier: ModelTier = 'minor'
 
     model_config = ConfigDict(frozen=False, extra='forbid')
 
@@ -99,6 +104,7 @@ Write a concise summary of the following: "{text}"
 
 SUMMARY:
 """,
+                model_tier='minor',
             )
         case "question_generator":  # --- kernel case definition
             return PromptDefinition(
@@ -116,6 +122,7 @@ TEXT: {text}
 QUESTIONS:
 """,
                 system_prompt="You are a helpful teacher.",
+                model_tier='minor',
             )
         case "query_with_context":  # --- kernel case definition
             return PromptDefinition(
@@ -137,6 +144,7 @@ YOUR RESPONSE:
 
 """,
                 system_prompt="You are a helpful assistant.",
+                model_tier='major',
             )
         case "query":  # --- kernel case definition
             return PromptDefinition(
@@ -153,6 +161,7 @@ TEXT:  {text}
 YOUR RESPONSE:
 
 """,
+                model_tier='major',
             )
         case "context_validator":  # --- kernel case definition
             return PromptDefinition(
@@ -171,6 +180,8 @@ Context: {context}
 ----
 Answer:
 """,
+                system_prompt="You are a helpful assistant.",
+                model_tier='aux',
             )
         case "allowed_content_validator":  # --- kernel case def.
             param: object | list[object] = kwargs.pop(
@@ -221,6 +232,8 @@ TEXT CONTENT:
 
 RESPONSE:
 """,
+                model_tier='aux',
+                system_prompt="You are a helpful assistant.",
             )
         case _:  # do not remove this
             raise ValueError(f"Invalid kernel: {prompt_name}")

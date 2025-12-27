@@ -126,7 +126,7 @@ class TestLazyDict(unittest.TestCase):
             settings.major,
             "You are a helpful teacher",
         )
-        self.assertIn("Custom", model.get_name())
+        self.assertIn("OpenAI", model.get_name())
 
     def test_create3(self):
         # previously cached

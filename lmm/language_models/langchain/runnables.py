@@ -1,24 +1,26 @@
 """
-Creates Langchain 'runnable' objects or 'kernels'. These objects may be
-used in Langchain chains.
+Creates Langchain 'runnable' objects or 'chain' members. These objects
+may be combined to form Langchain chains, or used by themselves using
+the .invoke/.ainvoke member functions. The created objects are made
+available through the global variables `runnable_library` and 
+`embeddings_library`, which memoize the objects.
 
-The runnable plugs two library resources into the Langchain interface:
+Each object plugs two global resources into the Langchain interface:
 
-- a language model object, itself wrapped by Langchain, selected via
+- a language model object, itself wrapped by LangChain, selected via
     the models module from the specification in a config.toml file.
-    This module shunts the kernels between the 'major', 'minor', and
-    'aux' specifications of the models specified in config.toml.
-- a set of tools that specialize the function of the language model,
-    selected from the tool library provided by the tools module.
+- a set of prompts that specialize the function of the language model,
+    selected from the prompt library provided by the prompts module.
 
-The tools module contains a set of predefined tools, allowing one to
-create the specialized runnable/'kernel' from the kernel name.
+The prompts module contains a set of predefined prompts, allowing one
+to create the specialized runnable/'chain' from the chain name.
 
 The runnables are callable objects via the `invoke` member function.
-The Langchain syntax is used with invoke, for example by passing a
+The LangChain syntax is used with invoke, for example by passing a
 dictionary that contains the parameters for the prompt template.
 
-Example of a runnable created from a predefined tool:
+Example of runnable creations:
+
     ```python
     from lmm.language_models.langchain.runnables import create_runnable
     try:
@@ -42,13 +44,14 @@ Example of a runnable created from a predefined tool:
     ```
 
 Example of a dynamically created chat kernel:
+
     ```python
         from lmm.language_models.tools import (
             prompt_library,
             create_prompt,
         )
 
-        # this creates a prompt tool and registers it in the tool library
+        # this creates a prompt and registers it in the prompts library
         prompt_template = '''Provide the questions to which the text answers.
             TEXT:
             {text}
@@ -78,7 +81,7 @@ Expected behaviour:
 
 Note:
     A Langchain language model may be used directly after obtaining it
-    from create_model_from_spec in the models module.
+        from create_model_from_spec in the models module.
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -155,7 +158,7 @@ def _dict_to_runnable_par(
 class RunnableDefinition(BaseModel):
     """Groups together all properties that define the runnable"""
 
-    kernel_name: PromptNames
+    kernel_name: str
     settings: LanguageModelSettings
     system_prompt_override: str | None = None
     params: RunnableParameterType = frozenset()
@@ -412,43 +415,42 @@ def create_runnable(
                 f"Invalid model definition: {user_settings}"
             )
 
-    match kernel_name:
-        case 'query' | 'query_with_context':
-            return _create_or_get(
-                settings.major, kernel_name, system_prompt
-            )
-        case 'question_generator' | 'summarizer':
-            return _create_or_get(
-                settings.minor, kernel_name, system_prompt
-            )
-        case 'allowed_content_validator' | 'context_validator':
-            return _create_or_get(
-                settings.aux,
-                kernel_name,
-                "You are a helpful assistant",
-                **kwargs,
-            )
-        case str():
-            # allows custom chat kernels to be constructed from custom
-            # prompt templates
-            language_settings = settings.minor
-            if kernel_name not in prompt_library.keys():
-                raise ValueError(
-                    f"Invalid kernel name: {kernel_name}"
-                )
-            prompt_definition: PromptDefinition = prompt_library[kernel_name]  # type: ignore
-            sys_prompt = (
-                prompt_definition.system_prompt
-                if system_prompt is None
-                else system_prompt
-            )
-            return create_kernel_from_objects(
-                human_prompt=prompt_definition.prompt,
-                system_prompt=sys_prompt,
-                language_model=language_settings,
-            )
+    # Logic to retrieve or create prompt definition to check model tier
+    prompt_definition: PromptDefinition
+    params_dict = dict(kwargs)
+    
+    # We use _create_prompts if we have params (to handle validation)
+    # or prompt_library if we don't (to handle custom prompts).
+    if params_dict:
+        try:
+           prompt_definition = _create_prompts(kernel_name, **params_dict) # type: ignore
+        except ValueError:
+             # Fallback: if _create_prompts fails (e.g. custom prompt), 
+             # check library. But strictly custom prompts shouldn't have params 
+             # in current architecture unless handled by _create_prompts.
+             # raising the error is appropriate if params were intended for a 
+             # prompt that doesn't support them.
+             raise
+    else:
+        prompt_definition = prompt_library[kernel_name] # type: ignore
+
+    match prompt_definition.model_tier:
+        case 'major':
+             settings_to_use = settings.major
+        case 'minor':
+             settings_to_use = settings.minor
+        case 'aux':
+             settings_to_use = settings.aux
         case _:
-            raise ValueError("Unreacheable code reached.")
+             settings_to_use = settings.minor
+
+    return _create_or_get(
+        settings_to_use, 
+        kernel_name, # type: ignore
+        system_prompt,
+        **kwargs
+    )
+
 
 
 def create_embeddings(
