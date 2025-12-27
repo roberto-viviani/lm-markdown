@@ -158,7 +158,7 @@ def _dict_to_runnable_par(
 class RunnableDefinition(BaseModel):
     """Groups together all properties that define the runnable"""
 
-    kernel_name: PromptNames | str
+    runnable_name: PromptNames | str
     settings: LanguageModelSettings
     system_prompt_override: str | None = None
     params: RunnableParameterType = frozenset()
@@ -193,11 +193,11 @@ def _create_runnable(
     if model.params:
         params_dict = _runnable_par_to_dict(model.params)
         prompt_definition = create_prompt_definition(
-            model.kernel_name, **params_dict  # type: ignore
+            model.runnable_name, **params_dict  # type: ignore
         )
     else:
         prompt_definition = prompt_library[
-            model.kernel_name # type: ignore
+            model.runnable_name # type: ignore
         ]
     system_prompt = (
         prompt_definition.system_prompt
@@ -229,11 +229,11 @@ def _create_runnable(
     language_model_settings: LanguageModelSettings = model.settings
     if language_model_settings.get_model_source() == "Debug":
         # Use predefined debug messages or handle special cases
-        if model.kernel_name in _DEBUG_MESSAGES:
+        if model.runnable_name in _DEBUG_MESSAGES:
             language_model_settings.provider_params['message'] = (
-                _DEBUG_MESSAGES[model.kernel_name]
+                _DEBUG_MESSAGES[model.runnable_name]
             )
-        elif model.kernel_name == 'allowed_content_validator':
+        elif model.runnable_name == 'allowed_content_validator':
             param_dict = _runnable_par_to_dict(model.params)
             param_value = param_dict.pop(
                 'allowed_content', ['statistics']
@@ -256,7 +256,7 @@ def _create_runnable(
     # .name is a member function of RunnableSerializable
     # inited to None, which we reinitialize here
     kernel.name = (
-        f"{model.kernel_name}:"
+        f"{model.runnable_name}:"
         + f"{model.settings.get_model_source()}/"
         + f"{model.settings.get_model_name()}"
     )
@@ -283,7 +283,7 @@ embeddings_library: LazyLoadingDict[EmbeddingSettings, Embeddings] = (
 # Provides the shunting of the model to the major, minor, or aux
 # specification provided in config.toml
 def create_runnable(
-    kernel_name: PromptNames | str,
+    runnable_name: PromptNames | str,
     user_settings: (
         dict[str, str] | LanguageModelSettings | Settings | None
     ) = None,
@@ -292,7 +292,7 @@ def create_runnable(
 ) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
     """
     Creates a Langchain kernel (a 'runnable') by combining tools/prompts
-    created under the kernel_name parameters and configurations from
+    created under the runnable_name parameters and configurations from
     config.toml with optional override settings.
 
     The function maps different kernel types to their appropriate
@@ -308,11 +308,11 @@ def create_runnable(
     3. Default settings from Settings class
 
     Args:
-        kernel_name: The name of the kernel to create. If one of
+        runnable_name: The name of the kernel to create. If one of
             the supported kernel names defined in the PromptNames
             literal type, returns a cached kernel object. Otherwise,
             looks up in the tools_library dictionary if there is
-            a prompt with that kernel_name, and returns a kernel
+            a prompt with that runnable_name, and returns a kernel
             object for a chat with that prompt.
         user_settings: Optional settings to override the default
             configuration. Can be either:
@@ -330,7 +330,7 @@ def create_runnable(
             response.
 
     Raises:
-        ValueError: If kernel_name is not supported or if user_settings
+        ValueError: If runnable_name is not supported or if user_settings
             contains invalid model source names. No check is made at this
             stage that the model names are correct (as they frequently
             change); instead, failure occurs when the .invoke member function
@@ -381,12 +381,12 @@ def create_runnable(
 
     def _create_or_get(
         settings: LanguageModelSettings,
-        kernel_name: PromptNames,
+        runnable_name: PromptNames,
         system_prompt: str | None,
         **kwargs: MetadataPrimitiveWithList,
     ) -> RunnableType:
         model: RunnableDefinition = RunnableDefinition(
-            kernel_name=kernel_name,
+            runnable_name=runnable_name,
             settings=settings,
             system_prompt_override=system_prompt,
             params=_dict_to_runnable_par(kwargs),
@@ -427,7 +427,7 @@ def create_runnable(
     # or prompt_library if we don't (to handle custom prompts).
     if params_dict:
         try:
-            prompt_definition = create_prompt_definition(kernel_name, **params_dict) # type: ignore
+            prompt_definition = create_prompt_definition(runnable_name, **params_dict) # type: ignore
         except ValueError:
             # Fallback: if create_prompt_definition fails (e.g. custom prompt), 
             # check library. But strictly custom prompts shouldn't have params 
@@ -437,9 +437,9 @@ def create_runnable(
             raise
     else:
         try:
-            prompt_definition = prompt_library[kernel_name] # type: ignore
+            prompt_definition = prompt_library[runnable_name] # type: ignore
         except Exception as e:
-            raise ValueError(f"{kernel_name} is not a valid runnable name ({e})")
+            raise ValueError(f"{runnable_name} is not a valid runnable name ({e})")
 
     match prompt_definition.model_tier:
         case 'major':
@@ -453,7 +453,7 @@ def create_runnable(
 
     return _create_or_get(
         settings_to_use, 
-        kernel_name, # type: ignore
+        runnable_name, # type: ignore
         system_prompt,
         **kwargs
     )

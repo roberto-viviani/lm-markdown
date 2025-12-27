@@ -282,7 +282,7 @@ class TestDebugModel(unittest.TestCase):
 
     def test_debug_kernel(self):
         model = create_kernel(
-            kernel_name="summarizer",
+            runnable_name="summarizer",
             user_settings={
                 'model': "Debug/debug",
             },

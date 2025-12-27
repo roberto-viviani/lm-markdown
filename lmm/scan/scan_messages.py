@@ -62,8 +62,8 @@ from .scanutils import post_order_hashed_aggregation
 logger: LoggerBase = get_logger(__name__)
 
 
-def _fetch_kernel(
-    kernel_name: PromptNames, node: MarkdownNode | None = None
+def _fetch_runnable(
+    runnable_name: PromptNames, node: MarkdownNode | None = None
 ) -> RunnableType:
     """
     This function allows to use information from the metadata of a
@@ -79,12 +79,12 @@ def _fetch_kernel(
     assert node is None
 
     if node is None:
-        model: RunnableType = create_runnable(kernel_name=kernel_name)
+        model: RunnableType = create_runnable(runnable_name=runnable_name)
     else:
         # unreacheable, future extension
         INCLUDE_HEADER = True
         model_properties: MetadataValue = node.fetch_metadata_for_key(
-            str(kernel_name), INCLUDE_HEADER
+            str(runnable_name), INCLUDE_HEADER
         )
         if model_properties is None:
             model_properties = node.fetch_metadata_for_key(
@@ -99,7 +99,7 @@ def _fetch_kernel(
         # type checks and coertions delegated to pydantic model
         settings = LanguageModelSettings(**model_properties)  # type: ignore
         model = create_runnable(
-            kernel_name=kernel_name, user_settings=settings
+            runnable_name=runnable_name, user_settings=settings
         )
     return model
 
@@ -114,7 +114,7 @@ def _fetch_summary(node: MarkdownNode) -> str:
     Raises:
         ConnectionError, ValueError
     """
-    model: RunnableType = _fetch_kernel(kernel_name="summarizer")
+    model: RunnableType = _fetch_runnable(runnable_name="summarizer")
     post_order_hashed_aggregation(
         node,
         lambda x: model.invoke({'text': "\n".join(x)}),
@@ -216,7 +216,7 @@ def _scan_queries(
     try:
         response: str
         if context:
-            model: RunnableType = _fetch_kernel("query_with_context")
+            model: RunnableType = _fetch_runnable("query_with_context")
             response = model.invoke(
                 {
                     'query': query,
@@ -225,7 +225,7 @@ def _scan_queries(
                 }
             )
         else:
-            model = _fetch_kernel("query")
+            model = _fetch_runnable("query")
             response = model.invoke(
                 {
                     'query': query,

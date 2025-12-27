@@ -834,7 +834,7 @@ def add_summaries(
         response: str = ""
         try:
             kernel: RunnableType = create_runnable(
-                kernel_name="summarizer",
+                runnable_name="summarizer",
                 user_settings=opts.language_model_settings,
             )
             response = kernel.invoke({'text': text})
