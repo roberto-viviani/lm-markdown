@@ -66,7 +66,6 @@ from .lazy_dict import LazyLoadingDict
 ModelTier = Literal['major', 'minor', 'aux']
 
 
-
 class PromptDefinition(BaseModel):
     """Groups all properties that uniquely define a kernel tool"""
 
@@ -92,7 +91,7 @@ PromptNames = Literal[
 # A functional returning the prompt definitions. This is the factory
 # function that creates the prompt object (an objects containing the
 # prompts).
-def _create_prompts(
+def create_prompt_definition(
     prompt_name: PromptNames, **kwargs: object | list[object]
 ) -> PromptDefinition:
     match prompt_name:
@@ -240,7 +239,7 @@ RESPONSE:
 
 
 # a module-level typed dictionary for the preformed prompts
-prompt_library = LazyLoadingDict(_create_prompts)
+prompt_library = LazyLoadingDict(create_prompt_definition)
 
 
 def create_prompt(

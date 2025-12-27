@@ -117,7 +117,7 @@ from ..prompts import (
     PromptDefinition,
     PromptNames,
     prompt_library,
-    _create_prompts,  # type: ignore
+    create_prompt_definition,
 )
 
 RunnableParameterValue = (
@@ -173,6 +173,12 @@ EmbeddingModel = EmbeddingSettings
 # Exports the type of the Langchain object
 RunnableType = RunnableSerializable[dict[str, str], str]
 
+# Debug mode messages for fake model responses
+_DEBUG_MESSAGES: dict[str, str] = {
+    'summarizer': "This is a summary of the text.",
+    'question_generator': "These are questions the text answers.",
+}
+
 
 # The factory functions
 def _create_runnable(
@@ -182,14 +188,15 @@ def _create_runnable(
     and a language model as specified by a LanguageModelSettings."""
 
     # fetch the kernel definition from the library
-    # If there are params, we need to call _create_prompts directly with them
+    # If there are params, we need to call create_prompt_definition directly with them
+    prompt_definition: PromptDefinition
     if model.params:
         params_dict = _runnable_par_to_dict(model.params)
-        prompt_definition: PromptDefinition = _create_prompts(
+        prompt_definition = create_prompt_definition(
             model.kernel_name, **params_dict  # type: ignore
         )
     else:
-        prompt_definition: PromptDefinition = prompt_library[
+        prompt_definition = prompt_library[
             model.kernel_name # type: ignore
         ]
     system_prompt = (
@@ -215,33 +222,30 @@ def _create_runnable(
     else:
         prompt = ChatPromptTemplate.from_template(human_prompt)
 
-    # the base language model. We customize the language model for
-    # debug purposes to avoid calling the model provider.
+    # The language model is constructed here explicitly when
+    # the provider is 'Debug' to avoid calling the model provider
+    # and provide a string directly instead.
     language_model: BaseChatModel
     language_model_settings: LanguageModelSettings = model.settings
     if language_model_settings.get_model_source() == "Debug":
-        match model.kernel_name:
-            case 'summarizer':
-                language_model_settings.provider_params['message'] = (
-                    "This is a summary of the text."
+        # Use predefined debug messages or handle special cases
+        if model.kernel_name in _DEBUG_MESSAGES:
+            language_model_settings.provider_params['message'] = (
+                _DEBUG_MESSAGES[model.kernel_name]
+            )
+        elif model.kernel_name == 'allowed_content_validator':
+            param_dict = _runnable_par_to_dict(model.params)
+            param_value = param_dict.pop(
+                'allowed_content', ['statistics']
+            )
+            if not isinstance(param_value, list):
+                raise TypeError(
+                    f"allowed_content must be a list[str], got {type(param_value).__name__}"
                 )
-            case 'question_generator':
-                language_model_settings.provider_params['message'] = (
-                    "These are questions the text answers."
-                )
-            case 'allowed_content_validator':
-                param_dict = _runnable_par_to_dict(model.params)
-                param_value = param_dict.pop(
-                    'allowed_content', ['statistics']
-                )
-                if isinstance(param_value, list):
-                    param_value = str(param_value[0])
-                language_model_settings.provider_params['message'] = (
-                    str(param_value)
-                )
-            case _:
-                # generic fake chat model in all other cases
-                pass
+            language_model_settings.provider_params['message'] = (
+                str(param_value[0])
+            )
+        # else: generic fake chat model (default behavior)
 
     language_model = create_model_from_settings(
         language_model_settings
@@ -408,7 +412,7 @@ def create_runnable(
             )
         case Settings():
             settings = user_settings
-        case None:
+        case None | {}:
             settings = Settings()
         case _:
             raise ValueError(
@@ -419,20 +423,23 @@ def create_runnable(
     prompt_definition: PromptDefinition
     params_dict = dict(kwargs)
     
-    # We use _create_prompts if we have params (to handle validation)
+    # We use create_prompt_definition if we have params (to handle validation)
     # or prompt_library if we don't (to handle custom prompts).
     if params_dict:
         try:
-            prompt_definition = _create_prompts(kernel_name, **params_dict) # type: ignore
+            prompt_definition = create_prompt_definition(kernel_name, **params_dict) # type: ignore
         except ValueError:
-            # Fallback: if _create_prompts fails (e.g. custom prompt), 
+            # Fallback: if create_prompt_definition fails (e.g. custom prompt), 
             # check library. But strictly custom prompts shouldn't have params 
-            # in current architecture unless handled by _create_prompts.
+            # in current architecture unless handled by create_prompt_definition.
             # raising the error is appropriate if params were intended for a 
             # prompt that doesn't support them.
             raise
     else:
-        prompt_definition = prompt_library[kernel_name] # type: ignore
+        try:
+            prompt_definition = prompt_library[kernel_name] # type: ignore
+        except Exception as e:
+            raise ValueError(f"{kernel_name} is not a valid runnable name ({e})")
 
     match prompt_definition.model_tier:
         case 'major':
@@ -553,7 +560,7 @@ def create_kernel_from_objects(
 
     # model use:
     try:
-        response = model.invoke({'text', "Logistic regression is used"
+        response = model.invoke({'text': "Logistic regression is used"
             + " when the outcome variable is binary"})
     except Exception ...
     ```
