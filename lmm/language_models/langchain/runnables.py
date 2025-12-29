@@ -13,7 +13,7 @@ Each object plugs two global resources into the Langchain interface:
     selected from the prompt library provided by the prompts module.
 
 The prompts module contains a set of predefined prompts, allowing one
-to create the specialized runnable/'chain' from the chain name.
+to create the specialized runnable/'chain' from the prompt name.
 
 The runnables are callable objects via the `invoke` member function.
 The LangChain syntax is used with invoke, for example by passing a
@@ -33,7 +33,7 @@ Example of runnable creations:
                                 {'model': "OpenAI/gpt-4o"})
     except Exception ...
 
-    # use Langchain syntax to call the kernel after creating it
+    # use Langchain syntax to call the runnable after creating it
     try:
         response = questions_model.invoke({
             'text': "Logistic regression is typically used when the "
@@ -43,7 +43,7 @@ Example of runnable creations:
         print("Could not obtain response from model")
     ```
 
-Example of a dynamically created chat kernel:
+Example of a dynamically created chat runnable:
 
     ```python
         from lmm.language_models.tools import (
@@ -58,7 +58,7 @@ Example of a dynamically created chat kernel:
         '''
         create_prompt(prompt_template, name = "question_generator")
 
-        # create a kernel from the major model in config.toml with
+        # create a runnable from the major model in config.toml with
         # this prompt
         from lmm.config.config import Settings
         from lmm.language_models.langchain.runnables import create_runnable
@@ -185,10 +185,10 @@ _DEBUG_MESSAGES: dict[str, str] = {
 def _create_runnable(
     model: RunnableDefinition,
 ) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
-    """Assembles a Langchain chain with a prompt from kernel_prompts
+    """Assembles a Langchain runnable with a prompt from kernel_prompts
     and a language model as specified by a LanguageModelSettings."""
 
-    # fetch the kernel definition from the library
+    # fetch the runnable definition from the library
     # If there are params, we need to call create_prompt_definition directly with them
     prompt_definition: PromptDefinition
     if model.params:
@@ -253,16 +253,16 @@ def _create_runnable(
     )
 
     # combine into a runnable
-    kernel: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
+    runnable: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
     # .name is a member function of RunnableSerializable
     # inited to None, which we reinitialize here
-    kernel.name = (
+    runnable.name = (
         f"{model.runnable_name}:"
         + f"{model.settings.get_model_source()}/"
         + f"{model.settings.get_model_name()}"
     )
 
-    return kernel
+    return runnable
 
 
 def _create_embedding(
@@ -292,11 +292,11 @@ def create_runnable(
     **kwargs: MetadataPrimitiveWithList,
 ) -> RunnableType:  # RunnableSerializable[dict[str, str], str]
     """
-    Creates a Langchain kernel (a 'runnable') by combining tools/prompts
+    Creates a Langchain chain (a 'runnable') by combining tools/prompts
     created under the runnable_name parameters and configurations from
     config.toml with optional override settings.
 
-    The function maps different kernel types to their appropriate
+    The function maps different chains to their appropriate
     language model settings categories. For example,
     - 'query', 'query_with_context' -> major model settings
     - 'question_generator', 'summarizer' -> minor model settings
@@ -309,11 +309,11 @@ def create_runnable(
     3. Default settings from Settings class
 
     Args:
-        runnable_name: The name of the kernel to create. If one of
-            the supported kernel names defined in the PromptNames
-            literal type, returns a cached kernel object. Otherwise,
+        runnable_name: The name of the runnable to create. If one of
+            the supported names defined in the PromptNames
+            literal type, returns a cached runnable object. Otherwise,
             looks up in the tools_library dictionary if there is
-            a prompt with that runnable_name, and returns a kernel
+            a prompt with that runnable_name, and returns a runnable
             object for a chat with that prompt.
         user_settings: Optional settings to override the default
             configuration. Can be either:
@@ -341,18 +341,18 @@ def create_runnable(
         ImportError: for not installed libraries.
 
     Examples:
-        Create kernel with default settings read from configuration
+        Create runnable with default settings read from configuration
         file:
         ```python
         try:
-            kernel = create_runnable("query")
+            runnable = create_runnable("query")
         except Exception ...
         ```
 
         Override with dictionary:
         ```python
         try:
-            kernel = create_runnable("summarizer",
+            runnable = create_runnable("summarizer",
                 {"model": "OpenAI/gpt-4o"})
         except Exception ...
         ```
@@ -364,15 +364,15 @@ def create_runnable(
             model="Mistral/mistral-small-latest"
         )
         try:
-            kernel = create_runnable("question_generator", settings)
+            runnable = create_runnable("question_generator", settings)
         except Exception ...
         ```
 
-        The kernel object may be used with Langchain `.invoke` syntax:
+        The runnable object may be used with Langchain `.invoke` syntax:
 
         ```python
         try:
-            response = kernel.invoke(
+            response = runnable.invoke(
                 {'text': "Logistic regression is used when the outcome"
                     + " variable is binary."}
             )
@@ -466,7 +466,7 @@ def create_embeddings(
     ) = None,
 ) -> Embeddings:
     """
-    Creates a Langchain embeddings kernel from a configuration
+    Creates a Langchain embeddings runnable from a configuration
     object.
 
     Args:
@@ -528,8 +528,8 @@ def create_kernel_from_objects(
 ) -> RunnableType:
     """
     Creates a Langchain runnable from a prompt template and
-    a language settings object. This kernel is not registered in the
-    kernel library; it is available directly.
+    a language settings object. This name is not registered in the
+    prompts library; it is available directly.
 
     Args:
         human_prompt: prompt text
@@ -598,8 +598,8 @@ def create_kernel_from_objects(
         prompt = ChatPromptTemplate.from_template(human_prompt)
 
     # combine into a runnable
-    kernel: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
+    runnable: RunnableType = prompt | language_model | StrOutputParser()  # type: ignore
     # .name is a member function of RunnableSerializable
     # inited to None, which we re-initialize here
-    kernel.name = name
-    return kernel
+    runnable.name = name
+    return runnable
