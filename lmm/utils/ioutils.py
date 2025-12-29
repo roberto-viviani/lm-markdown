@@ -331,7 +331,11 @@ def check_allowed_content(
     """
     import re
 
-    # Extract all strings delimited by single quotes
+    # Firth just check is in list
+    if input_string in allowed_list:
+        return True
+
+    # Fallback, extract all strings delimited by single quotes
     pattern = r"'([^']*)'"
     extracted_strings = re.findall(pattern, input_string)
 
