@@ -81,6 +81,7 @@ class PromptDefinition(BaseModel):
 PromptNames = Literal[
     "summarizer",
     "chat_summarizer",
+    "rewrite_query",
     "question_generator",
     "query",
     "query_with_context",
@@ -115,7 +116,8 @@ question to the conversation. Use the conversation to provide the
 context of the question to facilitate retrieval of relevant material
 from a vector database. Do NOT respond to the query, do NOT provide a
 comprehensive summary of the conversation, provide ONLY the context
-that is relevant to understand the new query.
+of the conversation that is relevant to understand the new query. 
+DO NOT include material that is not in the conversation.
 
 ###
 CONVERSATION: "{text}"
@@ -125,6 +127,27 @@ QUESTION: "{query}"
 
 ###
 CONTEXT:
+""",
+                model_tier="aux",
+            )
+        case "rewrite_query": # --- kernel case definition
+            return PromptDefinition(
+                name=prompt_name,
+                prompt="""
+You find below, separated by '###', a conversation and a follow-up 
+question to the conversation. Rewrite the question to be a standalone
+question that captures all relevant context from the conversation.
+Do NOT answer the question, just reformulate it if needed and 
+otherwise return it as it is.
+
+###
+CONVERSATION: "{text}"
+
+###
+QUESTION: "{query}"
+
+###
+NEW QUESTION:
 """,
                 model_tier="aux",
             )
