@@ -80,6 +80,7 @@ class PromptDefinition(BaseModel):
 # List of pre-defined prompts
 PromptNames = Literal[
     "summarizer",
+    "chat_summarizer",
     "question_generator",
     "query",
     "query_with_context",
@@ -104,6 +105,28 @@ Write a concise summary of the following: "{text}"
 SUMMARY:
 """,
                 model_tier='minor',
+            )
+        case "chat_summarizer": # --- kernel case definition
+            return PromptDefinition(
+                name=prompt_name,
+                prompt="""
+You find below, separated by '###', a conversation and a follow-up 
+question to the conversation. Use the conversation to provide the 
+context of the question to facilitate retrieval of relevant material
+from a vector database. Do NOT respond to the query, do NOT provide a
+comprehensive summary of the conversation, provide ONLY the context
+that is relevant to understand the new query.
+
+###
+CONVERSATION: "{text}"
+
+###
+QUESTION: "{query}"
+
+###
+CONTEXT:
+""",
+                model_tier="aux",
             )
         case "question_generator":  # --- kernel case definition
             return PromptDefinition(
