@@ -198,6 +198,7 @@ class LanguageModelSettings(BaseModel):
                 'seed',
                 'logprobs',
                 'top_logprobs',
+                'use_response_api',
             },
             'Anthropic': {'top_p', 'top_k', 'stop_sequences'},
             'Mistral': {'top_p', 'random_seed', 'safe_mode'},
