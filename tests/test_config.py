@@ -1,5 +1,9 @@
 """Test settings module"""
 
+# pyright: basic
+# pyright: reportArgumentType=false
+# pyright: reportUnusedExpression=false
+
 import unittest
 import os
 
@@ -85,7 +89,7 @@ class TestSettings(unittest.TestCase):
     def test_set_settings_incomplete3(self):
         # need to specify name model
         with self.assertRaises(ValueError):
-            sets: Settings = Settings(minor=LanguageModelSettings())
+            sets: Settings = Settings(minor=LanguageModelSettings()) # type: ignore (intentional)
             sets
 
     def test_set_settings_incomplete4(self):
@@ -148,7 +152,9 @@ class TestSettings(unittest.TestCase):
         set = Settings(major={'model': "Gemini/gemini-latest"})
         export_settings(set, "config_test.toml")
 
-        sets: Settings = load_settings(file_name="config_test.toml")
+        sets: Settings | None = load_settings(file_name="config_test.toml")
+        if sets is None:
+            raise ValueError("Could not load settings.")
         # expected result: name_model as in file
         self.assertEqual(sets.major.get_model_source(), "Gemini")
         self.assertEqual(set.major.get_model_name(), "gemini-latest")
@@ -174,7 +180,7 @@ class TestSettings(unittest.TestCase):
                     }
                 }
             )
-            sets.major.source  # for linter
+            sets.major.model  # for linter
 
     def test_set_settings_invalid(self):
         sets: Settings = Settings()
@@ -185,13 +191,17 @@ class TestSettings(unittest.TestCase):
 
     def test_default_config(self):
         create_default_config_file("temp_config.toml")
-        default_sets = load_settings(file_name="temp_config.toml")
+        default_sets: Settings | None = load_settings(file_name="temp_config.toml")
+        if default_sets is None:
+            raise ValueError("Could not load settings.")
         sets = Settings(
             **{'major': {'model': "Mistral/mistral-large-latest"}}
         )
         export_settings(sets, "temp_config.toml")
         create_default_config_file("temp_config.toml")
-        sets = load_settings(file_name="temp_config.toml")
+        sets: Settings | None = load_settings(file_name="temp_config.toml")
+        if sets is None:
+            raise ValueError("Could not load settings.")
         self.assertEqual(
             sets.major.get_model_source(),
             default_sets.major.get_model_source(),
@@ -268,6 +278,8 @@ class TestGenericLoadSettings(unittest.TestCase):
             file_name=self.test_file,
             settings_class=self.CustomSettings,
         )
+        if loaded is None:
+            raise ValueError("Could not load settings")
 
         # Verify it loaded correctly
         self.assertIsNotNone(loaded, "Settings should not be None")
@@ -296,6 +308,8 @@ class TestGenericLoadSettings(unittest.TestCase):
             file_name=self.test_file,
             settings_class=self.CustomSettings,
         )
+        if loaded is None:
+            raise ValueError("Could not load settings")
 
         self.assertIsNotNone(loaded)
         # These attribute accesses should not raise AttributeError

@@ -2,6 +2,7 @@
 
 # pyright: basic
 # pyright: reportMissingTypeStubs=false
+# pyright: reportIndexIssue=false
 
 import unittest
 
@@ -100,7 +101,7 @@ class TestChunkFormation(unittest.TestCase):
     def test_docid_unequal(self):
         from lmm.markdown.parse_markdown import blocklist_copy
 
-        new_blocks = blocklist_copy(blocks)
+        new_blocks: list[Block] = blocklist_copy(blocks)
         new_blocks[0].content['docid'] = "test1"
         chunks = blocks_to_chunks(new_blocks, EncodingModel.CONTENT)
 
@@ -250,9 +251,9 @@ class TestSkips(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         settings = Settings(
-            major={'model': "Debug/debug"},
-            minor={'model': "Debug/debug"},
-            aux={'model': "Debug/debug"},
+            major={'model': "Debug/debug"}, # type: ignore
+            minor={'model': "Debug/debug"}, # type: ignore
+            aux={'model': "Debug/debug"}, # type: ignore
         )
         export_settings(settings)
 

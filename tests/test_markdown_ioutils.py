@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
 """
 Unit tests for the file size limits and encoding detection improvements
 to the lmm.markdown.ioutils module.
 """
+# pyright: basic
 
 import unittest
 import tempfile
@@ -763,12 +763,14 @@ class TestErrorBlockReporting(unittest.TestCase):
 
     def test_single_error_block_file_loading(self):
         """Test reporting with single error block (file loading failure)."""
+        from lmm.markdown.parse_markdown import Block
+        
         error_block = ErrorBlock(
             content="Could not load file",
             errormsg="File not found",
             origin="test.md",
         )
-        blocks = [error_block]
+        blocks: list[Block] = [error_block]
 
         result = report_error_blocks(blocks, self.logger)
 

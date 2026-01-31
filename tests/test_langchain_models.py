@@ -1,5 +1,9 @@
 """Test model selection for Langchain"""
 
+# pyright: basic
+# pyright: reportArgumentType=false
+# pyright: reportUnusedExpression=false
+
 import unittest
 
 from langchain_core.language_models.chat_models import BaseChatModel

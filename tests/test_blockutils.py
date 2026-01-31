@@ -1,3 +1,5 @@
+
+# pyright: basic
 # pyright: reportArgumentType=false
 
 import unittest

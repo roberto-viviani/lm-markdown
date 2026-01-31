@@ -1,3 +1,6 @@
+# pyright: basic
+# pyright: reportArgumentType=false
+
 import unittest
 
 from pydantic import ValidationError
@@ -215,7 +218,7 @@ class TestValidations(unittest.TestCase):
     def test_errorblock(self):
         logger = LoglistLogger()
 
-        blocks = [ErrorBlock(content="The content of error block")]
+        blocks: list[Block] = [ErrorBlock(content="The content of error block")]
         blocks = blocklist_rag(blocks, opts, logger=logger)
         self.assertEqual(logger.count_logs(), 1)
         self.assertIn("Load failed", logger.get_logs()[0])

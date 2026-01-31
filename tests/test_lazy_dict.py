@@ -1,5 +1,10 @@
 """Test lazy dict"""
 
+# pyright: basic
+
+# intentional errors
+# pyright: reportArgumentType=false
+
 import unittest
 
 from pydantic import validate_call
@@ -66,13 +71,11 @@ class CreateNewDictionary(unittest.TestCase):
         from pydantic import BaseModel, ConfigDict, ValidationError
         from lmm.language_models.lazy_dict import LazyLoadingDict
 
-        LanguageModelSource = Literal[
-            'Anthropic', 'Gemini', 'Mistral', 'OpenAI'
-        ]
-
         # This defines source + model
         class LanguageModelSpecification(BaseModel):
-            source_name: LanguageModelSource
+            source_name: Literal[
+                'Anthropic', 'Gemini', 'Mistral', 'OpenAI'
+            ]
             model_name: str
 
             # This required to make instances hashable, so that they can
@@ -81,7 +84,7 @@ class CreateNewDictionary(unittest.TestCase):
 
         # Langchain model type specified here.
         def _create_model_instance(
-            src: LanguageModelSource,
+            src,
         ) -> LanguageModelSpecification:
             return LanguageModelSpecification(
                 source_name=src, model_name="test"
@@ -206,7 +209,6 @@ class CreateNewDictionary(unittest.TestCase):
             source_name="Anthropic", model_name="test"
         )
         self.assertIsInstance(obj, LanguageModelSpecification)
-
 
 
 class TestDestructor(unittest.TestCase):

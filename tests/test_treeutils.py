@@ -742,6 +742,8 @@ class TestPruneTree(unittest.TestCase):
         pruned = prune_tree(
             root, lambda x: not x.get_metadata_for_key('skip', False)
         )
+        if pruned is None:
+            raise ValueError("Invalid tree")
         blocks = [
             b
             for b in tree_to_blocks(pruned)

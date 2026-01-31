@@ -1,5 +1,9 @@
 """Test language_models.tools"""
 
+# pyright: basic
+# pyright: reportArgumentType=false
+# pyright: reportUnusedExpression=false
+
 import unittest
 
 from lmm.language_models.prompts import (
@@ -37,12 +41,12 @@ class TestKernelPrompts(unittest.TestCase):
         self.assertEqual(settings.aux.get_model_name(), "debug")
 
     def test_get_kernel(self):
-        prompt: str = kernel_prompts["summarizer"]
+        prompt: PromptDefinition = kernel_prompts["summarizer"]
         self.assertTrue(bool(prompt))
 
     def test_invalid_kernel_name(self):
         with self.assertRaises(ValueError):
-            prompt: str = kernel_prompts["bonobo"]
+            prompt: PromptDefinition = kernel_prompts["bonobo"]
             prompt
 
 

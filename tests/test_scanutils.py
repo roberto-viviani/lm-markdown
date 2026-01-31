@@ -1,12 +1,12 @@
 """Test scanutils module"""
 
 # flake8: noqa
-# pyright: strict
+# pyright: basic
 # pyright: reportUnknownMemberType=false
 # pyright: reportAttributeAccessIssue=false
+# pyright: reportArgumentType=false
 
 import unittest
-from typing import Sequence
 import logging
 
 from lmm.markdown.tree import (
@@ -419,7 +419,7 @@ Original text content.
 
         from lmm.scan.scan_keys import FREEZE_KEY  # fmat: skip
 
-        text_node.get_parent().metadata[FREEZE_KEY] = True
+        text_node.get_parent().metadata[FREEZE_KEY] = True # type: ignore
 
         # Rerun aggregation
         post_order_hashed_aggregation(
@@ -757,6 +757,8 @@ class TestSkippedAggregation(unittest.TestCase):
         )
 
         root = load_tree(markdown, LoglistLogger())
+        if root is None:
+            raise ValueError("Invalid root")
         self.assertFalse(
             root.children[0]
             .children[0]
@@ -807,6 +809,8 @@ class TestSkippedAggregation(unittest.TestCase):
             + "Third block.\n\n"
         )
         root = load_tree(markdown, LoglistLogger())
+        if root is None:
+            raise ValueError("Invalid root")
 
         OUTPUT_KEY = "text_aggregate"
 
@@ -843,6 +847,8 @@ class TestSkippedAggregation(unittest.TestCase):
             + "Third block.\n\n"
         )
         root = load_tree(markdown, LoglistLogger())
+        if root is None:
+            raise ValueError("Invalid root")
 
         post_order_hashed_aggregation(
             root,
@@ -866,7 +872,7 @@ class TestSkippedAggregation(unittest.TestCase):
     def test_skip_document(self):
         from lmm.markdown.parse_markdown import Block
 
-        markdown: list[Block] = (
+        markdown: str = (
             title_block
             + heading_block
             + "First block.\n\n"
@@ -875,6 +881,8 @@ class TestSkippedAggregation(unittest.TestCase):
         )
 
         root = load_tree(markdown, LoglistLogger())
+        if root is None:
+            raise ValueError("Invalid root")
         root.metadata['skip'] = True
         self.assertTrue(root.get_metadata_for_key('skip', False))
 
@@ -936,6 +944,9 @@ More text.
 """
 
         root = load_tree(text, logger)
+        if root is None:
+            raise ValueError("Invalid root")
+
         self.assertTrue(logger.count_logs() == 0)
 
         first_heading = root.get_heading_children()[0]
@@ -969,6 +980,8 @@ skip: True
 More text.
 """
         root = load_tree(text, logger)
+        if root is None:
+            raise ValueError("Invalid root")
         self.assertTrue(logger.count_logs() == 0)
 
         hash_head = aggregate_hash(
@@ -1000,6 +1013,8 @@ skip: True
 More text
 """
         root = load_tree(text, logger)
+        if root is None:
+            raise ValueError("Invalid root")
         self.assertTrue(logger.count_logs() == 0)
 
         hash_head = aggregate_hash(
@@ -1035,6 +1050,8 @@ More text.
 Third text block.
 """
         root = load_tree(text, logger)
+        if root is None:
+            raise ValueError("Invalid root")
         self.assertTrue(logger.count_logs() == 0)
 
         hash_head = aggregate_hash(
@@ -1065,6 +1082,8 @@ More text was changed.
 Third text block.
 """
         root = load_tree(text, logger)
+        if root is None:
+            raise ValueError("Invalid root")
         self.assertTrue(logger.count_logs() == 0)
 
         hash_changed = aggregate_hash(

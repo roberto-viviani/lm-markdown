@@ -1,5 +1,9 @@
 """Test langchain kernels"""
 
+# pyright: basic
+# pyright: reportArgumentType=false
+# pyright: reportUnusedExpression=false
+
 import unittest
 
 

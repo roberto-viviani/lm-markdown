@@ -19,8 +19,10 @@ from lmm.markdown.parse_markdown import (
     TextBlock,
     MetadataBlock,
     Block,
+    MetadataDict,
 )
 from lmm.markdown.tree import (
+    MarkdownTree,
     MarkdownNode,
     HeadingNode,
     TextNode,
