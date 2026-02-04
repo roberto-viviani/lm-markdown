@@ -25,5 +25,6 @@ TITLES_TEMP_KEY = "~__titles__"
 TITLES_KEY = 'titles'
 QUESTIONS_KEY = 'questions'
 SUMMARIES_KEY = SUMMARY_KEY
+CTXT_SUMMARY_KEY = '~context_summary'
 TXTHASH_KEY = '~txthash'
 FREEZE_KEY = 'frozen'

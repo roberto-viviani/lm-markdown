@@ -43,6 +43,7 @@ from .tree import (
     MarkdownTree,
     NodeDict,
     pre_order_traversal,
+    post_order_traversal,
     traverse_tree,
     traverse_tree_nodetype,
     fold_tree,
@@ -56,6 +57,57 @@ from .parse_markdown import (
 
 
 # inheritance------------------------------------------------------
+
+def inherit_parent_properties(
+    node: MarkdownNode,
+    properties: list[str],
+    destination_names: list[str] | None,
+    include_header: bool = False,
+    filter_func: Callable[[MarkdownNode], bool] = lambda _: True,
+) -> MarkdownNode:
+    """ Copy specified metadata properties from parent to the meta-
+    data of its immediate children. 
+    
+    Args:
+        node: the root node of the branch to work on
+        properties: a list of metadata properties to copy
+        destination_names: the names of the keys to copy the 
+            properties into. If None, the same key names of the 
+            parent are used
+        include_header: also inherit properties of header
+        filter_func: a filter for the children nodes to process.
+
+    Behaviour:
+        raises ValueError if destination_names is not Null and is
+        not of the same length as properties.
+
+    Note:
+        Properties are inherited from the immediate parent only. This
+        function does not propagate properties recursively from
+        grandparents or higher ancestors in a single pass.
+    """
+    if destination_names is not None:
+        if not len(destination_names) == len(properties):
+            raise ValueError(
+                f"inherit_parent_property: "
+                "destination_names is of length "
+                f"{len(destination_names)}, but properties"
+                f" is of length {len(properties)}"
+            )
+    else:
+        destination_names = properties
+
+    def _add_parent_summary(n: MarkdownNode) -> None:
+        if not filter_func(n):
+            return
+        if n.parent:
+            for p, d in zip(properties, destination_names):
+                property: str | None = n.parent.get_metadata_string_for_key(p)
+                if property:
+                    n.set_metadata_for_key(d, property)
+
+    post_order_traversal(node, _add_parent_summary)
+    return node
 
 
 def inherit_metadata(

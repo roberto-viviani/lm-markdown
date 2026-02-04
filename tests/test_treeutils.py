@@ -762,5 +762,81 @@ class TestPruneTree(unittest.TestCase):
         self.assertEqual(pruned.children[0].count_children(), 2)
 
 
+class TestInheritParentProperties(unittest.TestCase):
+    def test_validation_error(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        with self.assertRaises(ValueError):
+            inherit_parent_properties(root, ["a"], ["b", "c"])
+
+    def test_basic_inheritance(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        root.metadata = {"prop1": "value1", "prop2": "value2"}
+        child = TextNode.from_content(content="child")
+        root.add_child(child)
+
+        inherit_parent_properties(root, ["prop1"], None)
+        
+        self.assertEqual(child.metadata.get("prop1"), "value1")
+        self.assertIsNone(child.metadata.get("prop2"))
+
+    def test_rename_property(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        root.metadata = {"prop1": "value1"}
+        child = TextNode.from_content(content="child")
+        root.add_child(child)
+
+        inherit_parent_properties(root, ["prop1"], ["renamed_prop"])
+        
+        self.assertIsNone(child.metadata.get("prop1"))
+        self.assertEqual(child.metadata.get("renamed_prop"), "value1")
+
+    def test_overwrite_existing(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        root.metadata = {"prop1": "new_value"}
+        child = TextNode.from_content(content="child")
+        child.metadata = {"prop1": "old_value"}
+        root.add_child(child)
+
+        inherit_parent_properties(root, ["prop1"], None)
+        
+        self.assertEqual(child.metadata.get("prop1"), "new_value")
+
+    def test_filter_func(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        root.metadata = {"prop1": "value1"}
+        child1 = TextNode.from_content(content="child1")
+        child2 = TextNode.from_content(content="child2")
+        root.add_child(child1)
+        root.add_child(child2)
+
+        inherit_parent_properties(
+            root, ["prop1"], None, 
+            filter_func=lambda n: n.get_content() == "child1"
+        )
+        
+        self.assertEqual(child1.metadata.get("prop1"), "value1")
+        self.assertIsNone(child2.metadata.get("prop1"))
+
+    def test_propagation_limit(self):
+        # Verify that inheritance is only from immediate parent
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        root.metadata = {"prop1": "root_value"}
+        middle = HeadingNode(HeadingBlock(level=2, content="middle"))
+        child = TextNode.from_content(content="child")
+        
+        root.add_child(middle)
+        middle.add_child(child)
+
+        # Apply inheritance to root (which covers the whole tree)
+        inherit_parent_properties(root, ["prop1"], None)
+        
+        # middle should inherit from root
+        self.assertEqual(middle.metadata.get("prop1"), "root_value")
+        
+        # child should NOT inherit from root because middle didn't have the 
+        # property *before* the function visited child (due to post-order traversal)
+        self.assertIsNone(child.metadata.get("prop1"))
+
+
 if __name__ == "__main__":
     unittest.main()
