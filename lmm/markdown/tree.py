@@ -61,7 +61,7 @@ Note:
 # pyright: reportPrivateUsage=false
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Self
+from typing import TypeVar, Self, override
 from collections.abc import Callable, Sequence
 import copy
 from pathlib import Path
@@ -161,6 +161,14 @@ class MarkdownNode(ABC):
     def is_root_node(self) -> bool:
         """A node w/o parents, not necessarily a header."""
         return self.parent is None
+    
+    def is_text_node(self) -> bool:
+        "Is this a TextNode"
+        return False
+    
+    def is_heading_node(self) -> bool:
+        "Is this a HeadingNode"
+        return False
 
     @abstractmethod
     def get_text_children(self) -> list['TextNode']:
@@ -441,6 +449,11 @@ class HeadingNode(MarkdownNode):
         self.block: HeadingBlock | HeaderBlock  # type: ignore
         super().__init__(block, parent)
 
+    # Overrides
+    @override
+    def is_heading_node(self) -> bool:
+        return True
+
     # Copy
     def naked_copy(self) -> 'HeadingNode':
         """Make a deep copy of this node and take it off the tree"""
@@ -641,6 +654,11 @@ class TextNode(MarkdownNode):
         if metadata:
             newnode.metadata = metadata
         return newnode
+    
+    # Overrides
+    @override
+    def is_text_node(self) -> bool:
+        return True
 
     # Copy
     def naked_copy(self) -> 'TextNode':
