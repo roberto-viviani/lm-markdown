@@ -388,6 +388,13 @@ class TestMarkdownMetadata(unittest.TestCase):
         expected_reloaded = original
         self._assert_serialization_logic(original, expected_reloaded)
 
+    @unittest.expectedFailure
+    def test_dump_yaml_newline_integrity(self):
+        """Test that __NEWLINE__ sequence is preserved (currently fails due to implementation detail)."""
+        original = {"key": "This contains __NEWLINE__ sequence"}
+        # This will fail because __NEWLINE__ is replaced by \n
+        self._assert_serialization_logic(original, original)
+
 
 class TestMarkdownMetadataText(unittest.TestCase):
     """this tests beahviour from strings parsed by yaml.safe_load.

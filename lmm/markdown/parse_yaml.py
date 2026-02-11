@@ -27,8 +27,14 @@ YAML objects consisting of literals only will raise an exception,
 since it is conceivable that the user intended something different.
 Byte/imaginary literals are put in whole.
 
-Expected behavious: raises exception for yaml data that are not
-parsable or that contain stuctures other than MetadataDict
+Main functions:
+    split_yaml_parse: split yaml block into part and whole
+    desplit_yaml_parse: recompose yaml block
+    serialize_yaml_parse: serialization utility
+
+Behaviour:
+raises exception for yaml data that are not parsable or that contain 
+structures other than those of the MetadataDict type.
 """
 
 # unknown types introduced from pyyaml
@@ -231,6 +237,13 @@ def desplit_yaml_parse(
     Reconstitute the original yaml object from the tuple
     constructed by yaml_parse. Dictionaries that were split
     as some values were not elementary remain split.
+
+    Args:
+        split_parse: a tuple of two elements, the 'part' and
+            the 'whole'.
+
+    Returns:
+        an object with yaml data.
     """
     if split_parse is None:
         return None
@@ -257,6 +270,12 @@ def serialize_yaml_parse(
     Reconstitute a yaml string from the tuple
     constructed by yaml_parse. Dictionaries that were split
     as some values were not elementary remain split.
+
+    Args:
+        split_parse: a tuple with 'part' und 'whole'
+
+    Returns:
+        a string representing a yaml object.
     """
     yamldata = desplit_yaml_parse(split_parse)
     return dump_yaml(yamldata)
