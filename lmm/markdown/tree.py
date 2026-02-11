@@ -51,14 +51,31 @@ heading, and text types, a tree only has heading and text nodes. The
 root node is a heading from the title property of the header metadata
 block.
 
+Main functions:
+    - `blocks_to_tree()` - Convert block list to tree
+    - `tree_to_blocks()` - Convert tree to block list
+    - `load_tree()` - Load markdown file/string into tree
+    - `save_tree()` - Save tree to markdown file
+    - `serialize_tree()` - Serialize tree to string
+    - `traverse_tree()` - Apply function to each node with filtering
+    - `traverse_tree_nodetype()` - Apply function to nodes of specific type
+    - `extract_content()` - Extract information bottom-up from children to parents
+    - `propagate_content()` - Propagate information top-down from parents to children
+    - `pre_order_traversal()`, `post_order_traversal()` - Tree traversal utilities
+    - `fold_tree()` - Accumulate value across tree
+    - `get_text_nodes()`, `get_heading_nodes()` - Get node collections by type
+
+Behaviour:
+    Functions use logger-based error reporting (via `LoggerBase` parameter).
+    Error blocks are reported to logger but processing continues. No exceptions
+    are raised that cause side effects. Tree operations work through references,
+    with side effects documented per function.
+
 Note:
     the tree is a representation of the blocks in the blocklist, and
     not a copy of them. It is used to operate on the markdown data
     through side effects.
 """
-
-# using protected members
-# pyright: reportPrivateUsage=false
 
 from abc import ABC, abstractmethod
 from typing import TypeVar, Self, override
@@ -434,6 +451,10 @@ class MarkdownNode(ABC):
 
 # Define the node types
 class HeadingNode(MarkdownNode):
+    """ Represents a heading node in the markdown tree structure.
+    
+    Use accessor functions to read properties.
+    """
     def __init__(
         self,
         block: HeadingBlock | HeaderBlock,
@@ -494,37 +515,33 @@ class HeadingNode(MarkdownNode):
 
     # Utility functions to retrieve basic properties
     def get_text_children(self) -> list['TextNode']:
+        """Returns a list of children text nodes."""
         return [n for n in self.children if isinstance(n, TextNode)]
 
     def get_heading_children(self) -> list['HeadingNode']:
+        """Returns a list of children heading nodes."""
         return [
             n for n in self.children if isinstance(n, HeadingNode)
         ]
 
     def heading_level(self) -> int:
+        """Returns an integer for the heading level. The root
+        node, if corresponding to a markdown header, has level 0."""
         if isinstance(self.block, HeadingBlock):
             return self.block.level
         return 0  # Root level for HeaderBlock
 
     def get_content(self) -> str:
         """Returns the title of the heading represented by the node"""
-        match self.block:
-            case HeadingBlock() if self.is_header_node():
-                return str(self.get_metadata_for_key('title'))
-            case HeadingBlock():
-                return self.block.get_content()
-            case HeaderBlock():
-                raise RuntimeError(
-                    "Unreachable code reached: "
-                    + "unrecognized block type in node"
-                )
-            case _:
-                raise RuntimeError(
-                    "Unreachable code reached: "
-                    + "unrecognized block type in node"
-                )
+        if self.is_header_node():
+            return str(self.get_metadata_for_key('title'))
+        else:
+            return str(self.block.get_content())
 
     def set_content(self, content: str) -> None:
+        """Sets the text of the title of the heading represented
+        by the node
+        """
         match self.block:
             case HeadingBlock() if self.is_header_node():
                 self.set_metadata_for_key('title', content)
@@ -593,9 +610,6 @@ class HeadingNode(MarkdownNode):
             than that of the parent node. The level of the heading
             node is adjusted downwards automatically. Beyond level 6,
             a text node is added.
-
-        TODO:
-            Add testing
         """
         if isinstance(child_node, HeadingNode):
             if self.heading_level() == 6:
@@ -626,6 +640,10 @@ class HeadingNode(MarkdownNode):
 
 
 class TextNode(MarkdownNode):
+    """Represents a text node in the markdown tree.
+    
+    User accessor functions to retrieve properties.
+    """
     def __init__(
         self,
         block: TextBlock | ErrorBlock,
@@ -647,7 +665,16 @@ class TextNode(MarkdownNode):
         metadata: MetadataDict = {},
         parent: HeadingNode | None = None,
     ) -> 'TextNode':
-        """Create a text node from content and metadata."""
+        """Create a text node from content and metadata.
+        
+        Args:
+            content: the text content of the node
+            metadata: a dictionary with metadata
+            parent: if not None, the parent heading of the node
+
+        Returns: 
+            a text node.    
+        """
         newnode = TextNode(
             block=TextBlock.from_text(content), parent=parent
         )
@@ -697,7 +724,7 @@ class TextNode(MarkdownNode):
         return []  # Text nodes have no children
 
     def heading_level(self) -> None:
-        """Return None for the level of text nodes."""
+        """Returns None as text nodes have no level."""
         return None  # Text nodes don't have levels
 
     def get_content(self) -> str:
@@ -706,7 +733,11 @@ class TextNode(MarkdownNode):
         return self.block.get_content()
 
     def set_content(self, content: str) -> None:
-        """Set the content of the node"""
+        """Set the text content of the node.
+        
+        Args:
+            content: the new text content.
+        """
         self.block.content = content
 
     def get_metadata(self, key: str | None = None) -> MetadataDict:
@@ -714,8 +745,17 @@ class TextNode(MarkdownNode):
         Get the metadata of the current node. If the text node has no
         metadata, the metadata of the heading.
 
+        Args:
+            key: the key for the metadata value to retrieve. If None,
+                the whole dictionary.
+
         Returns:
             a conformant dictionary.
+
+        Note: 
+            in most cases, text will be annotated at the heading 
+            level, not at individual paragraphs. The metadata of text
+            nodes overrides the default metadata from the heading.
         """
         if not key:
             return copy.deepcopy(self.metadata)
@@ -743,6 +783,11 @@ class TextNode(MarkdownNode):
         Returns:
             the key value, or a default value if the key is not
                 found (None if no default specified).
+
+        Note: 
+            in most cases, text will be annotated at the heading 
+            level, not at individual paragraphs. The metadata of text
+            nodes overrides the default metadata from the heading.
         """
         if key in self.metadata:
             return self.metadata[key]
@@ -769,6 +814,11 @@ class TextNode(MarkdownNode):
                 found (None if no default specified). If the value
                 is not a primitive value of the int, float, str, or
                 bool type, returns None.
+
+        Note: 
+            in most cases, text will be annotated at the heading 
+            level, not at individual paragraphs. The metadata of text
+            nodes overrides the default metadata from the heading.
         """
         if key in self.metadata:
             value: MetadataValue = self.metadata[key]
@@ -875,7 +925,8 @@ def blocks_to_tree(
         case HeaderBlock():
             header_block = blocks[0]
         case MetadataBlock() as bl:
-            header_block = HeaderBlock._from_metadata_block(bl)
+            # using private as "protected" member function
+            header_block = HeaderBlock._from_metadata_block(bl) # type: ignore
         case HeadingBlock() as bl:
             if bl.get_content():
                 header_block = HeaderBlock(

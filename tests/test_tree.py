@@ -34,6 +34,8 @@ from lmm.markdown.tree import (
     extract_content,
     post_order_traversal,
     pre_order_traversal,
+    propagate_content,
+    fold_tree,
 )
 from lmm.utils.logging import LoglistLogger
 
@@ -977,6 +979,608 @@ class TestExtractContent(unittest.TestCase):
         self.assertEqual(
             root.get_metadata_for_key("summary"),
             "There are 0 words.",
+        )
+
+
+class TestAddChild(unittest.TestCase):
+    """Test the add_child() level adjustment functionality."""
+
+    def test_add_child_normal_case(self):
+        """Adding child with higher level - no adjustment needed."""
+        parent = HeadingNode(HeadingBlock(level=1, content="Parent"))
+        child = HeadingNode(HeadingBlock(level=3, content="Child"))
+        child.metadata = {"key": "value"}
+
+        parent.add_child(child)
+
+        self.assertEqual(len(parent.children), 1)
+        self.assertIs(parent.children[0], child)
+        self.assertEqual(child.heading_level(), 3)
+        self.assertEqual(child.get_content(), "Child")
+        self.assertEqual(child.metadata, {"key": "value"})
+
+    def test_add_child_level_adjustment_same_level(self):
+        """Adding child with same level as parent - adjusted to parent+1."""
+        parent = HeadingNode(HeadingBlock(level=2, content="Parent"))
+        child = HeadingNode(HeadingBlock(level=2, content="Child"))
+        child.metadata = {"key": "value"}
+
+        parent.add_child(child)
+
+        self.assertEqual(len(parent.children), 1)
+        # Child should be adjusted to level 3
+        self.assertIsInstance(parent.children[0], HeadingNode)
+        self.assertEqual(parent.children[0].heading_level(), 3)
+        self.assertEqual(parent.children[0].get_content(), "Child")
+        # Metadata should be preserved
+        self.assertEqual(parent.children[0].metadata, {"key": "value"})
+
+    def test_add_child_level_adjustment_higher_level(self):
+        """Adding child with level < parent level - adjusted downward."""
+        parent = HeadingNode(HeadingBlock(level=3, content="Parent"))
+        child = HeadingNode(HeadingBlock(level=1, content="Child"))
+        child.metadata = {"author": "test", "tags": ["a", "b"]}
+
+        parent.add_child(child)
+
+        self.assertEqual(len(parent.children), 1)
+        # Child should be adjusted to level 4
+        self.assertIsInstance(parent.children[0], HeadingNode)
+        self.assertEqual(parent.children[0].heading_level(), 4)
+        # Content should be preserved
+        self.assertEqual(parent.children[0].get_content(), "Child")
+        # Metadata should be preserved
+        self.assertEqual(
+            parent.children[0].metadata,
+            {"author": "test", "tags": ["a", "b"]},
+        )
+
+    def test_add_child_to_level_6_conversion_to_text(self):
+        """Adding any heading to level 6 parent - converted to TextNode."""
+        parent = HeadingNode(HeadingBlock(level=6, content="Level 6"))
+        child = HeadingNode(HeadingBlock(level=7, content="Child"))
+        child.metadata = {"key": "value"}
+
+        parent.add_child(child)
+
+        self.assertEqual(len(parent.children), 1)
+        # Should be converted to TextNode
+        self.assertIsInstance(parent.children[0], TextNode)
+        # Content should include heading markers
+        self.assertEqual(
+            parent.children[0].get_content(), "######## Child"
+        )
+        # Metadata should be preserved
+        self.assertEqual(parent.children[0].metadata, {"key": "value"})
+
+    def test_add_child_metadata_preserved(self):
+        """Verify complex metadata is preserved during adjustment."""
+        parent = HeadingNode(HeadingBlock(level=2, content="Parent"))
+        child = HeadingNode(HeadingBlock(level=1, content="Child"))
+        child.metadata = {
+            "simple": "value",
+            "number": 42,
+            "list": [1, 2, 3],
+            "nested": {"key": "value"},
+        }
+
+        parent.add_child(child)
+
+        # All metadata should be preserved
+        self.assertEqual(
+            parent.children[0].metadata,
+            {
+                "simple": "value",
+                "number": 42,
+                "list": [1, 2, 3],
+                "nested": {"key": "value"},
+            },
+        )
+
+    def test_add_child_content_preserved(self):
+        """Verify content is exactly preserved during adjustment."""
+        parent = HeadingNode(HeadingBlock(level=4, content="Parent"))
+        child = HeadingNode(
+            HeadingBlock(level=2, content="Special #$% Content")
+        )
+
+        parent.add_child(child)
+
+        # Content should be exactly the same
+        self.assertEqual(
+            parent.children[0].get_content(), "Special #$% Content"
+        )
+
+
+class TestPropagateContent(unittest.TestCase):
+    """Test the propagate_content() function."""
+
+    def setUp(self):
+        """Set up a simple tree structure for testing."""
+        header = HeaderBlock(content={"title": "Test"})
+        heading1 = HeadingBlock(level=1, content="Chapter 1")
+        text1 = TextBlock(content="Original text 1")
+        heading2 = HeadingBlock(level=2, content="Section 1.1")
+        text2 = TextBlock(content="Original text 2")
+
+        blocks = [header, heading1, text1, heading2, text2]
+        self.root = blocks_to_tree(blocks)
+        if not self.root:
+            raise ValueError("Could not build tree")
+
+    def test_propagate_select_true_string(self):
+        """select=True with string - should replace all text children."""
+
+        def collect_func(node: HeadingNode) -> str:
+            return f"Generated content for {node.get_content()}"
+
+        propagate_content(
+            self.root, collect_func, select=True, filter_func=lambda _: True
+        )
+
+        # Root should have new text child, heading child preserved
+        root_children = self.root.children
+        # Should have text + heading children
+        text_children = [c for c in root_children if isinstance(c, TextNode)]
+        heading_children = [
+            c for c in root_children if isinstance(c, HeadingNode)
+        ]
+
+        # Only one text child (original replaced)
+        self.assertEqual(len(text_children), 1)
+        self.assertEqual(
+            text_children[0].get_content(), "Generated content for Test"
+        )
+        # Heading children preserved
+        self.assertGreater(len(heading_children), 0)
+
+    def test_propagate_select_false_string(self):
+        """select=False with string - should prepend text child."""
+        # Get initial child count
+        initial_count = self.root.count_children()
+
+        def collect_func(node: HeadingNode) -> str:
+            return f"Prepended text for {node.get_content()}"
+
+        propagate_content(
+            self.root,
+            collect_func,
+            select=False,
+            filter_func=lambda _: True,
+        )
+
+        # Root should have one more child (prepended)
+        self.assertEqual(self.root.count_children(), initial_count + 1)
+
+        # First child should be the new text node
+        first_child = self.root.children[0]
+        self.assertIsInstance(first_child, TextNode)
+        self.assertEqual(
+            first_child.get_content(), "Prepended text for Test"
+        )
+
+    def test_propagate_collect_returns_textnode(self):
+        """collect_func returns TextNode with metadata."""
+
+        def collect_func(node: HeadingNode) -> TextNode:
+            return TextNode.from_content(
+                f"Custom node for {node.get_content()}",
+                {"source": "propagate", "level": node.heading_level()},
+            )
+
+        propagate_content(
+            self.root, collect_func, select=True, filter_func=lambda _: True
+        )
+
+        # Check that text children have metadata
+        text_children = [
+            c for c in self.root.children if isinstance(c, TextNode)
+        ]
+        self.assertEqual(len(text_children), 1)
+        self.assertEqual(text_children[0].metadata["source"], "propagate")
+        self.assertEqual(text_children[0].metadata["level"], 0)
+
+    def test_propagate_with_filter(self):
+        """filter_func selects specific headings."""
+        # Only process headings at level 1
+        def filter_func(node: HeadingNode) -> bool:
+            return node.heading_level() == 1
+
+        def collect_func(node: HeadingNode) -> str:
+            return "Filtered content"
+
+        propagate_content(
+            self.root, collect_func, select=True, filter_func=filter_func
+        )
+
+        # Root (level 0) should not be filtered
+        # Check level 1 heading
+        level1_heading = [
+            c for c in self.root.children if isinstance(c, HeadingNode)
+        ][0]
+        level1_texts = [
+            c for c in level1_heading.children if isinstance(c, TextNode)
+        ]
+
+        # Level 1 heading should have filtered content
+        self.assertEqual(len(level1_texts), 1)
+        self.assertEqual(level1_texts[0].get_content(), "Filtered content")
+
+    def test_propagate_preserves_heading_children(self):
+        """Heading children are not removed when select=True."""
+
+        def collect_func(node: HeadingNode) -> str:
+            return "New text"
+
+        # Count heading children before
+        heading_children_before = len(self.root.get_heading_children())
+
+        propagate_content(
+            self.root, collect_func, select=True, filter_func=lambda _: True
+        )
+
+        # Heading children should still be there
+        heading_children_after = len(self.root.get_heading_children())
+        self.assertEqual(heading_children_before, heading_children_after)
+
+    def test_propagate_nested_structure(self):
+        """Works correctly on nested headings."""
+
+        def collect_func(node: HeadingNode) -> str:
+            return f"Level {node.heading_level()}"
+
+        propagate_content(
+            self.root, collect_func, select=True, filter_func=lambda _: True
+        )
+
+        # Check nested heading has correct content
+        level1_heading = self.root.get_heading_children()[0]
+        level2_heading = level1_heading.get_heading_children()[0]
+
+        level2_texts = level2_heading.get_text_children()
+        self.assertEqual(len(level2_texts), 1)
+        self.assertEqual(level2_texts[0].get_content(), "Level 2")
+
+
+class TestFoldTree(unittest.TestCase):
+    """Test the fold_tree() function."""
+
+    def setUp(self):
+        """Set up a simple tree for testing."""
+        header = HeaderBlock(content={"title": "Test"})
+        heading1 = HeadingBlock(level=1, content="Chapter")
+        text1 = TextBlock(content="First text")
+        text2 = TextBlock(content="Second text")
+
+        blocks = [header, heading1, text1, text2]
+        self.root = blocks_to_tree(blocks)
+        if not self.root:
+            raise ValueError("Could not build tree")
+
+    def test_fold_count_nodes(self):
+        """Use fold to count total nodes."""
+
+        def count_func(acc: int, node: MarkdownNode) -> int:
+            return acc + 1
+
+        total = fold_tree(self.root, count_func, 0)
+
+        # Root + heading + 2 texts = 4 nodes
+        self.assertEqual(total, 4)
+
+    def test_fold_concatenate_content(self):
+        """Use fold to concatenate all content."""
+
+        def concat_func(acc: str, node: MarkdownNode) -> str:
+            content = node.get_content()
+            if acc:
+                return acc + " | " + content
+            return content
+
+        result = fold_tree(self.root, concat_func, "")
+
+        # Should have all content concatenated
+        self.assertIn("Test", result)
+        self.assertIn("Chapter", result)
+        self.assertIn("First text", result)
+        self.assertIn("Second text", result)
+
+    def test_fold_with_pre_order(self):
+        """Test with pre_order_traversal."""
+
+        def list_append_func(
+            acc: list[str], node: MarkdownNode
+        ) -> list[str]:
+            acc.append(node.get_content())
+            return acc
+
+        result = fold_tree(
+            self.root, list_append_func, [], pre_order_traversal
+        )
+
+        # Pre-order: root first
+        self.assertEqual(result[0], "Test")
+        self.assertEqual(len(result), 4)
+
+    def test_fold_with_post_order(self):
+        """Test with post_order_traversal (default)."""
+
+        def list_append_func(
+            acc: list[str], node: MarkdownNode
+        ) -> list[str]:
+            acc.append(node.get_content())
+            return acc
+
+        result = fold_tree(self.root, list_append_func, [])
+
+        # Post-order: root last
+        self.assertEqual(result[-1], "Test")
+        self.assertEqual(len(result), 4)
+
+
+class TestTraverseTree(unittest.TestCase):
+    """Test traverse_tree() without type filtering."""
+
+    def setUp(self):
+        """Set up a tree for testing."""
+        header = HeaderBlock(content={"title": "Root"})
+        heading1 = HeadingBlock(level=1, content="H1")
+        text1 = TextBlock(content="T1")
+
+        blocks = [header, heading1, text1]
+        self.root = blocks_to_tree(blocks)
+        if not self.root:
+            raise ValueError("Could not build tree")
+
+    def test_traverse_all_nodes(self):
+        """Traverse all nodes without filter."""
+        contents = traverse_tree(self.root, lambda n: n.get_content())
+
+        # Should have all 3 nodes
+        self.assertEqual(len(contents), 3)
+        self.assertIn("Root", contents)
+        self.assertIn("H1", contents)
+        self.assertIn("T1", contents)
+
+    def test_traverse_with_filter(self):
+        """Use filter_func to select specific nodes."""
+        # Only nodes with content starting with "T"
+        filtered = traverse_tree(
+            self.root,
+            lambda n: n.get_content(),
+            filter_func=lambda n: n.get_content().startswith("T"),
+        )
+
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0], "T1")
+
+    def test_traverse_preorder_vs_postorder(self):
+        """Verify order differences."""
+        pre_order_result = traverse_tree(
+            self.root,
+            lambda n: n.get_content(),
+            traversal_func=pre_order_traversal,
+        )
+        post_order_result = traverse_tree(
+            self.root,
+            lambda n: n.get_content(),
+            traversal_func=post_order_traversal,
+        )
+
+        # Pre-order: root first
+        self.assertEqual(pre_order_result[0], "Root")
+        # Post-order: root last
+        self.assertEqual(post_order_result[-1], "Root")
+
+
+class TestTraversalDirect(unittest.TestCase):
+    """Test pre_order_traversal and post_order_traversal directly."""
+
+    def test_pre_order_traversal_order(self):
+        """Verify pre-order visit sequence."""
+        header = HeaderBlock(content={"title": "Root"})
+        h1 = HeadingBlock(level=1, content="H1")
+        t1 = TextBlock(content="T1")
+        h2 = HeadingBlock(level=2, content="H2")
+        t2 = TextBlock(content="T2")
+
+        blocks = [header, h1, t1, h2, t2]
+        root = blocks_to_tree(blocks)
+        if not root:
+            raise ValueError("Could not build tree")
+
+        visited: list[str] = []
+
+        def visit(node: MarkdownNode) -> None:
+            visited.append(node.get_content())
+
+        pre_order_traversal(root, visit)
+
+        # Pre-order: parent before children
+        # Root -> H1 -> T1 -> H2 -> T2
+        self.assertEqual(visited[0], "Root")
+        self.assertEqual(visited[1], "H1")
+        # T1 comes before H2 (siblings in order)
+        t1_index = visited.index("T1")
+        h2_index = visited.index("H2")
+        self.assertLess(t1_index, h2_index)
+
+    def test_post_order_traversal_order(self):
+        """Verify post-order visit sequence."""
+        header = HeaderBlock(content={"title": "Root"})
+        h1 = HeadingBlock(level=1, content="H1")
+        t1 = TextBlock(content="T1")
+
+        blocks = [header, h1, t1]
+        root = blocks_to_tree(blocks)
+        if not root:
+            raise ValueError("Could not build tree")
+
+        visited: list[str] = []
+
+        def visit(node: MarkdownNode) -> None:
+            visited.append(node.get_content())
+
+        post_order_traversal(root, visit)
+
+        # Post-order: children before parent
+        # T1 -> H1 -> Root
+        self.assertEqual(visited[-1], "Root")
+        # H1 comes after T1
+        self.assertEqual(visited[-2], "H1")
+
+
+class TestHelperFunctions(unittest.TestCase):
+    """Test utility helper functions."""
+
+    def setUp(self):
+        """Set up a tree with mixed nodes."""
+        header = HeaderBlock(content={"title": "Root"})
+        h1 = HeadingBlock(level=1, content="H1")
+        t1 = TextBlock(content="T1")
+        h2 = HeadingBlock(level=2, content="H2")
+        t2 = TextBlock(content="T2")
+
+        blocks = [header, h1, t1, h2, t2]
+        self.root = blocks_to_tree(blocks)
+        if not self.root:
+            raise ValueError("Could not build tree")
+
+    def test_get_text_nodes(self):
+        """Collect all text nodes from tree."""
+        from lmm.markdown.tree import get_text_nodes
+
+        text_nodes = get_text_nodes(self.root)
+
+        # Should have 2 text nodes
+        self.assertEqual(len(text_nodes), 2)
+        contents = [n.get_content() for n in text_nodes]
+        self.assertIn("T1", contents)
+        self.assertIn("T2", contents)
+
+    def test_get_heading_nodes(self):
+        """Collect all heading nodes from tree."""
+        from lmm.markdown.tree import get_heading_nodes
+
+        heading_nodes = get_heading_nodes(self.root)
+
+        # Should have 3 heading nodes (Root, H1, H2)
+        self.assertEqual(len(heading_nodes), 3)
+        contents = [n.get_content() for n in heading_nodes]
+        self.assertIn("Root", contents)
+        self.assertIn("H1", contents)
+        self.assertIn("H2", contents)
+
+    def test_get_tree_info(self):
+        """Generate info strings for all nodes."""
+        from lmm.markdown.tree import get_tree_info
+
+        info_list = get_tree_info(self.root)
+
+        # Should have info for all nodes
+        self.assertEqual(len(info_list), 5)
+        # All should be strings
+        for info in info_list:
+            self.assertIsInstance(info, str)
+        # Info should contain node type information
+        info_str = "\n".join(info_list)
+        self.assertIn("Header node", info_str)
+        self.assertIn("Heading node", info_str)
+        self.assertIn("Text node", info_str)
+
+
+class TestMetadataInheritance(unittest.TestCase):
+    """Test TextNode metadata inheritance behavior."""
+
+    def test_textnode_metadata_from_parent(self):
+        """Test automatic parent inheritance in get_metadata_for_key()."""
+        header = HeaderBlock(content={"title": "Test"})
+        heading = HeadingBlock(level=1, content="Chapter")
+        text = TextBlock(content="Text content")
+
+        root = blocks_to_tree([header, heading, text])
+        if not root:
+            raise ValueError("Could not build tree")
+
+        # Add metadata to heading
+        heading_node = root.get_heading_children()[0]
+        heading_node.metadata = {"author": "Test Author", "version": 1}
+
+        # Get text node
+        text_node = heading_node.get_text_children()[0]
+
+        # text_node.get_metadata_for_key() should inherit from parent
+        self.assertEqual(
+            text_node.get_metadata_for_key("author"), "Test Author"
+        )
+        self.assertEqual(text_node.get_metadata_for_key("version"), 1)
+
+    def test_textnode_metadata_vs_fetch(self):
+        """Show difference between get_metadata_for_key() and fetch_metadata_for_key()."""
+        header = HeaderBlock(content={"title": "Test"})
+        heading = HeadingBlock(level=1, content="Chapter")
+        text = TextBlock(content="Text")
+
+        root = blocks_to_tree([header, heading, text])
+        if not root:
+            raise ValueError("Could not build tree")
+
+        heading_node = root.get_heading_children()[0]
+        heading_node.metadata = {"key": "heading_value"}
+
+        text_node = heading_node.get_text_children()[0]
+        text_node.metadata = {}
+
+        # get_metadata_for_key() automatically checks parent
+        self.assertEqual(
+            text_node.get_metadata_for_key("key"), "heading_value"
+        )
+
+        # TextNode.get_metadata_for_key() implements automatic parent
+        # inheritance directly, unlike MarkdownNode base class
+
+
+class TestHasMetadataKey(unittest.TestCase):
+    """Test has_metadata_key() with inherit parameter."""
+
+    def setUp(self):
+        """Set up a tree with metadata."""
+        header = HeaderBlock(content={"title": "Test", "doc_meta": "value"})
+        heading = HeadingBlock(level=1, content="Chapter")
+        text = TextBlock(content="Text")
+
+        self.root = blocks_to_tree([header, heading, text])
+        if not self.root:
+            raise ValueError("Could not build tree")
+
+        # Add metadata to heading
+        heading_node = self.root.get_heading_children()[0]
+        heading_node.metadata = {"heading_meta": "value"}
+
+        self.text_node = heading_node.get_text_children()[0]
+
+    def test_has_metadata_key_inherit_true(self):
+        """Test inheritance traversal with inherit=True."""
+        # Text node should find metadata in parent
+        self.assertTrue(
+            self.text_node.has_metadata_key("heading_meta", inherit=True)
+        )
+        # And also in root (needs include_header=True to reach header metadata)
+        self.assertTrue(
+            self.text_node.has_metadata_key(
+                "doc_meta", inherit=True, include_header=True
+            )
+        )
+
+
+    def test_has_metadata_key_inherit_false(self):
+        """Test non-inheriting behavior with inherit=False."""
+        # Text node has no metadata of its own
+        self.assertFalse(
+            self.text_node.has_metadata_key("heading_meta", inherit=False)
+        )
+        self.assertFalse(
+            self.text_node.has_metadata_key("doc_meta", inherit=False)
         )
 
 
