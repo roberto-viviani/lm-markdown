@@ -838,5 +838,36 @@ class TestInheritParentProperties(unittest.TestCase):
         self.assertIsNone(child.metadata.get("prop1"))
 
 
+class TestGetNodesWithMetadata(unittest.TestCase):
+    def test_get_nodes_with_metadata(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        child1 = TextNode.from_content(content="child1", metadata={"key": "value"})
+        child2 = TextNode.from_content(content="child2", metadata={"other": "value"})
+        root.add_child(child1)
+        root.add_child(child2)
+
+        nodes = get_nodes_with_metadata(root, "key")
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0].get_content(), "child1")
+
+    def test_get_nodes_with_metadata_naked_copy(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        child1 = TextNode.from_content(content="child1", metadata={"key": "value"})
+        root.add_child(child1)
+
+        nodes = get_nodes_with_metadata(root, "key", naked_copy=True)
+        self.assertEqual(len(nodes), 1)
+        self.assertIsNone(nodes[0].parent)
+
+    def test_get_nodes_with_metadata_ref(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        child1 = TextNode.from_content(content="child1", metadata={"key": "value"})
+        root.add_child(child1)
+
+        nodes = get_nodes_with_metadata(root, "key", naked_copy=False)
+        self.assertEqual(len(nodes), 1)
+        self.assertIsNotNone(nodes[0].parent)
+
+
 if __name__ == "__main__":
     unittest.main()

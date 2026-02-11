@@ -54,6 +54,7 @@ from .parse_markdown import (
     MetadataBlock,
     TextBlock,
 )
+from lmm.markdown.parse_yaml import MetadataValue
 
 
 # inheritance------------------------------------------------------
@@ -188,13 +189,9 @@ def bequeath_properties(
         the root node of the modified branch
 
     Note:
-        This function differs from inherit_metadata in that here
-        the keys that are inherited are specified, as well as the
-        new names they take.
+            new names they take.
     """
-    from lmm.markdown.tree import post_order_traversal
-    from lmm.markdown.parse_yaml import MetadataValue
-
+    
     if not (new_keys):
         new_keys = keys
 
