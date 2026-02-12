@@ -1092,18 +1092,21 @@ def load_blocks(
 
 def save_blocks(
     file_name: str | Path, blocks: list[Block], logger: LoggerBase
-) -> None:
+) -> bool:
     """Write a list of Block objects to a markdown file. Used in
     development.
 
     Args:
         file_name: Path to the output file (string or Path object)
         blocks: List of Block objects to be serialized
+        logger: Logger object for error reporting
+
+    Returns:
+        Boolean indicating success or failure
     """
     from .ioutils import save_markdown
 
-    content = serialize_blocks(blocks)
-    save_markdown(file_name, content, logger)
+    return save_markdown(file_name, blocks, logger)
 
 
 def save_blocks_debug(

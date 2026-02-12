@@ -344,6 +344,10 @@ def save_markdown(
     Note:
         I/O errors are conveyed through the logger object. Use an
         ExceptionConsoleLogger object to raise errors.
+        
+        For critical save failures, the error is also logged to a 
+        ConsoleLogger to ensure visibility even if the provided logger 
+        is not console-based.
     """
     if not content:
         logger.warning("Empty markdown")
@@ -372,12 +376,20 @@ def save_markdown(
                 file.write(content)
 
     except (IOError, OSError) as e:
-        logger.error(f"I/O error saving markdown to {dest}: {str(e)}")
+        error_msg = f"I/O error saving markdown to {dest}: {str(e)}"
+        logger.error(error_msg)
+        # Ensure error reaches console even if logger isn't console-based
+        from lmm.utils.logging import ConsoleLogger
+        console = ConsoleLogger("lmm.markdown.ioutils")
+        console.error(error_msg)
         return False
     except Exception as e:
-        logger.error(
-            f"Unexpected error saving markdown to {dest}: {str(e)}"
-        )
+        error_msg = f"Unexpected error saving markdown to {dest}: {str(e)}"
+        logger.error(error_msg)
+        # Ensure error reaches console even if logger isn't console-based
+        from lmm.utils.logging import ConsoleLogger
+        console = ConsoleLogger("lmm.markdown.ioutils")
+        console.error(error_msg)
         return False
         # Note: Don't fail here as we've already processed the file
         # Just couldn't save it

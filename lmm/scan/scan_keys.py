@@ -28,3 +28,6 @@ SUMMARIES_KEY = SUMMARY_KEY
 CTXT_SUMMARY_KEY = '~context_summary'
 TXTHASH_KEY = '~txthash'
 FREEZE_KEY = 'frozen'
+
+# File integrity keys
+LAST_MODIFIED_KEY = '~last_modified'
