@@ -26,6 +26,13 @@ Example:
     blocks = parse_markdown_text(text)
     ```
 
+Main functions:
+    parse_markdown_text: Parse markdown text into structured blocks
+    serialize_blocks: Convert blocks back to markdown text
+    load_blocks: Load and parse a markdown file
+    save_blocks: Write blocks to a markdown file
+    blocklist_copy: Create deep copies of block lists
+    blocklist_map: Apply transformations to blocks
 
 The supported markdown is the same as in the pandoc specification
 with the following exceptions:
@@ -87,6 +94,12 @@ import yaml
 from typing import TypeVar
 
 T = TypeVar("T")
+
+# Configuration constants
+MAX_YAML_BLOCK_SIZE = 1_000_000  # 1MB of YAML content
+MAX_INFO_WORDS = 12  # Max words to display in TextBlock.get_info()
+DEFAULT_MAX_SIZE_MB = 50.0
+DEFAULT_WARN_SIZE_MB = 10.0
 
 
 # We define a union type for the block types, in functional style, but
@@ -223,6 +236,14 @@ class MetadataBlock(BaseModel):
         # we assume the first and last tokens to be metadata markers
         content = '\n'.join([y for (_, y) in stack[1:-1]])
 
+        # Check YAML content size to prevent YAML bombs
+        if len(content) > MAX_YAML_BLOCK_SIZE:
+            offending_meta = '\n'.join([y for (_, y) in stack])
+            return ErrorBlock(
+                content=f"Metadata block too large ({len(content)} bytes, max {MAX_YAML_BLOCK_SIZE})",
+                origin=offending_meta[:500] + "..." if len(offending_meta) > 500 else offending_meta,
+            )
+
         # first use yaml parser, catching any error
         try:
             yamldata: Any = yaml.safe_load(content)
@@ -269,7 +290,8 @@ class MetadataBlock(BaseModel):
             block = MetadataBlock(
                 content=part, private_=whole, comment=comment
             )
-        except Exception:
+        except (ValidationError, TypeError, ValueError, KeyError):
+            # First fallback: try to store in private_ field
             try:
                 block = MetadataBlock(
                     content={},
@@ -287,7 +309,7 @@ class MetadataBlock(BaseModel):
                     errormsg="",  # a convoluted pydantic message
                     origin='\n'.join([y for (_, y) in stack]),
                 )
-            except Exception as e:
+            except (TypeError, ValueError, KeyError) as e:
                 return ErrorBlock(
                     content="Could not parse metadata.",
                     errormsg=str(e),
@@ -536,8 +558,8 @@ class TextBlock(BaseModel):
         info = "\n-------------\nText block\n"
         if self.content:
             content = self.content.split()
-            if len(content) > 12:
-                content = content[:11] + ["..."]
+            if len(content) > MAX_INFO_WORDS:
+                content = content[:MAX_INFO_WORDS - 1] + ["..."]
             info += " ".join(content) if content else "<empty>"
         else:
             info += "<empty>"
@@ -600,6 +622,12 @@ class ErrorBlock(BaseModel):
     serialize()     a textual representation of the error
     get_content()   the string with the error description
     self.origin     the markdown text that gave rise to the error
+
+    Note:
+        ErrorBlocks use identity equality (is) rather than value
+        equality (==). This ensures that error instances remain
+        distinct even when they have identical content, which is
+        important for tracking multiple similar errors separately.
     """
 
     content: str = ""
@@ -872,9 +900,7 @@ def parse_markdown_text(
         return []
 
     # preproc
-    lines = (
-        content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-    )
+    lines: list[str] = content.splitlines()
 
     # check for possible unintended misspecified blocks or headings
     if logger is not None:
@@ -1037,8 +1063,8 @@ def blocklist_get_info(blocks: list[Block]) -> str:
 def load_blocks(
     source: str | Path,
     *,
-    max_size_mb: float = 50.0,
-    warn_size_mb: float = 10.0,
+    max_size_mb: float = DEFAULT_MAX_SIZE_MB,
+    warn_size_mb: float = DEFAULT_WARN_SIZE_MB,
     logger: LoggerBase,
 ) -> list[Block]:
     """Load a pandoc markdown file into structured blocks. Used in
