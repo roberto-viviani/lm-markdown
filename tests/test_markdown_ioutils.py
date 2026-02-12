@@ -912,5 +912,362 @@ This is some text in a markdown document.
         self.assertEqual(string_stream.getvalue(), text.strip())
 
 
+class TestLoggerUsagePatterns(unittest.TestCase):
+    """Test logger usage patterns from module docstring examples."""
+
+    def test_console_logger_usage(self):
+        """Test ConsoleLogger usage pattern from docstring (lines 20-24)."""
+        from lmm.utils.logging import ConsoleLogger
+        
+        # Create a temporary file
+        content = "# Test File\nTest content for ConsoleLogger"
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.md', delete=False, encoding='utf-8'
+        ) as f:
+            f.write(content)
+            temp_file = Path(f.name)
+
+        try:
+            logger = ConsoleLogger(__name__)
+            result = load_markdown(temp_file, logger=logger)
+            # Should successfully load the file
+            self.assertEqual(result, content)
+        finally:
+            temp_file.unlink()
+
+    def test_file_logger_usage(self):
+        """Test FileLogger usage pattern from docstring (lines 26-31)."""
+        from lmm.utils.logging import FileLogger
+        
+        # Create a temporary markdown file
+        content = "# Test File\nTest content for FileLogger"
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.md', delete=False, encoding='utf-8'
+        ) as f:
+            f.write(content)
+            temp_file = Path(f.name)
+
+        # Create a temporary log file
+        with tempfile.NamedTemporaryFile(
+            suffix='.log', delete=False
+        ) as log_f:
+            log_path = Path(log_f.name)
+
+        try:
+            logger = FileLogger(__name__, log_path)
+            result = load_markdown(temp_file, logger=logger)
+            # Should successfully load the file
+            self.assertEqual(result, content)
+            # Log file should exist
+            self.assertTrue(log_path.exists())
+        finally:
+            temp_file.unlink()
+            if log_path.exists():
+                try:
+                    log_path.unlink()
+                except PermissionError:
+                    # Windows may still have file handle open
+                    pass
+
+    def test_exception_console_logger_usage(self):
+        """Test ExceptionConsoleLogger usage pattern from docstring (lines 33-37)."""
+        from lmm.utils.logging import ExceptionConsoleLogger
+        
+        # Create a valid file
+        content = "# Test File\nTest content for ExceptionConsoleLogger"
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.md', delete=False, encoding='utf-8'
+        ) as f:
+            f.write(content)
+            temp_file = Path(f.name)
+
+        try:
+            logger = ExceptionConsoleLogger(__name__)
+            result = load_markdown(temp_file, logger=logger)
+            # Should successfully load the file
+            self.assertEqual(result, content)
+        finally:
+            temp_file.unlink()
+
+        # Test that it raises RuntimeError on error condition
+        # (ExceptionConsoleLogger raises on error)
+        logger_exc = ExceptionConsoleLogger(__name__)
+        # Note: Due to string_to_path_or_string, this returns string, not error
+        # So we need a real file error scenario
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.md', delete=False, encoding='utf-8'
+        ) as f:
+            f.write("test")
+            error_file = Path(f.name)
+        
+        try:
+            # Mock read_text to raise error
+            with patch('pathlib.Path.read_text') as mock_read:
+                mock_read.side_effect = PermissionError("Access denied")
+                
+                # ExceptionConsoleLogger should raise RuntimeError
+                with self.assertRaises(RuntimeError):
+                    load_markdown(error_file, logger=logger_exc)
+        finally:
+            error_file.unlink()
+
+    def test_loglist_logger_usage(self):
+        """Test LoglistLogger usage pattern from docstring (lines 39-44)."""
+        from lmm.utils.logging import LoglistLogger
+        
+        logger = LoglistLogger()
+        
+        # Create a file with encoding issues to generate errors
+        content = "# Test File\nTest content"
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.md', delete=False, encoding='utf-8'
+        ) as f:
+            f.write(content)
+            temp_file = Path(f.name)
+
+        try:
+            # First test: normal load (no errors)
+            result = load_markdown(temp_file, logger=logger)
+            self.assertEqual(result, content)
+            
+            # Get all logs and filter by level
+            all_logs = logger.get_logs(0)
+            # Should have info logs about encoding
+            self.assertTrue(len(all_logs) > 0)
+            
+            # Clear logs for next test
+            logger.clear_logs()
+            
+            # Second test: trigger an error
+            fake_path = Path("/this/does/not/exist.md")
+            result = load_markdown(fake_path, logger=logger)
+            self.assertEqual(result, "")
+            
+            # Get error-level only logs
+            errors = logger.get_logs(logging.ERROR)
+            self.assertTrue(len(errors) > 0)
+            # Should contain error message about file not existing
+            self.assertTrue(
+                any("error" in log.lower() for log in errors)
+            )
+        finally:
+            temp_file.unlink()
+
+
+class TestLatexDelimiterConversion(unittest.TestCase):
+    """Test LaTeX delimiter conversion functions."""
+
+    # Tests for convert_dollar_latex_delimiters
+    
+    def test_dollar_to_backslash_inline_basic(self):
+        """Test basic inline math conversion from $ to \\(\\)."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        input_text = "This is $x^2$ inline math."
+        expected = r"This is \(x^2\) inline math."
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_dollar_to_backslash_display_basic(self):
+        """Test basic display math conversion from $$ to \\[\\]."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        input_text = "Display math: $$E = mc^2$$"
+        expected = r"Display math: \[E = mc^2\]"
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_dollar_to_backslash_escaped_dollars(self):
+        """Test that escaped dollar signs are not converted."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        input_text = r"Price is \$100 and \$200."
+        # Escaped dollars should remain as \$
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, input_text)
+
+    def test_dollar_to_backslash_multiple_occurrences(self):
+        """Test multiple math expressions in same string."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        input_text = "Inline $a+b$ and $c+d$ and display $$x=y$$"
+        expected = r"Inline \(a+b\) and \(c+d\) and display \[x=y\]"
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_dollar_to_backslash_mixed_inline_display(self):
+        """Test mixed inline and display math."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        # Use raw string for input to properly handle LaTeX backslashes
+        input_text = r"""Text with $inline$ math and display:
+$$
+\int_0^\infty e^{-x} dx = 1
+$$
+More text with $another$ inline."""
+        
+        # Note: The regex strips whitespace around delimiters
+        expected = r"""Text with \(inline\) math and display:
+\[\int_0^\infty e^{-x} dx = 1\]
+More text with \(another\) inline."""
+        
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_dollar_to_backslash_empty_string(self):
+        """Test with empty string."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        result = convert_dollar_latex_delimiters("")
+        self.assertEqual(result, "")
+
+    def test_dollar_to_backslash_no_latex(self):
+        """Test string without any LaTeX."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        input_text = "Regular text without any math."
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, input_text)
+
+    def test_dollar_to_backslash_nested_delimiters(self):
+        """Test with complex nested structures."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        # Test display math with special characters
+        input_text = r"Formula: $$f(x) = \begin{cases} x^2 & x > 0 \\ 0 & x \leq 0 \end{cases}$$"
+        expected = r"Formula: \[f(x) = \begin{cases} x^2 & x > 0 \\ 0 & x \leq 0 \end{cases}\]"
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_dollar_to_backslash_whitespace_handling(self):
+        """Test handling of whitespace around delimiters."""
+        from lmm.markdown.ioutils import convert_dollar_latex_delimiters
+        
+        input_text = "Math with spaces: $  x + y  $ and $$  a = b  $$"
+        expected = r"Math with spaces: \(x + y\) and \[a = b\]"
+        result = convert_dollar_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    # Tests for convert_backslash_latex_delimiters
+    
+    def test_backslash_to_dollar_inline_basic(self):
+        """Test basic inline math conversion from \\(\\) to $."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        input_text = r"This is \(x^2\) inline math."
+        expected = "This is $x^2$ inline math."
+        result = convert_backslash_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_backslash_to_dollar_display_basic(self):
+        """Test basic display math conversion from \\[\\] to $$."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        input_text = r"Display math: \[E = mc^2\]"
+        expected = "Display math: $$E = mc^2$$"
+        result = convert_backslash_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_backslash_to_dollar_multiple_occurrences(self):
+        """Test multiple math expressions."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        input_text = r"Inline \(a+b\) and \(c+d\) and display \[x=y\]"
+        expected = "Inline $a+b$ and $c+d$ and display $$x=y$$"
+        result = convert_backslash_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_backslash_to_dollar_mixed_inline_display(self):
+        """Test mixed inline and display math."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        input_text = r"""Text with \(inline\) math and display:
+\[
+\int_0^\infty e^{-x} dx = 1
+\]
+More text with \(another\) inline."""
+        
+        # Note: The regex strips whitespace around delimiters
+        expected = r"""Text with $inline$ math and display:
+$$\int_0^\infty e^{-x} dx = 1$$
+More text with $another$ inline."""
+        
+        result = convert_backslash_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_backslash_to_dollar_empty_string(self):
+        """Test with empty string."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        result = convert_backslash_latex_delimiters("")
+        self.assertEqual(result, "")
+
+    def test_backslash_to_dollar_no_latex(self):
+        """Test string without any LaTeX."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        input_text = "Regular text without any math."
+        result = convert_backslash_latex_delimiters(input_text)
+        self.assertEqual(result, input_text)
+
+    def test_backslash_to_dollar_whitespace_handling(self):
+        """Test handling of whitespace around delimiters."""
+        from lmm.markdown.ioutils import convert_backslash_latex_delimiters
+        
+        input_text = r"Math with spaces: \(  x + y  \) and \[  a = b  \]"
+        expected = "Math with spaces: $x + y$ and $$a = b$$"
+        result = convert_backslash_latex_delimiters(input_text)
+        self.assertEqual(result, expected)
+
+    def test_roundtrip_conversion_inline(self):
+        """Test round-trip conversion for inline math: $ → \\( → $."""
+        from lmm.markdown.ioutils import (
+            convert_dollar_latex_delimiters,
+            convert_backslash_latex_delimiters,
+        )
+        
+        original = "Inline math: $x^2 + y^2 = z^2$ in text."
+        # Convert to backslash format
+        backslash_format = convert_dollar_latex_delimiters(original)
+        # Convert back to dollar format
+        result = convert_backslash_latex_delimiters(backslash_format)
+        self.assertEqual(result, original)
+
+    def test_roundtrip_conversion_display(self):
+        """Test round-trip conversion for display math: $$ → \\[ → $$."""
+        from lmm.markdown.ioutils import (
+            convert_dollar_latex_delimiters,
+            convert_backslash_latex_delimiters,
+        )
+        
+        original = "Display: $$E = mc^2$$ equation."
+        # Convert to backslash format
+        backslash_format = convert_dollar_latex_delimiters(original)
+        # Convert back to dollar format
+        result = convert_backslash_latex_delimiters(backslash_format)
+        self.assertEqual(result, original)
+
+    def test_roundtrip_conversion_mixed(self):
+        """Test round-trip conversion with mixed math expressions."""
+        from lmm.markdown.ioutils import (
+            convert_dollar_latex_delimiters,
+            convert_backslash_latex_delimiters,
+        )
+        
+        # Note: Round-trip won't preserve whitespace around delimiters
+        # because the regex strips whitespace
+        original = r"""Text with $inline$ and display:
+$$\sum_{i=1}^n i = \frac{n(n+1)}{2}$$
+More $math$ here."""
+        
+        # Convert to backslash format
+        backslash_format = convert_dollar_latex_delimiters(original)
+        # Convert back to dollar format
+        result = convert_backslash_latex_delimiters(backslash_format)
+        self.assertEqual(result, original)
+
+
+
 if __name__ == '__main__':
     unittest.main()
+
