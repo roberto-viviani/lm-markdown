@@ -232,6 +232,8 @@ class MetadataBlock(BaseModel):
         # use here in 'part', the rest of the block in 'whole'.
         # See parse_yaml.py for explanation.
         try:
+            part: dict[str, MetadataValue]
+            whole: list[object]
             part, whole = pya.split_yaml_parse(yamldata, mapped_keys)
         except ValueError as e:
             # These are metadata fields rejected by split_yaml_parse

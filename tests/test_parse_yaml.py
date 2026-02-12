@@ -1,6 +1,8 @@
 # flake8: noqa
 # pyright: basic
 
+# pyright: reportArgumentType=false
+
 import unittest
 import yaml  # PyYAML library
 

@@ -4,6 +4,8 @@
 # pyright: basic
 # pyright: reportUnknownMemberType=false
 # pyright: reportAttributeAccessIssue=false
+# pyright: reportArgumentType=false
+# pyright: reportOptionalMemberAccess=false
 
 import unittest
 
