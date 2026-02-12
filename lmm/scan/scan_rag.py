@@ -31,6 +31,11 @@ consistent, and the functions are used in the right order.
 Main superordinate functions:
     blocklist_rag: processes a blocklist adding metadata annotations
     markdown_rag: applies blocklist_rag to file
+
+Behaviour:
+    markdown_rag raises validation errors if called with wrong types.
+    All other functions report errors through logger (no side effect
+    through raised exceptions).
 """
 
 import re
@@ -94,7 +99,7 @@ from lmm.scan.scan_keys import (
 from lmm.utils.logging import LoggerBase, get_logger
 
 # Set up logger
-logger: LoggerBase = get_logger(__name__)
+_logger: LoggerBase = get_logger(__name__)
 
 
 class ScanOpts(BaseModel):
@@ -191,9 +196,11 @@ class ScanOpts(BaseModel):
 def _filt_func(n: MarkdownNode) -> bool:
     """To use in aggregate function to exclude nodes with
     SKIP_KEY in metadata"""
+    # For HeadingNode, don't inherit SKIP_KEY from parents (3rd arg=False)
+    # For other nodes, inherit from parents normally    
     flag = bool(
         n.fetch_metadata_for_key(SKIP_KEY, False, False)
-        if isinstance(n, HeadingNode)
+        if n.is_heading_node()
         else n.fetch_metadata_for_key(SKIP_KEY, False)
     )
     return not flag
@@ -202,7 +209,7 @@ def _filt_func(n: MarkdownNode) -> bool:
 def blocklist_rag(
     blocks: list[Block],
     opts: ScanOpts = ScanOpts(),
-    logger: LoggerBase = logger,
+    logger: LoggerBase = _logger,
 ) -> list[Block]:
     """
     Prepares the blocklist structure for RAG (Retrieval Augmented
@@ -231,7 +238,14 @@ def blocklist_rag(
         if the header is missing, and a docid field to the header
         if this is missing.
 
-    Raises ConnectionError, TypeError, ValueError, ValidationError
+        Reentrant Processing:
+            Running blocklist_rag multiple times on the same blocks is
+            idempotent if the content hasn't changed. IDs are always
+            regenerated to ensure integrity, but summaries/questions are
+            only recomputed if the text content has changed (detected via
+            hash comparison). This ensures external systems never need to
+            reference internal IDs, as the parsed markdown is only used
+            to export IDs, never to look them up.
 
     Example of use:
         ```python
@@ -261,7 +275,7 @@ def blocklist_rag(
         logger.info("bloclist_rag: text id's built to form UUID")
         build_textids = True
     if build_headingUUID and (not build_headingids):
-        logger.info("blocklist_rag: text id's built to form UUID")
+        logger.info("blocklist_rag: heading id's built to form UUID")
         build_headingids = True
 
     if not (
@@ -355,7 +369,7 @@ def blocklist_rag(
                 logger.warning("Could not set uuid for object")
 
     if build_headingUUID:
-        logger.info("Adding UUIDs to hedings.")
+        logger.info("Adding UUIDs to headings.")
         pre_order_traversal(root, add_headingUUID_func)
 
     def add_textUUID_func(node: MarkdownNode) -> None:
@@ -456,7 +470,7 @@ def markdown_rag(
     *,
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
-    logger: LoggerBase = logger,
+    logger: LoggerBase = _logger,
 ) -> list[Block]:
     """
     Scans the markdown file and adds information required for the
@@ -557,33 +571,32 @@ def scan_rag(
     save: bool | str | Path = True,
     max_size_mb: float = 50.0,
     warn_size_mb: float = 10.0,
-    logger: LoggerBase = logger,
+    logger: LoggerBase = _logger,
 ) -> None:
-    """Carries out the interaction with the language model,
-            returning a list of blocks with a header block first.
+    """Convenience wrapper around markdown_rag with individual parameters.
+    
+    This function provides a flattened interface for markdown_rag,
+    accepting individual boolean parameters instead of a ScanOpts object.
+    Useful for command-line interfaces and simple scripts.
 
-            opts defines what operations are conducted on the document,
-            but if the header of the document contains an opts field,
-            the specifications in the header are used.
+    Args:
+        sourcefile: the file to load the markdown from
+-           titles (False)    add hierarchical titles to headings
+        questions (False) add questions to headings
+        questions_threshold (15) ignored if questions == False
+        summaries (False) add summaries to headings
+        summary_threshold (50) ignored if summaries == False
+        remove_messages (False)
+        save: if False, does not save; if True, saves back to
+            original markdown file; if a filename, saves to
+            file. Defaults to True.
+        max_size_mb: the max size, in MB, of the file to load
+        warn_size_mb: the size of the input file that results in
+            a warning
+        logger: a logger object. Defaults to console logger.
 
-            Args:
-                sourcefile: the file to load the markdown from
-    -           titles (False)    add hierarchical titles to headings
-                questions (False) add questions to headings
-                questions_threshold (15) ignored if questions == False
-                summaries (False) add summaries to headings
-                summary_threshold (50) ignored if summaries == False
-                remove_messages (False)
-                save: if False, does not save; if True, saves back to
-                    original markdown file; if a filename, saves to
-                    file. Defaults to True.
-                max_size_mb: the max size, in MB, of the file to load
-                warn_size_mb: the size of the input file that results in
-                    a warning
-                logger: a logger object. Defaults to console logger.
+    Returns: None
 
-            Note:
-                this is a stub of markdown_rag for interface bulding
     """
 
     try:
@@ -704,6 +717,9 @@ def add_id_to_nodes(
     Note:
         - Identifiers are _always_ added irrespective of whether they
             already exist in the node's metadata.
+        - The base_hash function produces a hash derived from the docid,
+            ensuring uniqueness across different documents while maintaining
+            deterministic IDs for the same document content.
     """
 
     textid = bool(textid)
@@ -759,10 +775,12 @@ def add_questions(
 
     Args:
         root: a markdown node to start the traversal
-        opts: options defining thresholds for computing summaries
+        opts: options defining thresholds for computing questions
         logger: a logger object
         filt_func: a predicated to fiter the heading nodes to add
             questions to.
+
+    Returns: None.
     """
 
     def llm_questions(text: str) -> str:
@@ -789,11 +807,6 @@ def add_questions(
         pattern = r"\s*\d+[.)]\s*"
         response = re.sub(pattern, "~_~", response)
         return " - ".join(response.split("~_~"))
-
-    # use for development/debug purposes
-    quest_func: Callable[[str], str] = lambda x: (  # type: ignore # noqa: 841
-        "Questions this text answers" if x else ""
-    )
 
     # do not call questions at header node.
     if root.is_header_node():
@@ -822,7 +835,7 @@ def add_summaries(
 
     Args:
         root: a markdown node to start the traversal
-        opts: options defining thresholds for computing questions
+        opts: options defining thresholds for computing summaries
         logger: a logger object
         filt_func: a predicate function to filter the heading
             noted where a summary will be added.
@@ -851,15 +864,6 @@ def add_summaries(
 
         return response
 
-    # for development/debug
-    summary_func: Callable[[str], str] = (  # type: ignore # noqa: 841
-        lambda x: (
-            f"Accumulated {len(x.split())} words."
-            if len(x.split()) >= opts.summary_threshold
-            else ""
-        )
-    )
-
     post_order_hashed_aggregation(
         root, llm_add_summary, SUMMARY_KEY, filter_func=filt_func
     )
@@ -869,7 +873,16 @@ def get_changed_titles(
     blocks: list[Block], logger: LoggerBase
 ) -> list[str]:
     """List the titles of all changed text. This is the
-    headings that would be updated in a scan operation."""
+    headings that would be updated in a scan operation.
+    
+    Args:
+        blocks: the block list to evaluate
+        logger: a logger object
+        
+    Returns:
+        a list of strings containing the headings with
+        changed content
+    """
     from ..markdown.treeutils import (
         get_nodes_with_metadata,
         get_headingnodes,

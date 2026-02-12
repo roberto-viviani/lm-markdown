@@ -13,6 +13,7 @@ from lmm.markdown.parse_markdown import (
     TextBlock,
     ErrorBlock,
     parse_markdown_text,
+    blocklist_copy,
 )
 from lmm.markdown.tree import (
     blocks_to_tree,
@@ -629,6 +630,121 @@ Text for 2 level two
         blocks.append(TextBlock.from_text("New text"))
         titles = get_changed_titles(blocks, logger=logger)
         self.assertEqual(len(titles), 2)
+
+    def test_language_model_connection_error(self):
+        """Test that connection errors are handled gracefully"""
+        from unittest.mock import patch
+
+        blocks_raw: list[Block] = parse_markdown_text(document)
+        logger = LoglistLogger()
+
+        with patch('lmm.scan.scan_rag.create_runnable') as mock:
+            mock.side_effect = ConnectionError("Connection failed")
+            blocks = blocklist_rag(
+                blocks_raw, ScanOpts(questions=True), logger=logger
+            )
+            # Should return blocks without questions, not crash
+            self.assertTrue(len(blocks) > 0)
+            # Should log the connection error
+            self.assertTrue(logger.count_logs() > 0)
+
+    def test_language_model_generic_exception(self):
+        """Test that generic exceptions from LM are handled gracefully"""
+        from unittest.mock import patch
+
+        blocks_raw: list[Block] = parse_markdown_text(document)
+        logger = LoglistLogger()
+
+        with patch('lmm.scan.scan_rag.create_runnable') as mock:
+            mock.side_effect = ValueError("Invalid model response")
+            blocks = blocklist_rag(
+                blocks_raw, ScanOpts(summaries=True), logger=logger
+            )
+            # Should return blocks without summaries, not crash
+            self.assertTrue(len(blocks) > 0)
+            # Should log the error
+            logs = logger.get_logs()
+            has_error = any(
+                'Error in using the language model' in log for log in logs
+            )
+            self.assertTrue(has_error)
+
+    def test_scan_rag_function(self):
+        """Test the scan_rag convenience wrapper function"""
+        from lmm.scan.scan_rag import scan_rag
+        import tempfile
+        import os
+
+        # Create temp file
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.md', delete=False, encoding='utf-8'
+        ) as f:
+            f.write(document)
+            temp_file = f.name
+
+        try:
+            logger = LoglistLogger()
+            # Should not raise - returns None
+            scan_rag(
+                temp_file,
+                titles=True,
+                save=True,
+                logger=logger,
+            )
+
+            # Verify file was modified
+            from lmm.markdown.parse_markdown import load_blocks
+
+            blocks = load_blocks(temp_file, logger=logger)
+            self.assertTrue(len(blocks) > 0)
+
+            # Check that titles were added
+            root = blocks_to_tree(blocks)
+            if root:
+                heading_nodes = get_heading_nodes(root)
+                if len(heading_nodes) > 1:  # More than just root
+                    # At least one heading should have titles metadata
+                    has_titles = any(
+                        TITLES_KEY in node.metadata
+                        for node in heading_nodes
+                    )
+                    self.assertTrue(has_titles)
+        finally:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+
+    def test_reentrant_processing_idempotent(self):
+        """Test that processing document twice is idempotent for unchanged content"""
+        blocks_raw: list[Block] = parse_markdown_text(document)
+
+        # First processing
+        blocks1 = blocklist_rag(
+            blocks_raw, ScanOpts(textid=True, titles=True)
+        )
+        root1 = blocks_to_tree(blocks1)
+
+        # Second processing on deep copy of same content
+        blocks1_copy = blocklist_copy(blocks1)
+        blocks2 = blocklist_rag(
+            blocks1_copy, ScanOpts(textid=True, titles=True)
+        )
+        root2 = blocks_to_tree(blocks2)
+
+        # Should have same structure
+        self.assertIsNotNone(root1)
+        self.assertIsNotNone(root2)
+
+        # IDs will be regenerated but structure should be same
+        text_nodes1 = get_text_nodes(root1)
+        text_nodes2 = get_text_nodes(root2)
+        self.assertEqual(len(text_nodes1), len(text_nodes2))
+
+        # All should have textid
+        for node in text_nodes1:
+            self.assertIn(TEXTID_KEY, node.metadata)
+        for node in text_nodes2:
+            self.assertIn(TEXTID_KEY, node.metadata)
+
 
 
 class TestSkippedNodes(unittest.TestCase):

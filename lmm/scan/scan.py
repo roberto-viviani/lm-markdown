@@ -14,8 +14,7 @@ Behaviour:
     the `lmm.utils.logging` package for error handling. The logger is 
     passed as the last argument to functions that require it. Errors 
     are logged rather than raised, except for validation errors in 
-    `markdown_scan` which are caught and logged by the wrapper 
-    function `scan`.
+    `markdown_scan` and `save_scan`.
     
     File size limits: `markdown_scan` accepts `max_size_mb` (default 50.0) 
     and `warn_size_mb` (default 10.0) parameters. Files exceeding `warn_size_mb` 
