@@ -16,6 +16,7 @@ from lmm.markdown.parse_markdown import (
     blocklist_errors,
     blocklist_copy,
     blocklist_map,
+    blocklist_get_info,
     Block,
     HeaderBlock,
     MetadataBlock,
@@ -290,6 +291,15 @@ class TestBlocklist(unittest.TestCase):
         text = serialize_blocks(newblocks)
         self.assertNotEqual(text, serialize_blocks(blocks))
 
+def test_blocklist_get_info():
+    """Test blocklist_get_info returns formatted info."""
+    blocks = [
+        HeaderBlock._from_dict({'title': 'Test'}),
+        TextBlock.from_text('Content')
+    ]
+    info = blocklist_get_info(blocks)
+    assert 'Header block' in info
+    assert 'Text block' in info
 
 class TestParseMarkdownText(unittest.TestCase):
     """Test cases for the parse_markdown_text function."""
@@ -926,6 +936,181 @@ The second block!
             "A heading marker preceded by space found at line 6",
             logger.get_logs()[0],
         )
+
+
+class TestSaveBlocks(unittest.TestCase):
+    """Test cases for save_blocks functionality."""
+
+    def test_save_and_load_blocks_roundtrip(self):
+        """Test save_blocks and load_blocks round-trip."""
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from lmm.markdown.parse_markdown import save_blocks, load_blocks
+        from lmm.utils.logging import LoglistLogger
+
+        # Create test blocks
+        blocks = [
+            HeaderBlock._from_dict({'title': 'Test Document', 'author': 'Test Author'}),
+            TextBlock.from_text('This is test content\nwith multiple lines'),
+            HeadingBlock(level=2, content='Section Title'),
+            TextBlock.from_text('More content here'),
+        ]
+        blocks = cast(list[Block], blocks)
+
+        with TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / 'test_roundtrip.md'
+            logger = LoglistLogger()
+
+            # Save blocks
+            save_blocks(file_path, blocks, logger)
+
+            # Verify file was created
+            self.assertTrue(file_path.exists())
+
+            # Load blocks back
+            loaded = load_blocks(file_path, logger=logger)
+
+            # Verify structure
+            self.assertEqual(len(loaded), len(blocks))
+            self.assertIsInstance(loaded[0], HeaderBlock)
+            self.assertIsInstance(loaded[1], TextBlock)
+            self.assertIsInstance(loaded[2], HeadingBlock)
+            self.assertIsInstance(loaded[3], TextBlock)
+
+            # Verify content
+            self.assertEqual(loaded[0].content['title'], 'Test Document')
+            self.assertEqual(loaded[0].content['author'], 'Test Author')
+            self.assertEqual(loaded[1].content, 'This is test content\nwith multiple lines')
+            self.assertEqual(loaded[2].content, 'Section Title')
+            self.assertEqual(loaded[2].level, 2)
+            self.assertEqual(loaded[3].content, 'More content here')
+
+
+class TestGetKeyTypeEdgeCases(unittest.TestCase):
+    """Test edge cases for MetadataBlock.get_key_type."""
+
+    def test_get_key_type_with_none_value(self):
+        """Test get_key_type when metadata contains None."""
+        block = MetadataBlock(content={'key': None})
+        # When value is None, should return default
+        result = block.get_key_type('key', str, 'default')
+        self.assertEqual(result, 'default')
+
+    def test_get_key_type_with_missing_key(self):
+        """Test get_key_type when key doesn't exist."""
+        block = MetadataBlock(content={'other_key': 'value'})
+        result = block.get_key_type('missing_key', str, 'default')
+        self.assertEqual(result, 'default')
+
+    def test_get_key_type_with_wrong_type(self):
+        """Test get_key_type when value is wrong type."""
+        block = MetadataBlock(content={'number': 42})
+        # Requesting str type but value is int
+        result = block.get_key_type('number', str, 'default')
+        self.assertEqual(result, 'default')
+
+    def test_get_key_type_with_complex_union_none(self):
+        """Test get_key_type with union type including None."""
+        block = MetadataBlock(content={'key': None})
+        # Using union type str | None with None default
+        result = block.get_key_type('key', str | None, None)  # type: ignore
+        # None is an instance of type(None), but get_key_type checks isinstance
+        # which will fail for None against str | None union
+        self.assertIsNone(result)
+
+    def test_get_key_type_with_list_type(self):
+        """Test get_key_type with list values."""
+        block = MetadataBlock(content={'items': [1, 2, 3]})
+        result = block.get_key_type('items', list, [])
+        self.assertEqual(result, [1, 2, 3])
+        
+        # Wrong type
+        result_wrong = block.get_key_type('items', str, 'default')
+        self.assertEqual(result_wrong, 'default')
+
+    def test_get_key_type_with_dict_type(self):
+        """Test get_key_type with dict values."""
+        block = MetadataBlock(content={'nested': {'a': 1, 'b': 2}})
+        result = block.get_key_type('nested', dict, {})
+        self.assertEqual(result, {'a': 1, 'b': 2})
+
+
+class TestLoggerWarningsEnhanced(unittest.TestCase):
+    """Enhanced tests for logger warnings."""
+
+    def test_multiple_warnings_same_document(self):
+        """Test that multiple warnings are all logged."""
+        from lmm.utils.logging import LoglistLogger
+
+        logger = LoglistLogger()
+        text = """    ---
+        title: Title
+        ---
+
+        # Heading 1
+
+            # Heading 2 with space prefix
+
+        Text content.
+        """
+        blocks = parse_markdown_text(text, logger=logger)
+        
+        # Should have at least 2 warnings (metadata and heading markers with spaces)
+        self.assertGreaterEqual(logger.count_logs(), 2)
+        
+        logs = logger.get_logs()
+        # Check that both types of warnings are present
+        has_metadata_warning = any('metadata marker preceded by space' in log for log in logs)
+        has_heading_warning = any('heading marker preceded by space' in log for log in logs)
+        
+        self.assertTrue(has_metadata_warning)
+        self.assertTrue(has_heading_warning)
+
+    def test_warning_line_numbers_accuracy(self):
+        """Test that warning messages include correct line numbers."""
+        from lmm.utils.logging import LoglistLogger
+
+        logger = LoglistLogger()
+        # Line 1: blank
+        # Line 2: blank  
+        # Line 3: space + ---
+        text = """\n    ---
+title: Title
+---
+"""
+        blocks = parse_markdown_text(text, logger=logger)
+        
+        self.assertEqual(logger.count_logs(), 1)
+        log = logger.get_logs()[0]
+        
+        # Should mention line 2 (0-indexed line 1 → 1-indexed line 2)
+        self.assertIn('line 2', log)
+
+    def test_heading_warning_line_number(self):
+        """Test heading warning includes correct line number."""
+        from lmm.utils.logging import LoglistLogger
+
+        logger = LoglistLogger()
+        # Lines:
+        # 1: ---
+        # 2: title
+        # 3: ---
+        # 4: blank
+        # 5: space + heading
+        text = """---
+title: Title
+---
+
+    # Heading with space
+"""
+        blocks = parse_markdown_text(text, logger=logger)
+        
+        self.assertEqual(logger.count_logs(), 1)
+        log = logger.get_logs()[0]
+        
+        # Should mention line 5
+        self.assertIn('line 5', log)
+        self.assertIn('heading marker', log)
 
 
 if __name__ == "__main__":

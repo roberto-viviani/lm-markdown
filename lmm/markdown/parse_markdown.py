@@ -47,6 +47,11 @@ with the following exceptions:
 - headers of tables written with three dashes may be parsed as
     metadata blocks, if the table contains only one column
 
+Behaviour:
+    The main exported functions use a custom `Logger` class for 
+    warnings (passed as an optional `logger` argument). Parse 
+    errors are represented as `ErrorBlock` objects in the returned 
+    block list rather than raising exceptions.
 """
 
 # private use as protected
@@ -76,7 +81,7 @@ import re
 
 from . import parse_yaml as pya
 from .parse_yaml import MetadataDict, MetadataValue
-from lmm.utils.logging import LoggerBase
+from lmm.utils.logging import LoggerBase, ConsoleLogger
 import yaml
 
 from typing import TypeVar
@@ -115,7 +120,8 @@ class MetadataBlock(BaseModel):
             try:
                 if not d == obj.private_[i]:
                     return False
-            except:  # noqa
+            except Exception:
+                # Comparison may fail for complex objects
                 return False
         return True
 
@@ -268,8 +274,10 @@ class MetadataBlock(BaseModel):
                 block = MetadataBlock(
                     content={},
                     private_=[part] + whole,
-                    comment="Invalid (too deeply nested?) metadata,"
-                    + " ignored by model.",
+                    comment=(
+                        "Invalid (too deeply nested?) metadata, "
+                        "ignored by model."
+                    )
                 )
             except ValidationError:
                 # Pydantic errors ensue from nested dictionaries
@@ -599,7 +607,7 @@ class ErrorBlock(BaseModel):
     origin: str = ""
     type: Literal['error'] = 'error'
 
-    def __eq__(self, obj: object):
+    def __eq__(self, obj: object) -> bool:
         return self is obj
 
     def __ne__(self, obj: object) -> bool:
@@ -1036,17 +1044,31 @@ def load_blocks(
     """Load a pandoc markdown file into structured blocks. Used in
     development.
 
+    This function loads the entire file into memory for parsing. For
+    very large files, this may consume significant memory. The file
+    size limits are enforced to prevent excessive memory usage.
+
     Args:
         source: Path to a markdown file.
-        max_size_mb: the max size, in MB, of the file to load
+        max_size_mb: the max size, in MB, of the file to load. Files
+            larger than this will not be loaded and an error will be
+            logged.
         warn_size_mb: the size of the input file that results in
-            a warning
+            a warning being logged. Use this to be notified when
+            processing larger files.
         logger: a logger object (defaults to console logging)
 
     Returns:
         List of Block objects (HeaderBlock, MetadataBlock,
             HeadingBlock, TextBlock, ErrorBlock) representing
-            the parsed content.
+            the parsed content. Returns an empty list if the file
+            cannot be loaded.
+
+    Note:
+        This function processes the entire file in memory and is not
+        suitable for streaming very large files. For files approaching
+        the max_size_mb limit, consider processing in smaller chunks
+        or using alternative approaches.
     """
 
     # Load the markdown
@@ -1085,14 +1107,16 @@ def save_blocks(
 
 
 def save_blocks_debug(
-    file_name: str | Path, blocks: list[Block], sep: str = ""
+    file_name: str | Path, 
+    blocks: list[Block], 
+    sep: str = "",
+    logger: LoggerBase = ConsoleLogger(),
 ) -> None:
     """A debug version of save_blocks, with a separator string
     added to make clear where the block boundaries are. Used in
     development."""
 
     from .ioutils import save_markdown
-    from lmm.utils import logger
 
     content = ""
     for b in blocks:
