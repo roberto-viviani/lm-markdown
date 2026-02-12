@@ -64,6 +64,7 @@ def blocklist_scan(blocks: list[Block], default_title: str = "Title") -> list[Bl
         as ErrorBlocks signal that the block list is not valid.
 
     Examples:
+        ```
         >>> from lmm.markdown.parse_markdown import parse_markdown_text
         >>> blocks = parse_markdown_text("# My Document\\n\\nSome text")
         >>> result = blocklist_scan(blocks)
@@ -71,6 +72,7 @@ def blocklist_scan(blocks: list[Block], default_title: str = "Title") -> list[Bl
         True
         >>> result[0].content['title']
         'My Document'
+        ```
     """
 
     if not blocks:  # Empty list
@@ -144,14 +146,16 @@ def markdown_scan(
         it does not alter the source file.
 
     Examples:
-        >>> # Scan a markdown file and save changes
-        >>> blocks = markdown_scan("document.md", save=True)
-        >>>
-        >>> # Scan without saving
-        >>> blocks = markdown_scan("document.md", save=False)
-        >>>
-        >>> # Scan and save to different file
-        >>> blocks = markdown_scan("source.md", save="output.md")
+        ```python
+        # Scan a markdown file and save changes. Timestamp added
+        blocks = markdown_scan("document.md", save=True)
+        
+        # Scan without saving
+        blocks = markdown_scan("document.md", save=False)
+        
+        # Scan and save to different file, timestamp added
+        blocks = markdown_scan("source.md", save="output.md")
+        ```
     """
 
     # Source validation
@@ -186,9 +190,9 @@ def markdown_scan(
         case False:
             pass
         case True:
-            save_markdown(source, blocks, logger)
+            save_scan(source, blocks, logger=logger)
         case str() | Path():
-            save_markdown(save, blocks, logger)
+            save_markdown(save, blocks, logger=logger)
         case _:  # ignore
             pass
 
@@ -222,6 +226,7 @@ def save_scan(
         True if saved successfully, False otherwise
     
     Examples:
+        ```
         >>> # Basic save to new file
         >>> from lmm.scan.scan import markdown_scan, save_scan
         >>> blocks = markdown_scan("test.md", save=False)
@@ -237,6 +242,7 @@ def save_scan(
         >>> # Force save without verification
         >>> save_scan("test.md", blocks, verify_unchanged=False)
         True
+        ```
     
     Note:
         - The timestamp is stored in blocks[0].content['~last_modified']
@@ -269,8 +275,8 @@ def save_scan(
                 )
             else:
                 # Get timestamps
-                existing_timestamp = existing_blocks[0].content.get(LAST_MODIFIED_KEY)
-                current_timestamp = blocks[0].content.get(LAST_MODIFIED_KEY)
+                existing_timestamp: str = existing_blocks[0].content.get(LAST_MODIFIED_KEY) # type: ignore
+                current_timestamp: str = blocks[0].content.get(LAST_MODIFIED_KEY) # type: ignore
                 
                 # Compare timestamps
                 if existing_timestamp and current_timestamp:

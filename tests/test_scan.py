@@ -4,6 +4,7 @@ import unittest
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
+import unittest.mock
 
 from lmm.scan.scan import blocklist_scan, markdown_scan, scan, save_scan
 from lmm.markdown.parse_markdown import (
@@ -14,6 +15,8 @@ from lmm.markdown.parse_markdown import (
 )
 from lmm.utils.logging import LoggerBase
 
+# pyright: reportPrivateUsage=false
+# pyright: reportIndexIssue=false
 
 class MockLogger(LoggerBase):
     """Mock logger for testing that inherits from LoggerBase"""
@@ -32,20 +35,20 @@ class MockLogger(LoggerBase):
     def get_level(self) -> int:
         return self._level
     
-    def warning(self, message: str) -> None:
-        self._warning_mock(message)
+    def warning(self, msg: str) -> None:
+        self._warning_mock(msg)
     
-    def error(self, message: str) -> None:
-        self._error_mock(message)
+    def error(self, msg: str) -> None:
+        self._error_mock(msg)
     
-    def info(self, message: str) -> None:
-        self._info_mock(message)
+    def info(self, msg: str) -> None:
+        self._info_mock(msg)
     
-    def debug(self, message: str) -> None:
-        self._debug_mock(message)
+    def debug(self, msg: str) -> None:
+        self._debug_mock(msg)
     
-    def critical(self, message: str) -> None:
-        self._critical_mock(message)
+    def critical(self, msg: str) -> None:
+        self._critical_mock(msg)
 
 
 test_md_only_heading = """# This is my title"""
@@ -149,7 +152,7 @@ class TestBlocklistEdgeCases(unittest.TestCase):
 
     def test_blocklist_with_only_errors(self):
         """Test that blocklist_scan returns ErrorBlock-only list as-is"""
-        error_block = ErrorBlock(content="Parse error", comment="Invalid")
+        error_block = ErrorBlock(content="Parse error")
         blocks: list[Block] = [error_block]
         
         result = blocklist_scan(blocks)
@@ -272,7 +275,7 @@ class TestLoggerUsage(unittest.TestCase):
             self.assertEqual(len(blocks), 0)
 
     @patch('lmm.scan.scan.mkd.blocklist_haserrors')
-    def test_logger_warning_on_errors(self, mock_haserrors):
+    def test_logger_warning_on_errors(self, mock_haserrors: unittest.mock.MagicMock):
         """Test logger.warning is called when errors found"""
         # Mock blocklist_haserrors to return True
         mock_haserrors.return_value = True
@@ -327,13 +330,13 @@ class TestSaveScan(unittest.TestCase):
             output_file = Path(tmpdir) / "test.md"
             mock_logger = MockLogger()
             save_scan(output_file, blocks, logger=mock_logger)
-            first_timestamp = blocks[0].content[LAST_MODIFIED_KEY]
+            first_timestamp: str = blocks[0].content[LAST_MODIFIED_KEY] # type: ignore
             
             # Second save - timestamp should update
             import time
             time.sleep(0.01)  # Small delay to ensure different timestamp
             save_scan(output_file, blocks, logger=mock_logger)
-            second_timestamp = blocks[0].content[LAST_MODIFIED_KEY]
+            second_timestamp: str = blocks[0].content[LAST_MODIFIED_KEY] # type: ignore
             
             # Timestamps should be different
             self.assertNotEqual(first_timestamp, second_timestamp)
@@ -454,4 +457,3 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 1:
         unittest.main()
-
