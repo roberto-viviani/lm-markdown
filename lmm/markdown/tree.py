@@ -662,14 +662,14 @@ class TextNode(MarkdownNode):
     @staticmethod
     def from_content(
         content: str,
-        metadata: MetadataDict = {},
+        metadata: MetadataDict | None = None,
         parent: HeadingNode | None = None,
     ) -> 'TextNode':
         """Create a text node from content and metadata.
         
         Args:
             content: the text content of the node
-            metadata: a dictionary with metadata
+            metadata: a dictionary with metadata (optional)
             parent: if not None, the parent heading of the node
 
         Returns: 
