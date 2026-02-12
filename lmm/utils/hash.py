@@ -1,4 +1,14 @@
-"""Hash from text utility"""
+"""
+Utilities to index text.
+
+Main functions:
+    base_hash: a hash generation function for strings
+    generate_uuid: a UUID represntation of a string
+    generate_random_string: a random string of required length
+
+Behaviour:
+    these functions are supposedly pure.
+"""
 
 import hashlib
 import base64
@@ -7,8 +17,12 @@ import base64
 def base_hash(input_string: str) -> str:
     """
     Generate human-readable hash to check changes in strings.
-    Args: an input string
-    Returns: a hash string
+
+    Args: 
+        an input string
+    
+    Returns: 
+        a hash string
     """
     if not input_string:
         return ""
@@ -51,17 +65,22 @@ def generate_uuid(
                                 or define your own.
 
     Returns:
-        str: The generated UUID v5 as a hyphenated string.
+        str: The generated UUID v5 as a hyphenated string (36 chars).
     """
-    # We do need to raise exception here, as type check is static
-    if not isinstance(text_input, str):  # type: ignore[reportUnnecessaryInstance]
-        raise TypeError("Input 'text_input' must be a string.")
-
-    generated_uuid = uuid.uuid5(namespace_uuid, text_input)
+    generated_uuid: uuid.UUID = uuid.uuid5(namespace_uuid, text_input)
     return str(generated_uuid)
 
 
-def generate_random_string(length: int = 9) -> str:
+def generate_random_string(length: int = 18) -> str:
+    """Generates a random string.
+    
+    Args:
+        length: the length of the random string (defaults to 18
+        characters).
+        
+    Returns:
+        a random string of the required length.
+    """
     import secrets
     import string
 
