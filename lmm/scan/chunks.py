@@ -2,7 +2,7 @@
 Converts a list of markdown blocks into a list of `Chunk` objects,
 which include all the information for being ingested into a vector
 database. The list of markdown blocks will have been preprocessed as
-necessary, i.e. splitted into smaller text blocks, endowed with
+necessary, i.e. split into smaller text blocks, endowed with
 metadata and an uuid identification code.
 
 When using a vector database to store information, data may be used to
@@ -52,7 +52,7 @@ logger = LoglistLogger()
 # the starting point is a list of blocks, such as one originated
 # from parsing a markdown file
 blocks = markdown_scan("mymarkdown.md")
-if blocklist_haserrors(blocks)
+if blocklist_haserrors(blocks):
     raise ValueError("Errors in  markdown")
 
 # add metadata for annotations (here titles)
@@ -114,6 +114,11 @@ Main functions:
     chunks_to_blocks: the inverse transformation (for inspection and
         verification).
 
+Behaviour:
+    Functions in this module generally use a `logger` argument for error
+    reporting, but may raise standard exceptions (e.g. ValueError) for
+    invalid configurations.
+
 # reviewed a 24.10.2025
 """
 
@@ -144,12 +149,24 @@ from lmm.scan.scan_keys import (
     MESSAGE_KEY,
     UUID_KEY,
     SKIP_KEY,
+    LAST_MODIFIED_KEY,
 )
 from lmm.utils.logging import LoggerBase, get_logger
 
 # Set up logger
 default_logger: LoggerBase = get_logger(__name__)
 
+# define the metadata properties that do not
+# belong to chunks because used for chatting or
+# housekeeping
+_exclude_set: list[str] = [
+    TXTHASH_KEY,
+    CHAT_KEY,
+    QUERY_KEY,
+    EDIT_KEY,
+    MESSAGE_KEY,
+    LAST_MODIFIED_KEY,
+]
 
 # Encoding model allowed by the system
 from enum import StrEnum  # fmt: skip  # noqa: E402
@@ -160,9 +177,9 @@ class EncodingModel(StrEnum):
     Attributes:
         NONE: no encoding (no embedding).
         CONTENT: the textual content of the chunk is also used for
-            the emebdding
+            the embedding
         MERGED: merge textual content and annotations in a larger
-            piece of text for the emebdding
+            piece of text for the embedding
         MULTIVECTOR: textual content and annotations are encoded
             by multivectors
         SPARSE: use annotations only and use sparse encoding
@@ -238,6 +255,7 @@ class AnnotationModel(BaseModel):
     def add_inherited_properties(
         self, props: str | list[str]
     ) -> None:
+        """Add properties to the list of inherited properties."""
         if isinstance(props, str):
             props = [props]
         for p in props:
@@ -245,6 +263,7 @@ class AnnotationModel(BaseModel):
                 self.inherited_properties.append(p)
 
     def add_own_properties(self, props: str | list[str]) -> None:
+        """Add properties to the list of own properties."""
         if isinstance(props, str):
             props = [props]
         for p in props:
@@ -252,12 +271,14 @@ class AnnotationModel(BaseModel):
                 self.own_properties.append(p)
 
     def has_property(self, prop: str) -> bool:
+        """Check if a property is in the model."""
         return (
             prop in self.inherited_properties
             or prop in self.own_properties
         )
 
     def has_properties(self) -> bool:
+        """Check if the model has any properties."""
         return (
             len(self.inherited_properties) > 0
             or len(self.own_properties) > 0
@@ -341,8 +362,7 @@ def blocks_to_chunks(
         encoding_model: how to allocate information to dense and
             sparse encoding
         annotation_model: the fields from the metadata to use for
-            encoding. Titles, if present, are included if there is
-            no model. This field is ignored if the encoding model
+            encoding. This field is ignored if the encoding model
             makes no use of annotations
         logger: a logger object.
 
@@ -412,17 +432,11 @@ def blocks_to_chunks(
     # not inherit specific properties from ancestors, only the first
     # metadata block on the ancestor's path. We exclude metadata
     # properties that are used to chat and housekeeping.
-    exclude_set: list[str] = [
-        TXTHASH_KEY,
-        CHAT_KEY,
-        QUERY_KEY,
-        EDIT_KEY,
-        MESSAGE_KEY,
-    ]
-    rootnode: MarkdownNode = inherit_metadata(root, exclude_set)
+    rootnode: MarkdownNode = inherit_metadata(root, exclude=_exclude_set)
 
     # map a text node with the inherited metadata to a Chunk object
     def _textnode_to_chunk(n: TextNode) -> Chunk:
+        """Create a Chunk from a TextNode."""
         # annotations
         annlist: list[str] = []
         value: str | None = None
@@ -437,7 +451,7 @@ def blocks_to_chunks(
 
         # metadata for payload
         meta: MetadataDict = copy.deepcopy(n.metadata)
-        for key in exclude_set:
+        for key in _exclude_set:
             meta.pop(key, None)
         chunk: Chunk = Chunk(
             content=n.get_content(),
@@ -523,7 +537,7 @@ def chunks_to_blocks(
             a Markdown document
 
     Note:
-        the content of the chunk is splitted into a metadata block
+        the content of the chunk is split into a metadata block
             and a text block, containing the 'content' value of the chunk.
     """
 

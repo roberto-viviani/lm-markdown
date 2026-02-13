@@ -246,21 +246,58 @@ class TestChunkEncoding(unittest.TestCase):
 class TestSkips(unittest.TestCase):
     # setup and teardown replace config.toml to avoid
     # calling the language model server
-    original_settings = Settings()
+    original_config_content: str | None = None
+    config_path = "config.toml"
+    original_env: dict[str, str] = {}
 
     @classmethod
     def setUpClass(cls):
-        settings = Settings(
-            major={'model': "Debug/debug"}, # type: ignore
-            minor={'model': "Debug/debug"}, # type: ignore
-            aux={'model': "Debug/debug"}, # type: ignore
-        )
-        export_settings(settings)
+        # Backup existing config.toml content if it exists
+        import os
+        if os.path.exists(cls.config_path):
+            with open(cls.config_path, "r", encoding="utf-8") as f:
+                cls.original_config_content = f.read()
+            os.remove(cls.config_path)
+
+        # Clear potentially conflicting env vars
+        cls.original_env = {}
+        for key in list(os.environ.keys()):
+            if key.startswith("LMM_"):
+                cls.original_env[key] = os.environ.pop(key)
+
+        try:
+            # Create new settings (will use defaults + args since file is gone)
+            settings = Settings(
+                major={'model': "Debug/debug"}, # type: ignore
+                minor={'model': "Debug/debug"}, # type: ignore
+                aux={'model': "Debug/debug"}, # type: ignore
+            )
+            export_settings(settings)
+        except Exception:
+            # Restore config if settings creation fails
+            if cls.original_config_content is not None:
+                with open(cls.config_path, "w", encoding="utf-8") as f:
+                    f.write(cls.original_config_content)
+            # Restore env vars
+            for key, val in cls.original_env.items():
+                os.environ[key] = val
+            raise
 
     @classmethod
     def tearDownClass(cls):
-        settings = cls.original_settings
-        export_settings(settings)
+        import os
+        # Remove the temporary test config
+        if os.path.exists(cls.config_path):
+            os.remove(cls.config_path)
+            
+        # Restore original config if it existed
+        if cls.original_config_content is not None:
+            with open(cls.config_path, "w", encoding="utf-8") as f:
+                f.write(cls.original_config_content)
+
+        # Restore env vars
+        for key, val in cls.original_env.items():
+            os.environ[key] = val
 
     def setUp(self):
         self.doc_with_skip = """
@@ -357,6 +394,53 @@ Final text block.
         )
         for c in chunks:
             self.assertIn(TITLES_KEY, c.metadata)
+
+
+class TestAnnotationModel(unittest.TestCase):
+    def test_add_inherited(self):
+        am = AnnotationModel()
+        am.add_inherited_properties("prop1")
+        self.assertIn("prop1", am.inherited_properties)
+        am.add_inherited_properties(["prop2", "prop3"])
+        self.assertIn("prop2", am.inherited_properties)
+        self.assertIn("prop3", am.inherited_properties)
+
+    def test_add_own(self):
+        am = AnnotationModel()
+        am.add_own_properties("prop1")
+        self.assertIn("prop1", am.own_properties)
+        am.add_own_properties(["prop2", "prop3"])
+        self.assertIn("prop2", am.own_properties)
+
+    def test_has_property(self):
+        am = AnnotationModel(inherited_properties=["p1"], own_properties=["p2"])
+        self.assertTrue(am.has_property("p1"))
+        self.assertTrue(am.has_property("p2"))
+        self.assertFalse(am.has_property("p3"))
+
+    def test_has_properties(self):
+        am = AnnotationModel()
+        self.assertFalse(am.has_properties())
+        am.add_inherited_properties("p1")
+        self.assertTrue(am.has_properties())
+
+
+class TestEncodingModelWarnings(unittest.TestCase):
+    def test_sparse_warning(self):
+        from lmm.utils.logging import LoglistLogger
+        import logging
+
+        logger = LoglistLogger()
+        blocks_to_chunks(blocks, EncodingModel.SPARSE, logger=logger)
+        self.assertTrue(logger.count_logs(level=logging.ERROR) > 0)
+
+    def test_merged_warning(self):
+        from lmm.utils.logging import LoglistLogger
+        import logging
+
+        logger = LoglistLogger()
+        blocks_to_chunks(blocks, EncodingModel.MERGED, logger=logger)
+        self.assertTrue(logger.count_logs(level=logging.WARNING) > 0)
 
 
 if __name__ == '__main__':
