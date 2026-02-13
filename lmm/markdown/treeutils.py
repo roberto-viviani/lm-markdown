@@ -1,33 +1,33 @@
 """
 Utility functions to extract information from markdown trees.
 
-The functions may be divided in the following categories.
+Main functions:
+    Aggregate:
+        Exchange information between child and parent nodes. These functions revise
+        the tree and have side effects on the tree.
+        `inherit_metadata`, `inherit_parent_properties`, `bequeath_properties`
+    Traversal:
+        Traverse the tree and extract information, allowing inheritance of metadata
+        directly or through a function. No side effects.
+        `collect_text`, `collect_headings`, `collect_dictionaries`,
+        `collect_table_of_contents`, `collect_annotated_textblocks`
+    Select nodes:
+        Select nodes from tree.
+        `get_nodes`, `get_textnodes`, `get_headingnodes`, `get_nodes_with_metadata`
+    Map:
+        Apply a function to each node in the tree. Has side effects on the tree.
+        `pre_order_map_tree`, `post_order_map_tree`
+    Fold:
+        `count_words`
+    Prune:
+        Remove nodes from tree. Has side effects on the tree.
+        `prune_tree`
 
-Aggregate:
-    exchange information between child and parent nodes. These
-    functions revise the tree and have side effects on the tree.
-    `summarize_content`
-    `inherit_metadata`
-    `extract_property`
-
-Traversal:
-    traverse the tree and extract information, allowing
-    inheritance of metadata directly or through a function. No side
-    effects.
-    `collect_text`
-    `collect_headings`
-    `collect_dictionaries`
-    `collect_table_of_contents`
-    `collect_annotated_textblocks`
-
-Fold:
-    `count_words`
-
-Select nodes:
-    select nodes from tree
-    `get_nodes`, `get_text_nodes`, `get_heading_nodes`
-    `get_nodes_with_metadata`
-
+Behaviour:
+    Except for inherit_parent_properties, which validates input and raises
+    a ValueError exception, these function do not raise exceptions.
+    Functions are generally pure with respect to the tree unless noted otherwise 
+    (e.g., Aggregate, Map, Prune functions have side effects on the input nodes).
 """
 
 # protected members of Block used
@@ -78,9 +78,12 @@ def inherit_parent_properties(
         include_header: also inherit properties of header
         filter_func: a filter for the children nodes to process.
 
+    Returns:
+        the modified node (with side effects on its children)
+
     Behaviour:
-        raises ValueError if destination_names is not Null and is
-        not of the same length as properties.
+        raises ValueError if `destination_names` is not Null and is
+        not of the same length as `properties`.
 
     Note:
         Properties are inherited from the immediate parent only. This
@@ -189,7 +192,8 @@ def bequeath_properties(
         the root node of the modified branch
 
     Note:
-            new names they take.
+        If `new_keys` is empty, the properties will retain their
+        original names in the child nodes.
     """
     
     if not (new_keys):
@@ -638,8 +642,19 @@ def prune_tree(
     node: MarkdownTree,
     filter_func: Callable[[MarkdownNode], bool],
 ) -> MarkdownTree:
-    """Prune all nodes of the tree that do not satisfy the predicate
-    filter_func."""
+    """
+    Prune all nodes of the tree that do not satisfy the predicate
+    filter_func.
+
+    Args:
+        node: The root node of the tree or branch to prune
+        filter_func: A predicate function that returns True if a 
+            node should be kept, and False if it should be pruned.
+
+    Returns:
+        The root of a new tree copy with pruned nodes, or None if the 
+        root itself is pruned.
+    """
     if node is None:
         return None
 
@@ -667,6 +682,9 @@ def print_tree_info(node: MarkdownNode, indent: int = 0) -> None:
     Args:
         node: The node to print information for
         indent: The indentation level for pretty printing
+
+    Returns:
+        None
     """
     indent_str = "  " * indent
 

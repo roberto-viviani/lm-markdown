@@ -12,6 +12,8 @@ from lmm.markdown.parse_markdown import blocklist_copy
 from lmm.markdown.tree import *
 from lmm.markdown.treeutils import *
 from lmm.utils.logging import LoglistLogger
+import io
+from unittest.mock import patch
 
 header = HeaderBlock(content={"title": "Test blocklist"})
 metadata = MetadataBlock(
@@ -761,6 +763,10 @@ class TestPruneTree(unittest.TestCase):
         self.assertEqual(len(pruned.get_heading_children()), 1)
         self.assertEqual(pruned.children[0].count_children(), 2)
 
+    def test_prune_none(self):
+        # Line 651: handle node is None
+        self.assertIsNone(prune_tree(None, lambda x: True))
+
 
 class TestInheritParentProperties(unittest.TestCase):
     def test_validation_error(self):
@@ -867,6 +873,61 @@ class TestGetNodesWithMetadata(unittest.TestCase):
         nodes = get_nodes_with_metadata(root, "key", naked_copy=False)
         self.assertEqual(len(nodes), 1)
         self.assertIsNotNone(nodes[0].parent)
+
+
+class TestPrintTreeInfo(unittest.TestCase):
+    def test_print_tree_info_basic(self):
+        root = HeadingNode(HeadingBlock(level=1, content="root"))
+        root.metadata = {"key": "value"}
+        child = TextNode.from_content(content="child content")
+        root.add_child(child)
+
+        expected_outputs = [
+            "Heading (Level 1): root",
+            "Metadata: {'key': 'value'}",
+            "Text: child content",
+        ]
+
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            print_tree_info(root)
+            output = fake_out.getvalue()
+            for expected in expected_outputs:
+                self.assertIn(expected, output)
+
+    def test_print_tree_info_truncated_text(self):
+        long_content = "a" * 100
+        root = TextNode.from_content(content=long_content)
+        
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            print_tree_info(root)
+            output = fake_out.getvalue()
+            # Should be truncated at 47 chars + "..."
+            self.assertIn("Text: " + "a" * 47 + "...", output)
+
+    def test_print_tree_info_other_type(self):
+        # Test the 'else' branch in print_tree_info
+        class MockNode(MarkdownNode):
+            def __init__(self):
+                self.block = MetadataBlock(content={})
+                self.metadata = {}
+                self.children = []
+                self.parent = None
+            def fetch_metadata_for_key(self, key, include_header=True): return None
+            def get_content(self): return ""
+            def set_content(self, content): pass
+            def get_text_children(self): return []
+            def get_heading_children(self): return []
+            def heading_level(self): return None
+            def get_info(self, indent=0): return ""
+            def naked_copy(self): return self
+            def node_copy(self): return self
+            def tree_copy(self): return self
+
+        node = MockNode()
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            print_tree_info(node)
+            output = fake_out.getvalue()
+            self.assertIn("Other: <class 'lmm.markdown.parse_markdown.MetadataBlock'>", output)
 
 
 if __name__ == "__main__":
