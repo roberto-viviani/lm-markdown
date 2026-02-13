@@ -318,7 +318,7 @@ def post_order_hashed_aggregation(
                         _node_property(
                             node,
                             TITLES_TEMP_KEY,
-                            " skipped: " + output_key + " present",
+                            f" skipped: {output_key} present",
                         )
                     )
                     return
@@ -343,7 +343,7 @@ def post_order_hashed_aggregation(
                 # ignore: bound if hashed
 
             # Mark that we processed at least some content
-            any_content_processed = True  # bool(collected_content)
+            any_content_processed = True
 
     post_order_traversal(root_node, _process_node)
 
