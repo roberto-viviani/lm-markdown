@@ -830,7 +830,7 @@ class TestPostOrderHashedAggregationSingleParent(unittest.TestCase):
     """Test the special case where heading has only one heading child"""
 
     def test_heading_with_single_heading_child(self):
-        """Test that heading with single heading child doesn't aggregate"""
+        """Test that heading with single heading child copies output"""
         markdown = """---
 title: Document
 ---
@@ -853,34 +853,162 @@ Text content here.
             root, word_count_aggregate, OUTPUT_KEY, hashed=True
         )
 
-        # Root should now have the aggregation because it's the requested root
+        # Root should have the aggregation because it's the root
         self.assertIn(OUTPUT_KEY, root.metadata)
 
-        # The "Chapter" heading should NOT have aggregation
-        # because it has only one child which is also a heading
+        # Find the Section node which should have the aggregation
         chapter_node = (
             root.get_heading_children()[0]
             if root.get_heading_children()
             else None
         )
         self.assertIsNotNone(chapter_node)
-        if chapter_node:
-            # Chapter node should not have the output key
-            self.assertNotIn(OUTPUT_KEY, chapter_node.metadata)
 
-        # Find the Section node which should have the aggregation
-        if chapter_node:
-            section_node = (
-                chapter_node.get_heading_children()[0]
-                if chapter_node.get_heading_children()
-                else None
+        section_node = (
+            chapter_node.get_heading_children()[0]
+            if chapter_node.get_heading_children()
+            else None
+        )
+        self.assertIsNotNone(section_node)
+        if section_node:
+            self.assertIn(OUTPUT_KEY, section_node.metadata)
+            self.assertEqual(
+                section_node.metadata[OUTPUT_KEY],
+                "There are 3 words",
             )
-            if section_node:
-                self.assertIn(OUTPUT_KEY, section_node.metadata)
-                self.assertEqual(
-                    section_node.metadata[OUTPUT_KEY],
-                    "There are 3 words",
-                )
+
+        # The "Chapter" heading should now have output_key
+        # copied from its only child (Section)
+        if chapter_node:
+            self.assertIn(OUTPUT_KEY, chapter_node.metadata)
+            self.assertEqual(
+                chapter_node.metadata[OUTPUT_KEY],
+                "There are 3 words",
+            )
+            # Hash should also be stored
+            self.assertIn(TXTHASH_KEY, chapter_node.metadata)
+
+
+    def test_chain_of_single_heading_children(self):
+        """Test copy cascades correctly through H1->H2->H3 chain"""
+        markdown = """---
+title: Document
+---
+
+# Part
+
+## Chapter
+
+### Section
+
+Leaf text content here.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY, hashed=True
+        )
+
+        part = root.get_heading_children()[0]
+        chapter = part.get_heading_children()[0]
+        section = chapter.get_heading_children()[0]
+
+        # Section (leaf heading) gets aggregated normally
+        self.assertIn(OUTPUT_KEY, section.metadata)
+        self.assertEqual(
+            section.metadata[OUTPUT_KEY],
+            "There are 4 words",
+        )
+
+        # Chapter copies from Section (single heading child)
+        self.assertIn(OUTPUT_KEY, chapter.metadata)
+        self.assertEqual(
+            chapter.metadata[OUTPUT_KEY],
+            "There are 4 words",
+        )
+        self.assertIn(TXTHASH_KEY, chapter.metadata)
+
+        # Part copies from Chapter (single heading child)
+        self.assertIn(OUTPUT_KEY, part.metadata)
+        self.assertEqual(
+            part.metadata[OUTPUT_KEY],
+            "There are 4 words",
+        )
+        self.assertIn(TXTHASH_KEY, part.metadata)
+
+    def test_structural_change_adds_child(self):
+        """Test that adding a child so node is no longer single-
+        heading-child causes normal aggregation on recompute"""
+        markdown = """---
+title: Document
+---
+
+# Chapter
+
+## Section A
+
+Text in section A.
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        self.assertIsNotNone(root)
+        if root is None:
+            return
+
+        OUTPUT_KEY = "word_summary"
+
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY,
+            hashed=True,
+        )
+
+        chapter = root.get_heading_children()[0]
+        section_a = chapter.get_heading_children()[0]
+
+        # Chapter has single heading child -> copied
+        self.assertIn(OUTPUT_KEY, chapter.metadata)
+        self.assertEqual(
+            chapter.metadata[OUTPUT_KEY],
+            section_a.metadata[OUTPUT_KEY],
+        )
+
+        # Now add a second child heading to Chapter
+        from lmm.markdown.parse_markdown import HeadingBlock
+        section_b = HeadingNode(
+            HeadingBlock(level=2, content="Section B")
+        )
+        text_b = TextNode.from_content("More words in B.")
+        section_b.add_child(text_b)
+        chapter.add_child(section_b)
+
+        # Re-run aggregation: Chapter now has 2 heading
+        # children, so it enters the normal aggregation path
+        post_order_hashed_aggregation(
+            root, word_count_aggregate, OUTPUT_KEY,
+            hashed=True,
+        )
+
+        # Section B should have its own aggregation
+        self.assertIn(OUTPUT_KEY, section_b.metadata)
+        self.assertEqual(
+            section_b.metadata[OUTPUT_KEY],
+            "There are 4 words",
+        )
+
+        # Chapter should now aggregate from both sections'
+        # synthetic outputs (no longer a copy)
+        # "There are 4 words\n\nThere are 4 words" = 8 words
+        self.assertIn(OUTPUT_KEY, chapter.metadata)
+        self.assertEqual(
+            chapter.metadata[OUTPUT_KEY],
+            "There are 8 words",
+        )
 
 
 title_block = "---\ntitle: document\n---\n" ""
