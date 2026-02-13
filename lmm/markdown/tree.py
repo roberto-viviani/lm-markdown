@@ -95,11 +95,11 @@ from .parse_markdown import (
     HeadingBlock,
     TextBlock,
     ErrorBlock,
+    LOWEST_HEADING_LEVEL,
 )
 from .parse_markdown import serialize_blocks, load_blocks
 from .ioutils import report_error_blocks
 from lmm.utils.logging import LoggerBase, get_logger
-
 
 from typing import TypedDict  # fmt: skip
 class NodeDict(TypedDict):
@@ -127,7 +127,17 @@ class MarkdownNode(ABC):
     to its parent, a list of children, and associated metadata. Both
     heading and text blocks have textual content.
 
-    Use accessor functions to read properties of the node.
+    Use accessor functions to read properties of the node:
+
+    - get_metadata()/fetch_metadata()
+    - get_metadata_for_key()/fetch_metadata_for_key()
+    - get_metadata_string_for_key()/fetch_metadata_string_for_key()
+
+    The names of the functions indicate use:
+
+    - get_* - node's own metadata
+    - fetch_* - with inheritance
+    - *_string_* - returns string representation
     """
 
     def __init__(
@@ -534,7 +544,7 @@ class HeadingNode(MarkdownNode):
     def get_content(self) -> str:
         """Returns the title of the heading represented by the node"""
         if self.is_header_node():
-            return str(self.get_metadata_for_key('title'))
+            return self.get_metadata_string_for_key('title') or ""
         else:
             return str(self.block.get_content())
 
@@ -543,15 +553,10 @@ class HeadingNode(MarkdownNode):
         by the node
         """
         match self.block:
-            case HeadingBlock() if self.is_header_node():
+            case HeaderBlock():
                 self.set_metadata_for_key('title', content)
             case HeadingBlock():
                 self.block.content = content
-            case _:
-                raise RuntimeError(
-                    "Unreachable code reached: "
-                    + "unrecognized block type in node"
-                )
 
     def get_info(self, indent: int = 0) -> str:
         """
@@ -608,14 +613,14 @@ class HeadingNode(MarkdownNode):
         Note:
             one cannot add a heading node with a level equal or higher
             than that of the parent node. The level of the heading
-            node is adjusted downwards automatically. Beyond level 6,
-            a text node is added.
+            node is adjusted downwards automatically. Beyond the 
+            lowest heading level, a text node is added.
         """
         if isinstance(child_node, HeadingNode):
-            if self.heading_level() == 6:
+            if self.heading_level() == LOWEST_HEADING_LEVEL:
                 self.children.append(
                     TextNode.from_content(
-                        content="######## "
+                        content="#" * (LOWEST_HEADING_LEVEL + 1) + " "
                         + child_node.get_content(),
                         metadata=child_node.metadata,
                         parent=self,
@@ -1111,9 +1116,10 @@ def tree_to_blocks(
                     pass
                 # Then add the text block
                 blocks.append(node.block)
-            case _:
+            case MarkdownNode():
+                # workaround type check limitation
                 raise RuntimeError(
-                    "Unreachable code reached: unrecognized node type"
+                    "Unreacheable code reached: instance of abstract type"
                 )
 
     # Perform pre-order traversal
@@ -1363,17 +1369,10 @@ def extract_content(
     """
 
     def process_node(node: MarkdownNode) -> None:
-        match node:
-            case TextNode():
-                return
-            case HeadingNode():
-                if not filter_func(node):
-                    return
-            case _:
-                raise RuntimeError(
-                    "Unreachable code reached: "
-                    + "unrecognized node type"
-                )
+        if not node.is_heading_node():
+            return
+        if not filter_func(node): # type: ignore (type checked)
+            return
 
         value: MetadataValue = extract_func(node.children)
         if not node.metadata:
@@ -1430,15 +1429,10 @@ def propagate_content(
 
     def process_node(node: MarkdownNode) -> None:
         heading_node: HeadingNode
-        match node:
-            case HeadingNode():
-                heading_node = node
-            case TextNode():
-                return
-            case _:
-                raise RuntimeError(
-                    "Unreachable code reached: unrecognized node type"
-                )
+        if node.is_heading_node():
+            heading_node = node  # type: ignore (type checked)
+        else:
+            return
 
         if not filter_func(heading_node):
             return

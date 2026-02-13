@@ -101,6 +101,9 @@ MAX_INFO_WORDS = 12  # Max words to display in TextBlock.get_info()
 DEFAULT_MAX_SIZE_MB = 50.0
 DEFAULT_WARN_SIZE_MB = 10.0
 
+# This documents the lowest heading level enforced by the parser
+LOWEST_HEADING_LEVEL = 6
+
 
 # We define a union type for the block types, in functional style, but
 # we also add centralized handling of common functions, OOP-style.

@@ -1050,7 +1050,7 @@ class TestAddChild(unittest.TestCase):
         self.assertIsInstance(parent.children[0], TextNode)
         # Content should include heading markers
         self.assertEqual(
-            parent.children[0].get_content(), "######## Child"
+            parent.children[0].get_content(), "####### Child"
         )
         # Metadata should be preserved
         self.assertEqual(parent.children[0].metadata, {"key": "value"})
