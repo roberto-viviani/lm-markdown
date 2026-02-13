@@ -23,6 +23,11 @@ from lmm.markdown.blockutils import (
     merge_equation_blocks,
     merge_short_textblocks,
     merge_code_blocks,
+    _find_largest_divisor,
+)
+from lmm.markdown.parse_markdown import (
+    parse_markdown_text,
+    HeaderBlock,
 )
 
 
@@ -820,10 +825,6 @@ class TestPoolCodeBlocks(unittest.TestCase):
         )
 
 
-from lmm.markdown.parse_markdown import (
-    parse_markdown_text,
-    HeaderBlock,
-)
 
 header_block = """
 ---
@@ -1087,6 +1088,8 @@ and final text.
         )
 
     def test_unmerge_textblocks(self):
+        """Test that unmerge_textblocks is the inverse of merge_textblocks."""
+        # Test with simple text blocks
         text = (
             "First paragraph\n\nSecond paragraph\n\nThird paragraph"
         )
@@ -1098,6 +1101,49 @@ and final text.
         self.assertEqual(len(blocks), 3)
         for b, c in zip(blocklist, blocks):
             self.assertEqual(b.get_content(), c.get_content())
+
+    def test_unmerge_textblocks_with_mixed_blocks(self):
+        """Test inverse property with mixed block types."""
+        blocks: list[Block] = [
+            TextBlock(content="Text 1"),
+            TextBlock(content="Text 2"),
+            HeadingBlock(level=1, content="Heading"),
+            TextBlock(content="Text 3"),
+            TextBlock(content="Text 4"),
+        ]
+        # Store original content
+        original_content = [b.get_content() for b in blocks]
+        
+        # Merge then unmerge
+        merged = merge_textblocks(blocks)
+        unmerged = unmerge_textblocks(merged)
+        
+        # Verify we got back the same content
+        unmerged_content = [b.get_content() for b in unmerged]
+        self.assertEqual(original_content, unmerged_content)
+
+    def test_unmerge_textblocks_single_block(self):
+        """Test inverse property with a single text block."""
+        blocks: list[Block] = [TextBlock(content="Single block")]
+        merged = merge_textblocks(blocks)
+        unmerged = unmerge_textblocks(merged)
+        self.assertEqual(len(unmerged), 1)
+        self.assertEqual(blocks[0].get_content(), unmerged[0].get_content())
+
+    def test_unmerge_textblocks_preserves_metadata(self):
+        """Test that unmerge preserves non-text blocks."""
+        blocks: list[Block] = [
+            MetadataBlock(content={"key": "value"}),
+            TextBlock(content="Text 1\n\nText 2"),
+            HeadingBlock(level=2, content="Heading"),
+        ]
+        # Unmerge should split the text block but preserve others
+        unmerged = unmerge_textblocks(blocks)
+        self.assertEqual(len(unmerged), 4)  # metadata + 2 text + heading
+        self.assertIsInstance(unmerged[0], MetadataBlock)
+        self.assertIsInstance(unmerged[1], TextBlock)
+        self.assertIsInstance(unmerged[2], TextBlock)
+        self.assertIsInstance(unmerged[3], HeadingBlock)
 
 
 class TestPoolShortTextblocks(unittest.TestCase):
@@ -1200,6 +1246,50 @@ class TestPoolShortTextblocks(unittest.TestCase):
         self.assertEqual(
             result[1].get_content(), "Eight nine ten eleven twelve"
         )
+
+
+class TestFindLargestDivisor(unittest.TestCase):
+    """Test the _find_largest_divisor function."""
+
+    def test_threshold_ge_number(self):
+        """Test when threshold is greater than or equal to number."""
+        self.assertEqual(_find_largest_divisor(10, 10), 1)
+        self.assertEqual(_find_largest_divisor(10, 20), 1)
+
+    def test_find_divisor(self):
+        """Test finding a divisor that satisfies the condition.
+        
+        The function returns the largest divisor d such that number/d <= threshold.
+        Since number/number = 1, and 1 <= threshold (for threshold >= 1),
+        it almost always returns number.
+        """
+        # 100 / 10 = 10 <= 10. But 100/100 = 1 <= 10. Largest is 100.
+        self.assertEqual(_find_largest_divisor(100, 10), 100)
+        # 100 / 20 = 5 <= 5. Largest is 100.
+        self.assertEqual(_find_largest_divisor(100, 5), 100)
+        # 100 / 50 = 2 <= 2. Largest is 100.
+        self.assertEqual(_find_largest_divisor(100, 2), 100)
+        # 100 / 100 = 1 <= 1. Largest is 100.
+        self.assertEqual(_find_largest_divisor(100, 1), 100)
+    
+    def test_prime_number(self):
+        """Test with a prime number."""
+        self.assertEqual(_find_largest_divisor(7, 2), 7) 
+        # 7 / 7 = 1 <= 1
+        self.assertEqual(_find_largest_divisor(7, 1), 7)
+
+    def test_small_threshold(self):
+        """Test with a small threshold."""
+        # 10 / 1 = 10 > 0.5 -> loop finishes, returns 1? 
+        # Wait, if threshold is very small, we might not find any divisor d such that n/d <= threshold
+        # n/d <= th  <=>  d >= n/th
+        # if th < 1, n/th > n. d must be > n. Largest divisor is n. n >= n/th impossible if th < 1.
+        # But threshold is int. 
+        # If threshold is 0. 
+        # _find_largest_divisor(10, 0)
+        # 10/d <= 0 => impossible for positive d.
+        # Function returns 1 by default at end.
+        self.assertEqual(_find_largest_divisor(10, 0), 1)
 
 
 if __name__ == '__main__':

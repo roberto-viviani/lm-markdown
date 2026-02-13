@@ -1,8 +1,28 @@
 """
 Utilities to work with lists of markdown blocks.
-Note: call blocklist_copy before using these functions
-    to maintain referential transparency.
+
+Note: Most functions mutate the content of block lists in place. To avoid this
+or maintain referential transparency, call `blocklist_copy()` from 
+`lmm.markdown.parse_markdown` before using these functions.
+
+Main Functions:
+- `compose()`: Compose multiple block processing functions
+- `clear_metadata()`: Remove metadata blocks from lists
+- `clear_metadata_properties()`: Remove specific properties from metadata blocks
+- `merge_textblocks()`: Merge contiguous text blocks
+- `unmerge_textblocks()`: Split merged text blocks at blank lines
+- `merge_textblocks_if()`: Conditionally merge text blocks based on predicate
+- `merge_equation_blocks()`: Merge text blocks separated by equations
+- `merge_code_blocks()`: Merge text blocks separated by code blocks
+- `merge_short_textblocks()`: Merge short text blocks based on word count
+
+Behaviour:
+All functions are pure in the sense that they do not raise exceptions under normal
+usage. They accept well-formed block lists and return transformed block lists.
+No custom logger is used; functions follow a functional programming style.
 """
+
+# pyright: reportUnusedFunction=false
 
 from collections.abc import Callable
 from functools import reduce
@@ -14,7 +34,6 @@ from .parse_markdown import (
     MetadataBlock,
 )
 from .parse_markdown import serialize_blocks, parse_markdown_text
-from .tree import HeadingNode, TextNode
 
 # type of functions that process block lists
 BlockFunc = Callable[[list[Block]], list[Block]]
@@ -49,7 +68,13 @@ def compose(*funcs: BlockFunc) -> BlockFunc:
 
 def clear_metadata(blocks: list[Block]) -> list[Block]:
     """
-    Remove metadata blocks from the block list, except the header.
+    Remove all metadata blocks from the block list.
+    
+    Args:
+        blocks: List of markdown blocks to filter
+        
+    Returns:
+        New list with all MetadataBlock instances removed
     """
     return [b for b in blocks if b.type != "metadata"]
 
@@ -58,8 +83,19 @@ def clear_metadata_properties(
     blocks: list[Block], keys: list[str]
 ) -> list[Block]:
     """
-    Remove key/value properties from metadata blocks as specified by
-    keys.
+    Remove key/value properties from metadata blocks as specified by keys.
+    
+    Metadata blocks with no remaining properties after removal are deleted unless
+    they contain private metadata (private_ field).
+    
+    Args:
+        blocks: List of markdown blocks to process
+        keys: List of property keys to remove from metadata blocks
+        
+    Returns:
+        New list with specified properties removed from MetadataBlock instances.
+        MetadataBlocks that become empty (no content and no private_ data) are
+        excluded from the result.
     """
     if not keys:
         return blocks
@@ -80,6 +116,13 @@ def clear_metadata_properties(
 def merge_textblocks(blocks: list[Block]) -> list[Block]:
     """
     Merge contiguous text blocks into larger blocks.
+    
+    Args:
+        blocks: List of markdown blocks to process
+        
+    Returns:
+        New list where consecutive TextBlock instances have been merged using
+        serialize_blocks to create combined content.
 
     Example:
         ```python
@@ -120,8 +163,17 @@ def merge_textblocks(blocks: list[Block]) -> list[Block]:
 
 
 def unmerge_textblocks(blocks: list[Block]) -> list[Block]:
-    """Unmerge textblocks separated by blank lines. This
-    function is the inverse of merge_textblocks."""
+    """
+    Unmerge text blocks separated by blank lines. This function is the inverse
+    of merge_textblocks.
+    
+    Args:
+        blocks: List of markdown blocks to process
+        
+    Returns:
+        New list where TextBlock instances have been split at blank lines using
+        parse_markdown_text.
+    """
 
     blocklist: list[Block] = []
     for b in blocks:
@@ -135,8 +187,18 @@ def unmerge_textblocks(blocks: list[Block]) -> list[Block]:
 def merge_textblocks_if(
     blocks: list[Block], test_func: Callable[[TextBlock], bool]
 ) -> list[Block]:
-    """Merge text blocks together that are separated by blocks
-    for which test_func(block) is true.
+    """
+    Merge text blocks together that are separated by blocks for which
+    test_func(block) is true.
+    
+    Args:
+        blocks: List of markdown blocks to process
+        test_func: Predicate function that takes a TextBlock and returns True
+            if the block should act as a separator triggering merges
+            
+    Returns:
+        New list where TextBlock instances are merged when separated by blocks
+        for which test_func returns True.
 
     Example:
         ```python
@@ -197,9 +259,9 @@ def merge_textblocks_if(
                     blocklist.append(curblock)
                     curblock = bl.deep_copy()
                     lastappend = None
-            case _ as bl:  # reduce
+            case _:  # reduce
                 blocklist.append(curblock)
-                curblock = bl
+                curblock = b
                 lastappend = None
     blocklist.append(curblock)  # reduce
 
@@ -209,8 +271,19 @@ def merge_textblocks_if(
 def merge_code_blocks(
     blocks: list[Block], linecount: int = 12
 ) -> list[Block]:
-    """Merge text blocks together that are separated by
-    code of size less or equal linecount."""
+    """
+    Merge text blocks together that are separated by code blocks of size less
+    or equal to linecount.
+    
+    Args:
+        blocks: List of markdown blocks to process
+        linecount: Maximum number of lines in code blocks that will trigger
+            merging (default: 12)
+            
+    Returns:
+        New list where TextBlock instances are merged when separated by small
+        code blocks (markdown fenced code blocks with ``` delimiters).
+    """
 
     def _is_code_block(b: TextBlock) -> bool:
         content: str = b.get_content()
@@ -228,7 +301,17 @@ def merge_code_blocks(
 
 def merge_equation_blocks(blocks: list[Block]) -> list[Block]:
     """
-    Merge text blocks together that are separated by equations
+    Merge text blocks together that are separated by equations.
+    
+    Equations are identified as text blocks matching the pattern $$...$$
+    (LaTeX display math delimiters).
+    
+    Args:
+        blocks: List of markdown blocks to process
+        
+    Returns:
+        New list where TextBlock instances are merged when separated by
+        equation blocks.
     """
 
     def _is_eq_block(block: TextBlock) -> bool:
@@ -240,7 +323,7 @@ def merge_equation_blocks(blocks: list[Block]) -> list[Block]:
     return merge_textblocks_if(blocks, _is_eq_block)
 
 
-def _find_largest_divisor(number: int, threshold: int):  # type:ignore
+def _find_largest_divisor(number: int, threshold: int) -> int:
     """
     Finds the largest integer divisor of 'number' such that
     'number' / divisor <= 'threshold'.
@@ -282,20 +365,21 @@ def merge_short_textblocks(
     blocks: list[Block], wordthresh: int = 120
 ) -> list[Block]:
     """
-    Merges short text blocks together, defined by a word count
-    threshold.
+    Merges short text blocks together, defined by a word count threshold.
+    
+    Text blocks with fewer than wordthresh words are merged with the next
+    text block. This continues until a block meets or exceeds the threshold.
+    
+    Args:
+        blocks: List of markdown blocks to process
+        wordthresh: Minimum word count threshold for text blocks (default: 120)
+        
+    Returns:
+        New list where short consecutive TextBlock instances have been merged.
     """
 
     if not blocks:
         return []
-
-    # TO DO: use this to revise this function
-    def _count_words(n: HeadingNode) -> int:  # type: ignore
-        count: int = 0
-        for c in n.children:
-            if isinstance(c, TextNode):
-                count += len(c.get_content().split())
-        return count
 
     blocklist: list[Block] = []
     curblock: Block = blocks[0].deep_copy()
