@@ -5,6 +5,7 @@
 # pyright: reportUnknownMemberType=false
 # pyright: reportAttributeAccessIssue=false
 # pyright: reportArgumentType=false
+# pyright: reportOptionalMemberAccess=false
 
 import unittest
 import logging
@@ -16,6 +17,7 @@ from lmm.markdown.tree import (
     load_tree,
 )
 from lmm.scan.scanutils import (
+    preproc_for_markdown,
     post_order_hashed_aggregation,
     aggregate_hash,
 )
@@ -420,6 +422,7 @@ Original text content.
         from lmm.scan.scan_keys import FREEZE_KEY  # fmat: skip
 
         text_node.get_parent().metadata[FREEZE_KEY] = True # type: ignore
+        self.assertTrue(text_node.fetch_metadata_for_key(FREEZE_KEY, True, False))
 
         # Rerun aggregation
         post_order_hashed_aggregation(
@@ -429,13 +432,24 @@ Original text content.
             hashed=True,
             logger=logger,
         )
-        # We expect a warning here since the text_node was the whole doc
-        self.assertEqual(logger.count_logs(), 1)
-        self.assertIn("No aggregation was", logger.get_logs()[-1])
+        # Root is no longer skipped, so it is still having the same attribute
+        self.assertEqual(first_result, heading_node.metadata.get(OUTPUT_KEY))
 
+        # Now we reset the frozen key
+        text_node.get_parent().metadata[FREEZE_KEY] = False # type: ignore
+        self.assertFalse(text_node.fetch_metadata_for_key(FREEZE_KEY, True, False))
+
+        # Rerun aggregation
+        post_order_hashed_aggregation(
+            root,
+            word_count_aggregate,
+            OUTPUT_KEY,
+            hashed=True,
+            logger=logger,
+        )
         # Result should reflect new content
         second_result = heading_node.metadata.get(OUTPUT_KEY)
-        self.assertEqual(second_result, first_result)
+        self.assertNotEqual(second_result, first_result)
 
     def test_non_hashed_only_computes_when_missing(self):
         """Test that with hashed=False, only computes when output is missing"""
@@ -600,6 +614,144 @@ Content in part two.
             root.metadata[OUTPUT_KEY], "There are 8 words"
         )
 
+    def test_recursive_content_collection(self):
+        """Test that _collect_text recurses when intermediate levels have no output"""
+        markdown = """---
+title: Doc
+---
+
+# Top
+
+Top text.
+
+## Middle
+
+Middle text.
+
+### Bottom
+
+Leaf content.
+"""
+        root = load_tree(markdown, LoglistLogger())
+
+        def agg_func(content: str) -> str:
+            # Return empty if it's ONLY the leaf content (simulating 'not enough content' at Bottom level)
+            if content.strip() == "Leaf content.":
+                return ""
+            return f"AGG: {content.strip()}"
+
+        post_order_hashed_aggregation(
+            root, agg_func, "out", hashed=False
+        )
+        
+        # The tree structure should be stable.
+        # Root (Doc) -> Top
+        # Top -> [Text, Middle]
+        # Middle -> [Text, Bottom]
+        # Bottom -> [Text]
+        
+        # Helper to find by basic content match
+        def find_by_content(node, text):
+            if node.get_content().strip() == text:
+                return node
+            for child in node.get_heading_children():
+                res = find_by_content(child, text)
+                if res: return res
+            return None
+
+        top = find_by_content(root, "Top")
+        if not top:
+             # Fallback: maybe root IS top?
+             if root.get_content().strip() == "Top":
+                 top = root
+        
+        middle = find_by_content(root, "Middle")
+        bottom = find_by_content(root, "Bottom")
+        
+        if not middle:
+            from lmm.markdown.tree import serialize_tree
+            print(f"DEBUG: Tree structure:\n{serialize_tree(root)}")
+
+        self.assertIsNotNone(top, "Could not find 'Top' node")
+        self.assertIsNotNone(middle, "Could not find 'Middle' node")
+        self.assertIsNotNone(bottom, "Could not find 'Bottom' node")
+
+        # Bottom should NOT have "out" because agg_func returned "" for it
+        self.assertNotIn("out", bottom.metadata)
+
+        # Middle should have aggregated from both 'Middle text.' and 'Leaf content.' (via recursion into Bottom)
+        self.assertIn("out", middle.metadata)
+        self.assertIn("Middle text.", middle.metadata["out"])
+        self.assertIn("Leaf content.", middle.metadata["out"])
+
+        # Top should have aggregated from Top text and Middle's output
+        self.assertIn("out", top.metadata)
+        self.assertIn("Top text.", top.metadata["out"])
+        self.assertIn("AGG: ", top.metadata["out"])
+        self.assertIn("Leaf content.", middle.metadata["out"])
+
+        # Top should have aggregated from Top text and Middle's output
+        self.assertIn("out", top.metadata)
+        self.assertIn("Top text.", top.metadata["out"])
+        self.assertIn("AGG: ", top.metadata["out"])
+
+    def test_root_with_single_heading_child_is_NOT_skipped(self):
+        """Test the fix where root with single heading child should still aggregate"""
+        markdown = """# Only Heading
+Some text.
+"""
+        root = load_tree(markdown, LoglistLogger())
+        
+        # root -> Only Heading -> Some text.
+        # Previously, root would be skipped because it has only one heading child.
+        
+        post_order_hashed_aggregation(
+            root, lambda x: "ROOT AGG", "out", hashed=False
+        )
+        
+        # Root should now have the aggregation
+        self.assertIn("out", root.metadata)
+        self.assertEqual(root.metadata["out"], "ROOT AGG")
+
+    def test_aggregation_refused_everywhere(self):
+        """Test behavior when aggregate_func returns empty for all nodes"""
+        markdown = """# H1
+text 1
+# H2
+text 2
+"""
+        logger = LoglistLogger()
+        root = load_tree(markdown, logger)
+        
+        # Always return empty string
+        post_order_hashed_aggregation(
+            root, lambda x: "", "out", hashed=False, logger=logger
+        )
+        
+        # No nodes should have 'out'
+        self.assertNotIn("out", root.metadata)
+        for h in root.get_heading_children():
+            self.assertNotIn("out", h.metadata)
+            
+        # Should have warned at the root level
+        self.assertTrue(any("No aggregation was performed" in log for log in logger.get_logs()))
+
+class TestPreprocForMarkdown(unittest.TestCase):
+    """Test preproc_for_markdown function"""
+
+    def test_no_changes(self):
+        self.assertEqual(preproc_for_markdown("plain text"), "plain text")
+
+    def test_block_delimiters(self):
+        content = r"Here is a block: \[ x = 1 \]"
+        expected = "Here is a block: $$ x = 1 $$"
+        self.assertEqual(preproc_for_markdown(content), expected)
+
+    def test_inline_delimiters(self):
+        content = r"Here is inline: \( y = 2 \)"
+        expected = "Here is inline: $ y = 2 $"
+        self.assertEqual(preproc_for_markdown(content), expected)
+
     def test_custom_hash_key(self):
         """Test using a custom hash key"""
         markdown = """---
@@ -701,6 +853,9 @@ Text content here.
             root, word_count_aggregate, OUTPUT_KEY, hashed=True
         )
 
+        # Root should now have the aggregation because it's the requested root
+        self.assertIn(OUTPUT_KEY, root.metadata)
+
         # The "Chapter" heading should NOT have aggregation
         # because it has only one child which is also a heading
         chapter_node = (
@@ -712,10 +867,6 @@ Text content here.
         if chapter_node:
             # Chapter node should not have the output key
             self.assertNotIn(OUTPUT_KEY, chapter_node.metadata)
-
-        # Root also should not have aggregation because it has only one heading child
-        # The Section (child of Chapter) will have the aggregation
-        self.assertNotIn(OUTPUT_KEY, root.metadata)
 
         # Find the Section node which should have the aggregation
         if chapter_node:

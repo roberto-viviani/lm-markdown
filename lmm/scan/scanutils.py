@@ -1,9 +1,14 @@
 """
 Utilities for scan modules.
 
-Important functions:
-    preproc_for_markdown
-    post_order_hashed_aggregation
+Main functions:
+    - preproc_for_markdown
+    - post_order_hashed_aggregation
+
+Behaviour:
+    Exported functions in this module generally raise `ValueError` for invalid
+    arguments or internal state errors. They also accept a `LoggerBase` object
+    to log warnings and information about the aggregation process.
 """
 
 from typing import TypeGuard
@@ -13,7 +18,6 @@ import re
 from lmm.markdown.tree import (
     MarkdownNode,
     HeadingNode,
-    TextNode,
     post_order_traversal,
 )
 from lmm.utils.hash import base_hash
@@ -22,6 +26,16 @@ from .scan_keys import TXTHASH_KEY, FREEZE_KEY, TITLES_TEMP_KEY
 
 
 def preproc_for_markdown(response: str) -> str:
+    """
+    Pre-processes a string for markdown rendering, specifically
+    handling LaTeX-style delimiters.
+
+    Args:
+        response: The string to be processed.
+
+    Returns:
+        The processed string with updated delimiters.
+    """
     # replace square brackets containing the character '\' to one
     # that is enclosed between '$$' for rendering in markdown
     response = re.sub(r"\\\[|\\\]", "$$", response)
@@ -52,10 +66,13 @@ def post_order_hashed_aggregation(
         calling the aggregate function.
 
     Note:
-        aggregate_func is only called if there is content to
+        aggregate_func is only called if there is enough content to
             aggregate.
         This avoids calls to llm's without content. aggregate_func
             itself may return empty for insufficient content.
+        If a heading child lacks an output as a result of this, the 
+            function will descend into that child's subtree to find 
+            text or deeper outputs.
 
     Args:
         root_node: The root node of the markdown tree
@@ -63,7 +80,10 @@ def post_order_hashed_aggregation(
             before storing. The collected content is provided as a
             string list. The function may return an empty string if
             there is no/not enough material to synthetise, leaving
-            it for synthesis at the next level.
+            it for synthesis at the next level. This implies that
+            at the next level text will be recurively collected from 
+            all children nodes to attempt to compute the synthetic
+            attribute.
         output_key: the key in the metadata where the sythetised
             attributes should be stored
         hashed: if true, stores a hash of the content used for
@@ -75,7 +95,10 @@ def post_order_hashed_aggregation(
             and stored.
         filter_func: a predicate function on the nodes to be
             aggregated. Only nodes where filter_func(node) is True
-            will be aggregated.
+            will be aggregated / traveresed. This means that nodes
+            excluded by the filter_func will be excluded for both
+            calculation of aggregation and production of synthetic
+            attributes (the branch is completely pruned)
         logger: a logger object.
 
     Note:
@@ -130,11 +153,12 @@ def post_order_hashed_aggregation(
     def _process_node(node: MarkdownNode) -> None:
         nonlocal any_content_processed
         # Skip leaf nodes (they don't have children to synthetise)
-        if isinstance(node, TextNode):
+        if node.is_text_node():
             return
 
         if not _is_heading_node(node):
-            # coding error, new node type
+            # this does not defend against coding errors, it
+            # just satisfies type checker
             raise ValueError(
                 "Unreachable code reached: unexpected node type"
             )
@@ -148,7 +172,7 @@ def post_order_hashed_aggregation(
         # one heading node, as the content will be the same
         if node.count_children() == 0:
             return
-        if node.count_children() == 1 and isinstance(
+        if node != root_node and node.count_children() == 1 and isinstance(
             node.children[0], HeadingNode
         ):
             return
@@ -167,7 +191,7 @@ def post_order_hashed_aggregation(
                 if not filter_func(child):
                     continue
 
-                if isinstance(child, TextNode):
+                if child.is_text_node():
                     # Collect content from direct TextBlock children
                     collected_content.append(child.get_content())
                 else:
@@ -280,8 +304,8 @@ def aggregate_hash(
     of the node. If the text is empty, an empty string is returned.
 
     Args:
-        root_node: the node to compute the hash for
-        filter_func a function to filter the nodes whose
+        node: the node to compute the hash for
+        filter_func: a function to filter the nodes whose
             content should be hashed
 
     Returns:
@@ -289,7 +313,7 @@ def aggregate_hash(
             no content in the tree.
     """
 
-    if isinstance(node, TextNode):
+    if node.is_text_node():
         return (
             base_hash(node.get_content()) if filter_func(node) else ""
         )
@@ -299,7 +323,7 @@ def aggregate_hash(
         if not filter_func(child):
             continue
 
-        if isinstance(child, TextNode):
+        if child.is_text_node():
             buffer.append(child.get_content())
         else:
             buffer.append(aggregate_hash(child, filter_func))
