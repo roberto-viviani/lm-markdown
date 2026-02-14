@@ -6,3 +6,7 @@ site/
 __pycache__/
 config.toml
 trash/
+.agent
+.claude
+.coverage
+uv.lock
