@@ -113,7 +113,7 @@ from .models import (
     create_embedding_model_from_settings,
 )
 
-from ..lazy_dict import LazyLoadingDict
+from ...utils.lazy_dict import LazyLoadingDict
 from ..prompts import (
     PromptDefinition,
     PromptNames,

@@ -10,7 +10,7 @@ import unittest
 from pydantic import validate_call
 
 from enum import StrEnum
-from lmm.models.lazy_dict import (
+from lmm.utils.lazy_dict import (
     LazyLoadingDict,
 )
 
@@ -69,7 +69,7 @@ class CreateNewDictionary(unittest.TestCase):
     def test_create_dict(self):
         from typing import Literal
         from pydantic import BaseModel, ConfigDict, ValidationError
-        from lmm.models.lazy_dict import LazyLoadingDict
+        from lmm.utils.lazy_dict import LazyLoadingDict
 
         # This defines source + model
         class LanguageModelSpecification(BaseModel):
@@ -120,7 +120,7 @@ class CreateNewDictionary(unittest.TestCase):
 
     def test_create_constrained_dict(self):
         from pydantic import BaseModel, ConfigDict, ValidationError
-        from lmm.models.lazy_dict import LazyLoadingDict
+        from lmm.utils.lazy_dict import LazyLoadingDict
         from enum import StrEnum
 
         class LanguageModelSource(StrEnum):
@@ -175,7 +175,7 @@ class CreateNewDictionary(unittest.TestCase):
 
     def test_create_unconstrained_dict(self):
         from pydantic import BaseModel, ConfigDict
-        from lmm.models.lazy_dict import LazyLoadingDict
+        from lmm.utils.lazy_dict import LazyLoadingDict
 
         # This defines model
         class LanguageModelSpecification(BaseModel):

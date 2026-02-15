@@ -74,7 +74,7 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 
-from ..lazy_dict import LazyLoadingDict
+from ...utils.lazy_dict import LazyLoadingDict
 
 from lmm.config.config import (
     LanguageModelSettings,

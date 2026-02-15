@@ -61,7 +61,7 @@ the name of the prompt object:
 
 from typing import Literal
 from pydantic import BaseModel, ConfigDict
-from .lazy_dict import LazyLoadingDict
+from ..utils.lazy_dict import LazyLoadingDict
 
 ModelTier = Literal['major', 'minor', 'aux']
 
