@@ -26,16 +26,3 @@ The application may be configured by editing the settings in `Config.toml`. The 
     - max_retries: number of connection attempts when using model (default to 2)
 
 - aux.provider_params: other parameters set for the model (model-dependent)
-
-## Use of language model providers
-
-The following language kernels ('runnables') are initialized with the language model versions.
-
-| kernel | function | model version |
-| --- | --- | --- |
-| query | interactive query about text | major |
-| query_with_context | interactive query about text | major |
-| question_generator | generate questions for RAG | minor |
-| summarizer | generate summaries for RAG | minor |
-| context_validator | check relevance of context  | aux |
-| allowed_content_validator | check content class (RAG) | aux |

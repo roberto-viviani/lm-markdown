@@ -25,10 +25,3 @@ While RAG is most often used to make available the content of throusand of docum
 ## LM Markdown as an API for textual analysis and data extraction
 
 Because LM Markdown is an API, it may be used by data scientist to develop a pipeline to extract information from semi-structured content, such as research reports or papers. In this application, the data scientist can directly use and supplement the LM Markdown API with specific prompts or functions to support bespoke analysis pipelines.
-
-## LM Markdown for Education
-
-See _LM Markdown for Education_ for another application built around the LM Markdown API. LM Markdown for Education is a research project at the Institute of Psychology of the University of Innsbruck that aims at enabling faculty without programming expertise to author LM artefacts for use in teaching.
-
-![logo](./img/LMMarkdownEducation.jpg)
-

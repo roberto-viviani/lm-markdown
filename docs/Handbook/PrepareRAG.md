@@ -14,7 +14,7 @@ document = markdown_rag(
 )
 ```
 
-This code snippet runs a language model to create summaries of content and questions answered by text in the metadata blocks annotating the headings of the markdown document "MyDocument.md". The changes are saved to "MyDocumentRagged.md". Alternatively, if the thrid argument is imotted, the changes are saved directly to the original document. Summaries and questions are computed with the language model in the 'minor' section of Config.toml.
+This code snippet runs a language model to create summaries of content and questions answered by text in the metadata blocks annotating the headings of the markdown document "MyDocument.md". The changes are saved to "MyDocumentRagged.md". Alternatively, if the thrid argument is omitted, the changes are saved directly to the original document. Summaries and questions are computed with the language model in the 'minor' section of Config.toml.
 
 After processing the markdown file, it can be opened, inspected, and edited. Calling `markdown_rag` on an edited document again will not overwrite summaries and questions. To have the language model re-create a summary or a question, delete the summary or questions section in the metadata and run `markdown_rag` again.
 
