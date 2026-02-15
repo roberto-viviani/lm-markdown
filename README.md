@@ -4,7 +4,7 @@ author: Roberto Viviani
 date: 21.05.2025
 ---
 
-This software extends markdown to enable interaction with a language model. The user exchanges information with the language model, which is turn is given information about the document that is being edited. This idea follows that concept of the notebook, where text and programmtic execution interact. The difference is that the programmatic execution takes place in the language model.
+This software extends markdown to enable interaction with a language model. The user exchanges information with the language model, which in turn is given information about the document that is being edited. This idea follows that concept of the notebook, where text and programmtic execution interact. The difference is that the programmatic execution takes place in the language model.
 
 The exchange with the language model takes place through metadata blocks. Metadata blocks are a standard feature of much markdown, including Pandoc markdown and R markdown. However, the main use is providing a header to the document. In markdown, however, these blocks can be placed anywhere in the document. Internally, metadata blocks contain YAML specifications.
 
