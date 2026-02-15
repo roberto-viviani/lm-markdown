@@ -9,4 +9,5 @@ trash/
 .agent
 .claude
 .coverage
+.private
 uv.lock

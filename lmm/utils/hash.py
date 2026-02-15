@@ -19,7 +19,7 @@ def base_hash(input_string: str) -> str:
     Generate human-readable hash to check changes in strings.
 
     Args: 
-        an input string
+        input_string: an input string
     
     Returns: 
         a hash string
@@ -76,7 +76,7 @@ def generate_random_string(length: int = 18) -> str:
     
     Args:
         length: the length of the random string (defaults to 18
-        characters).
+            characters).
         
     Returns:
         a random string of the required length.

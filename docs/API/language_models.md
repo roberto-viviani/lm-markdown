@@ -30,14 +30,12 @@ except Exception:
 
 
 ### Basic models (Langchain)
-::: lmm.language_models.langchain.models
+::: lmm.models.langchain.models
 
-### Kernel tools
-::: lmm.language_models.tools
+### Primpts
+::: lmm.models.prompts
 
-### Kernels (Langchain runnables)
-::: lmm.language_models.langchain.runnables
+### Simple packaged models (Langchain runnables)
+::: lmm.models.langchain.runnables
 
-## Utilities
-::: lmm.language_models.lazy_dict
 
