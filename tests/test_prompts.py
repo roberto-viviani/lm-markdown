@@ -6,7 +6,7 @@
 
 import unittest
 
-from lmm.language_models.prompts import (
+from lmm.models.prompts import (
     prompt_library as kernel_prompts,
     create_prompt,
     PromptDefinition,

@@ -39,8 +39,8 @@ from lmm.markdown.ioutils import save_markdown
 from lmm.utils.logging import LoggerBase, get_logger
 
 from lmm.config.config import LanguageModelSettings
-from lmm.language_models.prompts import PromptNames
-from lmm.language_models.langchain.runnables import (
+from lmm.models.prompts import PromptNames
+from lmm.models.langchain.runnables import (
     create_runnable,
     RunnableType,
 )

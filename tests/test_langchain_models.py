@@ -8,7 +8,7 @@ import unittest
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from lmm.language_models.langchain.models import (
+from lmm.models.langchain.models import (
     langchain_models,
     langchain_embeddings,
     create_model_from_spec,
@@ -34,7 +34,7 @@ unittest.TestCase.tearDownClass = reset_langchain_models
 class TestDocstring(unittest.TestCase):
 
     def test_docstring(self):
-        from lmm.language_models.langchain.models import (
+        from lmm.models.langchain.models import (
             create_model_from_spec,
             create_model_from_settings,
             langchain_models,
@@ -107,7 +107,7 @@ class TestLazyDict(unittest.TestCase):
         self.assertEqual(len(langchain_models), model_count)
 
     def test_create_systemprompt(self):
-        from lmm.language_models.prompts import (
+        from lmm.models.prompts import (
             create_prompt,
         )
 
@@ -120,7 +120,7 @@ class TestLazyDict(unittest.TestCase):
         # create a kernel from the major model in config.toml with
         # this prompts
         from lmm.config.config import Settings
-        from lmm.language_models.langchain.runnables import (
+        from lmm.models.langchain.runnables import (
             create_runnable as create_kernel,
         )
 

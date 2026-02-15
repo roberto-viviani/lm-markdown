@@ -71,7 +71,7 @@ from lmm.markdown.tree import (
 
 # language models
 from lmm.config.config import Settings, LanguageModelSettings
-from lmm.language_models.langchain.runnables import (
+from lmm.models.langchain.runnables import (
     RunnableType,
     create_runnable,
 )

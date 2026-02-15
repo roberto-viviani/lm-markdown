@@ -5,7 +5,7 @@ This script demonstrates and tests the yield_message function and
 MessageIterator class.
 """
 
-from lmm.language_models.message_iterator import (
+from lmm.models.message_iterator import (
     yield_message,
     yield_constant_message,
 )
