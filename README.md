@@ -20,3 +20,20 @@ LM markdown add to this structure metadata blocks within the document. Metadata 
 - the header, itself a metadata block, annotates the whole document.
 
 In the exchanges with the language model, which take place from within a metadata block, the user may refer to the text annotated by the metadata block as "the text". LM markdown provides this text to the language model, so that the model can use it to prepare its response. This model is flexible because the user may easily stake out a portion of text for the interaction with the language model by inserting temporary headings. When the interaction concerns a single block, the user may simply insert a metadata block before the text block.
+
+## Installation
+
+To install the system after cloning it from github, use poetry:
+
+```bash
+poetry install
+```
+
+The documentation can be displayed in a web browser. Type
+
+```bash
+poetry shell
+mkdocs serve
+```
+
+You will need the API keys of the language models in your environment variables to have them work on markdown documents. 
