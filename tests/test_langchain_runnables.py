@@ -4,6 +4,7 @@
 # pyright: reportArgumentType=false
 # pyright: reportUnusedExpression=false
 
+import os
 import unittest
 
 
@@ -21,6 +22,10 @@ from lmm.config.config import (
     EmbeddingSettings,
     export_settings,
 )
+
+
+# Add this near the top of the file, after other imports
+OPENAI_KEY_AVAILABLE = os.environ.get("OPENAI_API_KEY") is not None
 
 base_settings = Settings()
 
@@ -294,7 +299,7 @@ class TestDebugModel(unittest.TestCase):
         msg = model.invoke({'text': "This is test text"})
         self.assertEqual(msg, "This is a summary of the text.")
 
-
+@unittest.skipUnless(OPENAI_KEY_AVAILABLE, "OpenAI API key not available")
 class TestEmbeddingModel(unittest.TestCase):
 
     # setup and teardown replace config.toml to avoid
