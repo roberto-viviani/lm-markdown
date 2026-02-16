@@ -33,7 +33,7 @@ base_settings = Settings()
 def _get_name(kn: str, sn: str, mn: str) -> str:
     return f"{kn}:{sn}/{mn}"
 
-
+@unittest.skipUnless(OPENAI_KEY_AVAILABLE, "OpenAI API key not available")
 class TestDefaultModels(unittest.TestCase):
 
     def test_query(self):

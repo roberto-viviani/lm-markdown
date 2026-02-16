@@ -5,6 +5,7 @@
 # pyright: reportUnusedExpression=false
 
 import unittest
+import os
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -19,6 +20,9 @@ from lmm.models.langchain.models import (
 
 from pydantic import ValidationError
 
+# Add this near the top of the file, after other imports
+OPENAI_KEY_AVAILABLE = os.environ.get("OPENAI_API_KEY") is not None
+
 
 # reset at end of testing
 def reset_langchain_models():
@@ -31,6 +35,7 @@ def reset_langchain_models():
 unittest.TestCase.setUpClass = reset_langchain_models
 unittest.TestCase.tearDownClass = reset_langchain_models
 
+@unittest.skipUnless(OPENAI_KEY_AVAILABLE, "OpenAI API key not available")
 class TestDocstring(unittest.TestCase):
 
     def test_docstring(self):
@@ -65,6 +70,7 @@ class TestDocstring(unittest.TestCase):
         model = create_model_from_spec(**spec)
         self.assertIn("OpenAI", model.get_name())
 
+@unittest.skipUnless(OPENAI_KEY_AVAILABLE, "OpenAI API key not available")
 class TestLazyDict(unittest.TestCase):
 
     def test_hashability(self):
