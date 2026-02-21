@@ -444,7 +444,7 @@ class TestSaveScan(unittest.TestCase):
         blocks = blocklist_scan(blocks)
         
         # Try to save to invalid path
-        invalid_path = Path("Z:\\nonexistent\\path\\test.md")
+        invalid_path = Path("/bin/test.md")
         mock_logger = MockLogger()
         success = save_scan(invalid_path, blocks, logger=mock_logger)
         
