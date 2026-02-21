@@ -23,3 +23,12 @@ In chat and edit mode, what the user writes in the metadata block are prompts co
 
 # Scan module for block splitting
 ::: lmm.scan.scan_split
+
+# Scan module for Chunks
+::: lmm.scan.chunks
+
+# Scan module for Scan Keys
+::: lmm.scan.scan_keys
+
+# Scan module for Scan Utilities
+::: lmm.scan.scanutils

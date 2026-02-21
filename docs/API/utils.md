@@ -4,3 +4,4 @@
 ::: lmm.utils.ioutils
 ::: lmm.utils.logging
 ::: lmm.utils.lazy_dict
+::: lmm.utils.importpdfs

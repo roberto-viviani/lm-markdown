@@ -13,7 +13,7 @@ The boundary between the layers is not rigid. For example, it is possible to int
 The `tools` module contains a number of prespecified tools, enabling the creation of a Langchain kernel (a runnable) on the fly.
 
 ```python
-from lmm.language_models.langchain.runnables import create_runnable
+from lmm.models.langchain.runnables import create_runnable
 summarizer = create_runnable("summarizer")
 ```
 
@@ -32,10 +32,12 @@ except Exception:
 ### Basic models (Langchain)
 ::: lmm.models.langchain.models
 
-### Primpts
+### Prompts
 ::: lmm.models.prompts
 
 ### Simple packaged models (Langchain runnables)
 ::: lmm.models.langchain.runnables
 
+### Message Iterator
+::: lmm.models.message_iterator
 

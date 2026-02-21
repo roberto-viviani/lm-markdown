@@ -23,7 +23,7 @@ class MessageIterator:
 
         Args:
             prefix: The prefix to use for generated messages. Defaults to
-            "Message".
+                "Message".
         """
         self.prefix = prefix
         self.counter = 1
