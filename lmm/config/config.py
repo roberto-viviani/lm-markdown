@@ -389,9 +389,18 @@ def serialize_settings(sets: BaseSettings) -> str:
             # Handle nested dictionaries (from BaseSettings objects)
             tbl = tomlkit.table()
             for kkey, vvalue in value.items():  # type: ignore
+                # Make sure wi do not abort writing with a crash
+                if not isinstance(kkey, str):
+                    print("Warning: invalid key in toml file")
+                    kkey = str(key)
                 # Skip None values as they can't be serialized to TOML
                 if vvalue is not None:
-                    tbl[kkey] = vvalue
+                    try:
+                        tbl[kkey] = vvalue
+                    except Exception as e:
+                        print("Warning: could not write key in toml file:")
+                        print(f"{e}")
+                        pass
             doc[key] = tbl
         else:
             # Skip None values at top level too
