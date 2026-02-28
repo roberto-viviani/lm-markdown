@@ -24,7 +24,7 @@ object is `BaseChatModel`.
 Examples:
 
 ```python
-from lmm.language_models.langchain.models import (
+from lmm.models.langchain.models import (
     create_model_from_spec,
     create_model_from_settings,
     langchain_models,
