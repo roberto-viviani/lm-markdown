@@ -22,7 +22,7 @@ dictionary that contains the parameters for the prompt template.
 Example of runnable creations:
 
     ```python
-    from lmm.language_models.langchain.runnables import create_runnable
+    from lmm.models.langchain.runnables import create_runnable
     try:
         query_model = create_runnable("query")  # uses config.toml
     except Exception ...
@@ -46,7 +46,7 @@ Example of runnable creations:
 Example of a dynamically created chat runnable:
 
     ```python
-        from lmm.language_models.tools import (
+        from lmm.models.prompts import (
             prompt_library,
             create_prompt,
         )
@@ -61,7 +61,7 @@ Example of a dynamically created chat runnable:
         # create a runnable from the major model in config.toml with
         # this prompt
         from lmm.config.config import Settings
-        from lmm.language_models.langchain.runnables import create_runnable
+        from lmm.models.langchain.runnables import create_runnable
         settings = Settings()
         try:
             model = create_runnable(
@@ -312,7 +312,7 @@ def create_runnable(
         runnable_name: The name of the runnable to create. If one of
             the supported names defined in the PromptNames
             literal type, returns a cached runnable object. Otherwise,
-            looks up in the tools_library dictionary if there is
+            looks up in the prompt_library dictionary if there is
             a prompt with that runnable_name, and returns a runnable
             object for a chat with that prompt.
         user_settings: Optional settings to override the default
@@ -494,7 +494,7 @@ def create_embeddings(
 
     Example:
     ```python
-    from lmm.language_models.langchain.runnables import (
+    from lmm.models.langchain.runnables import (
         create_embeddings,
     )
 

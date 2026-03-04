@@ -23,7 +23,7 @@ These prompts may be retrieved from the module-level dictionary
 **Example**:
 
     ```python
-    from lmm.language_models.prompts import (
+    from lmm.models.prompts import (
         prompt_library, 
         PromptDefinition,
     )
@@ -36,7 +36,7 @@ To do this, one can use the `create_prompt` function.
 **Example**:
 
     ```python
-    from lmm.language_models.prompts import (
+    from lmm.models.prompts import (
         prompt_library,
         create_prompt,
     )
@@ -48,12 +48,12 @@ To do this, one can use the `create_prompt` function.
 There is no much added value in storing the prompt template text in
 the library per se. The motivation is that the prompt becomes a tool
 that is now available to other functions in the library, like the
-`create_runnable` function (see lmm.language_models.langchain.runnables).
+`create_runnable` function (see lmm.models.langchain.runnables).
 A runnable with the prompt can then be obtained by requesting it with
 the name of the prompt object:
 
     ```python
-    from lmm.language_models.langchain.runnables import create_runnable
+    from lmm.models.langchain.runnables import create_runnable
     lmm = create_runnable("question_creation") # langchain runnable
     response = lmm.invoke({'text': "Apples are healthy food"})
     ```
