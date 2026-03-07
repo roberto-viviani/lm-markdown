@@ -99,6 +99,6 @@ document = markdown_messages("MyText.md", "MyTextEdited.md")
 
 ## Remove messages to and from the language model
 
-To eliminate all messages arising from interactions with language models from the markdown, use `markdown_remove_messages`.
+To eliminate all messages arising from interactions with language models from the markdown, use `markdown_clear_messages`.
 
 Messages to and from the language model are automatically removed when the document is scanned for RAG annotations.
