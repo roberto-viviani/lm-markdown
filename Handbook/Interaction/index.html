@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Interactive work on markdown file - Language Model Markdown</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" disabled>
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" >
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Language Model Markdown</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Handbook</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Configuration/" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Interactive work on markdown file</a>
+</li>
+                                    
+<li>
+    <a href="../PrepareRAG/" class="dropdown-item">Preparing a document for RAG</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../API/config/" class="dropdown-item">Configuration settings</a>
+</li>
+                                    
+<li>
+    <a href="../../API/scan/" class="dropdown-item">Interaction with language model</a>
+</li>
+                                    
+<li>
+    <a href="../../API/markdown/" class="dropdown-item">Load and save markdown documents</a>
+</li>
+                                    
+<li>
+    <a href="../../API/tree/" class="dropdown-item">Tree representation of markdown documents</a>
+</li>
+                                    
+<li>
+    <a href="../../API/language_models/" class="dropdown-item">Language model kernels</a>
+</li>
+                                    
+<li>
+    <a href="../../API/utils/" class="dropdown-item">Utilities</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../About/" class="nav-link">About</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../Configuration/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../PrepareRAG/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown">
+                              <button id="theme-menu" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme" class="nav-link dropdown-toggle">
+                                <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                <span class="d-lg-none ms-2">Toggle theme</span>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="light" aria-pressed="false">
+                                    <i class="fa-solid fa-sun fa-fw"></i>
+                                    <span class="ms-2">Light</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark" aria-pressed="true">
+                                    <i class="fa-solid fa-moon fa-fw"></i>
+                                    <span class="ms-2">Dark</span>
+                                    <i class="fa-solid fa-check ms-auto"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="auto" aria-pressed="false">
+                                    <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                    <span class="ms-2">Auto</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                              </ul>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <script src="../../js/darkmode.js"></script>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#interactive-work-on-markdown-file" class="nav-link">Interactive work on markdown file</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#metadata-and-hierarchical-structure" class="nav-link">Metadata and hierarchical structure</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#example-of-getting-feedback-from-a-language-model" class="nav-link">Example of getting feedback from a language model</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#remove-messages-to-and-from-the-language-model" class="nav-link">Remove messages to and from the language model</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="interactive-work-on-markdown-file">Interactive work on markdown file</h1>
+<p>LM markdown supports interactive writing through the interaction with a language model. This interaction takes place through metadata blocks that may be inserted at any point in the document. You can ask a question about the text, or request work on the text, by posting a message to the language model in the metadata.</p>
+<h2 id="metadata-and-hierarchical-structure">Metadata and hierarchical structure</h2>
+<p>When you interact with the language model, this latter automatically receives parts of the text of the markdown file as context to the query. This text is selected based on the position of the metadata block where the query is formulated.</p>
+<p>A general rule in LM markdown is that metadata blocks annotate the material that follows. If what follows a metadata block is a heading, then the annotation refers to the whole content under the heading. If what follows the block is a text block, then the annotation only refers to the following text block.</p>
+<h2 id="example-of-getting-feedback-from-a-language-model">Example of getting feedback from a language model</h2>
+<p>Here is an example of markdown text, with a heading and some text that follows.</p>
+<pre><code class="language-markdown">## What are linear models?
+
+Linear models and their generalizations constitute the majority of the statistical models used
+in practice. Here, we will look at linear models from a practical perspective, emphasizing the
+issues in correctly applying them and in understanding their output.
+
+Linear models capture the association between a set of variables, the *predictors* (also known 
+as *independent variables*), and an *outcome* variable (or *dependent variable*). In the
+simplest setting, this association may be approximated and displayed by a line relating a
+predictor and the outcome. However, the generalizations of linear models allow capturing much
+more complex associations.
+</code></pre>
+<p>To receive feedback about this text, we will insert a metadata block before the heading, and interrogate the language model through a key/value pair, where the key is 'query' or simply '?':</p>
+<pre><code class="language-markdown">---
+query: please review the text for clarity and conciseness.
+---
+## What are linear models?
+
+Linear models and their generalizations constitute the majority of the statistical models used
+in practice. Here, we will look at linear models from a practical perspective, emphasizing the
+issues in correctly applying them and in understanding their output.
+
+Linear models capture the association between a set of variables, the *predictors* (also known 
+as *independent variables*), and an *outcome* variable (or *dependent variable*). In the
+simplest setting, this association may be approximated and displayed by a line relating a
+predictor and the outcome. However, the generalizations of linear models allow capturing much
+more complex associations.
+</code></pre>
+<p>Because this query is placed before the heading, both text blocks will be sent to the language model for it to respond to the query. In contrast, had the metadata block been placed before a text block, only the text of that block would be sent to the language model. Also note that 'text' is the term to use to refer to the text that the language model receives during the query.</p>
+<p>The interaction with the language model is controlled thorugh the CLI with a call to <code>markdown_messages</code>:</p>
+<pre><code class="language-python">from lmm.scan.scan_messages import markdown_messages
+
+document = markdown_messages(&quot;MyText.md&quot;)
+</code></pre>
+<p>The edited text is automatically reloaded in a markdown text editor such as MS Visual Studio Code or RStudio, with the response of the language model listed at the bottom of the metadata block:</p>
+<pre><code class="language-markdown">---
+query: please review the text for clarity and conciseness.
+~chat:
+- please review the text for clarity and conciseness.
+- Here is a revised version of the text for improved clarity and conciseness:
+
+&quot;Linear models and their generalizations make up most statistical models used in practice.
+This discussion focuses on applying linear models correctly and interpreting their output. 
+Linear models describe the relationship between predictors (independent variables) and an 
+outcome (dependent variable). In the simplest case, this relationship can be represented by a
+line between a predictor and the outcome. More advanced linear models can capture more complex
+associations.&quot;
+
+Let me know if you would like it further simplified or adjusted!
+---
+
+## What are linear models?
+
+Linear models and their generalizations constitute the majority of the statistical models used
+in practice. Here, we will look at linear models from a practical perspective, emphasizing the
+issues in correctly applying them and in understanding their output.
+
+Linear models capture the association between a set of variables, the *predictors* (also known 
+as *independent variables*), and an *outcome* variable (or *dependent variable*). In the
+simplest setting, this association may be approximated and displayed by a line relating a
+predictor and the outcome. However, the generalizations of linear models allow capturing much
+more complex associations.
+</code></pre>
+<p>The interaction with the language model can be continued by re-writing the text of the query. The application checks that the query is new, and sends it to the language model. If you delete che ~chat in the meatadata block without deleting the query: key, then the query (and the text) will be sent to the language model again.</p>
+<p>It is possible to save the edited markdown to a different file. In this case, indicate the new file name as the second argument of the call to <code>markdown_messages</code>:</p>
+<pre><code class="language-python">from lmm.scan.scan_messages import markdown_messages
+
+document = markdown_messages(&quot;MyText.md&quot;, &quot;MyTextEdited.md&quot;)
+</code></pre>
+<h2 id="remove-messages-to-and-from-the-language-model">Remove messages to and from the language model</h2>
+<p>To eliminate all messages arising from interactions with language models from the markdown, use <code>markdown_clear_messages</code>.</p>
+<p>Messages to and from the language model are automatically removed when the document is scanned for RAG annotations.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
