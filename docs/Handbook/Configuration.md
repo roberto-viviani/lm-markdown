@@ -8,7 +8,8 @@ The application may be configured by editing the settings in `Config.toml`. The 
 
 - major: the main language model used, for example, for chatting.
     - model: the provider and the model name, e.g. "OpenAI/gpt-4.1-mini"
-    - temperature: temperature (defaults to 0.1)
+    - temperature: temperature (defaults to 0.4)
+    - max_tokens: max number of generated tokens (defaults to 2048)
     - max_retries: number of connection attempts when using model (default to 2)
 
 - major.provider_params: other parameters set for the model (model-dependent)
@@ -18,11 +19,12 @@ The application may be configured by editing the settings in `Config.toml`. The 
     - temperature: temperature (defaults to 0.1)
     - max_retries: number of connection attempts when using model (default to 2)
 
-- major.provider_params: other parameters set for the model (model-dependent)
+- minor.provider_params: other parameters set for the model (model-dependent)
 
 - aux: the auxiliary language model used, for example to classify text. This model should have low latency.
     - model: the provier and the model name, e.g. "Mistral/mistral-small-latest"
-    - temperature: temperature (defaults to 0.7)
+    - temperature: temperature (defaults to 0)
+    - max_tokens: max number of generated tokens (defaults to 128)
     - max_retries: number of connection attempts when using model (default to 2)
 
 - aux.provider_params: other parameters set for the model (model-dependent)
