@@ -101,4 +101,8 @@ document = markdown_messages("MyText.md", "MyTextEdited.md")
 
 To eliminate all messages arising from interactions with language models from the markdown, use `markdown_clear_messages`.
 
+```python
+from lmm.scan.scan_messages import markdown_clear_messages
+```
+
 Messages to and from the language model are automatically removed when the document is scanned for RAG annotations.
