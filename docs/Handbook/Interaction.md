@@ -47,7 +47,7 @@ more complex associations.
 
 Because this query is placed before the heading, both text blocks will be sent to the language model for it to respond to the query. In contrast, had the metadata block been placed before a text block, only the text of that block would be sent to the language model. Also note that 'text' is the term to use to refer to the text that the language model receives during the query.
 
-The interaction with the language model is controlled thorugh the CLI with a call to `markdown_messages`:
+The interaction with the language model is controlled through the CLI with a call to `markdown_messages`:
 
 ```python
 from lmm.scan.scan_messages import markdown_messages
@@ -87,7 +87,7 @@ predictor and the outcome. However, the generalizations of linear models allow c
 more complex associations.
 ```
 
-The interaction with the language model can be continued by re-writing the text of the query. The application checks that the query is new, and sends it to the language model. If you delete che ~chat in the meatadata block without deleting the query: key, then the query (and the text) will be sent to the language model again.
+The interaction with the language model can be continued by re-writing the text of the query. The application checks that the query is new, and sends it to the language model. If you delete the ~chat in the metadata block without deleting the query: key, then the query (and the text) will be sent to the language model again.
 
 It is possible to save the edited markdown to a different file. In this case, indicate the new file name as the second argument of the call to `markdown_messages`:
 
